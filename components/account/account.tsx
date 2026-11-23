@@ -13,7 +13,7 @@ import '@/components/forms/forms.css';
 import type { ArtSubject } from '@/components/forms/art-config';
 import { TeamPart, type TeamLook } from './team';
 import './account.css';
-import { at } from '@/lib/routes';
+import { at, away } from '@/lib/routes';
 
 /* The account: a cell in the header of every page, and the sheet it opens.
    - The cell. Signed out it says "Sign in". Signed in with a place it shows the place's city code; with no place,
@@ -144,7 +144,7 @@ export function AccountBody({ me, email, here, onSignOut, onSignIn, claimLook, t
       <p className={FM_P}>This email has no place on a city’s list yet, so you can vote on the day but not submit.</p>
       <p className={FM_P}>Registered on Luma and still pending or on the waitlist? Your place comes when Luma approves you, and we email you then.</p>
       {store.isLive() || claimLook ? <Claim look={claimLook} onClaimed={onClaimed} /> : <p className={FM_NOTE + ' mt-6'}>This site has no lists yet, so there is no place to find.</p>}
-      {LUMA_LIVE ? <p className={FM_P}><a className="underline-link" href={lumaHref()}>Register for your city on Luma</a></p> : null}
+      {LUMA_LIVE ? <p className={FM_P}><a className="underline-link" href={lumaHref()} {...away(lumaHref())}>Register for your city on Luma</a></p> : null}
       {desk ? <Desk /> : null}
       {Out}
     </>

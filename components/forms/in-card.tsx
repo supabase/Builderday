@@ -1,21 +1,40 @@
+'use client';
 import type { ReactNode } from 'react';
-import { FM_H, FM_P } from './sheet';
+import { FM_H, FM_P, StillSheet, useSheetId } from './sheet';
+import { BuilderLogo } from '@/components/wheel/builder-logo';
+import { CITY_WORD_CAP, EVENT } from '@/lib/day-data';
+import { at } from '@/lib/routes';
 import './forms.css';
-import { EVENT } from '@/lib/day-data';
+import './in-card.css';
 
-/* The small pages around signing in (/in, /in/confirm): one card in the middle of the night ground, in the sheets'
-   type, so a link from an email lands somewhere that looks like the site. */
-export function InCard({ title, text, children }: { title: string; text: string; children?: ReactNode }) {
+/* The small pages around signing in (/in, /in/confirm): the sign-in sheet's own ticket, standing open on the preview's
+   ground, with the mark at the top as the preview's header has it and the emails' foot under it. A link from an email
+   lands on the same thing the site shows when it asks for a code. */
+
+const DAY = new Date(Date.UTC(EVENT.year, EVENT.month - 1, EVENT.day)).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+
+/* the heading names the ticket (the frame is labelled by it) */
+function Body({ title, text, children }: { title: string; text: string; children?: ReactNode }) {
+  const id = useSheetId();
   return (
-    <main className="grid min-h-dvh place-items-center bg-ground p-4 text-ink">
-      <div className="grid w-full max-w-[26rem] gap-y-6">
-        <p className="m-0 type-label text-ink-3">{EVENT.name}</p>
-        <div>
-          <h1 className={FM_H}>{title}</h1>
-          <p className={FM_P}>{text}</p>
-        </div>
-        {children ? <div className="grid gap-y-4">{children}</div> : null}
+    <>
+      <h1 id={id ? id + '-h' : undefined} className={FM_H}>{title}</h1>
+      <p className={FM_P}>{text}</p>
+      {children ? <div className="mt-6 grid gap-y-4">{children}</div> : null}
+    </>
+  );
+}
+
+export function InCard({ title, text, word = 'Sign in', children }: { title: string; text: string; word?: string; children?: ReactNode }) {
+  return (
+    <main className="in-page">
+      <a className="in-mark" href={at('/')}><BuilderLogo className="in-logo" /><span>{EVENT.short}</span></a>
+      <div className="in-ticket">
+        <StillSheet label={word} art={{ word, lines: [EVENT.short, DAY, CITY_WORD_CAP + ' cities'] }}>
+          <Body title={title} text={text}>{children}</Body>
+        </StillSheet>
       </div>
+      <p className="in-foot"><span aria-hidden="true">[+]</span> {EVENT.name}, {EVENT.date}</p>
     </main>
   );
 }

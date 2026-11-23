@@ -105,7 +105,8 @@ export function layout(l: Letter, look: EmailLook, city: string | null): { html:
   const pad = 'padding:0 16px';
   let inner = '';
   if (look.mode === 'pass') {
-    inner = '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" class="tk" style="' + fill(card) + ';border:1px solid ' + (bare ? card : c.line) + '">'
+    /* on no ground the ticket has no border: a black one ran past the notches and drew a ring round each hole */
+    inner = '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" class="tk" style="' + fill(card) + (bare ? '' : ';border:1px solid ' + c.line) + '">'
       + '<tr><td class="pad" style="padding:18px 16px 6px">' + stubLine + '</td></tr>'
       + (art ? '<tr><td class="pad" style="' + pad + ';padding-bottom:10px">' + artHtml(art, look, inks, false) + '</td></tr>' : '')
       + perf

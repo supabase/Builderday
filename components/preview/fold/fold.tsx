@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
 import type { WheelCfg } from '@/components/wheel/config';
 import type { WheelEngine, WheelFlow } from '@/components/wheel/engine';
 import { Wheel, wheelVars } from '@/components/wheel/wheel';
@@ -29,7 +29,7 @@ import { FoldBoard, type BoardCity } from './board';
 import { FoldReady } from './ready';
 import { FoldQuestions } from './questions';
 import { Unroll } from './unroll';
-import { jumpTo, once, useConverge, useWrite } from './motion';
+import { jumpTo, jumpTop, once, useConverge, useWrite } from './motion';
 import { flapInto, reducedMotion } from './flap';
 import { BACK_ATTR, arrivePlan } from './arrive';
 import { mountGlobes } from '@/components/screen/globe';
@@ -267,15 +267,18 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
   const jump = useCallback((id: string, e: MouseEvent) => {
     e.preventDefault();
     const byKey = e.detail === 0;
-    if (id === 'top') { window.scrollTo({ top: 0 }); history.replaceState(null, '', location.pathname + location.search); return; }
+    if (id === 'top') { jumpTop(line ? cfg.jump : 'cut', { min: cfg.scrollMin, max: cfg.scrollMax, ease: cfg.scrollEase, byKey }); history.replaceState(null, '', location.pathname + location.search); return; }
     /* a jump lands on a finished section: its rows and its heading are simply there */
     const part = document.getElementById(id)?.closest('.pf-part') ?? document.getElementById(id);
     part?.querySelectorAll('[data-pf-wait]').forEach((n) => n.removeAttribute('data-pf-wait'));
     /* the headings the roll passes are settled too */
     document.querySelectorAll('.pf [data-pf-conv]').forEach((n) => n.removeAttribute('data-pf-conv'));
-    setLit(id); litHold.current = performance.now() + Math.max(cfg.rollMs, 600) + 100;
-    jumpTo(id, line ? cfg.jump : 'cut', { ms: cfg.rollMs, bar: cfg.rollBar, ease: tokEase('--ease-out', 'cubic-bezier(0.23, 1, 0.32, 1)'), byKey, scroller: main.current });
-  }, [line, cfg.jump, cfg.rollMs, cfg.rollBar]);
+    /* the lit cell renders between frames: the first frame of the scroll is not held for it */
+    startTransition(() => setLit(id));
+    /* the lit cell holds on the target while the page passes the parts between */
+    const ms = jumpTo(id, line ? cfg.jump : 'cut', { ms: cfg.rollMs, bar: cfg.rollBar, ease: tokEase('--ease-out', 'cubic-bezier(0.23, 1, 0.32, 1)'), byKey, scroller: main.current, min: cfg.scrollMin, max: cfg.scrollMax, glide: cfg.scrollEase });
+    litHold.current = performance.now() + ms + 100;
+  }, [line, cfg.jump, cfg.rollMs, cfg.rollBar, cfg.scrollMin, cfg.scrollMax, cfg.scrollEase]);
 
   const f = { buildMin: ours.buildMin, voteAfter: ours.voteAfter, startHour: ours.startHour, date: ours.date };
   const n = cities.length, g = PRIZES.global.what;
@@ -293,6 +296,14 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
   /* each row shows its own start, so the lede only says what picking does */
   const cityLede = 'Pick your city. Every Register button on the page follows it.';
 
+  /* the footer's links to the page's own parts (Prizes, How it works, Questions) take the header's jump, so going back
+     up from the end moves the same way as the header's cells; a modified click keeps the browser's own way */
+  const footJump = useCallback((e: MouseEvent) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const a = (e.target as Element).closest('a'), h = a?.getAttribute('href');
+    if (!h || !h.startsWith('#') || !document.getElementById(h.slice(1))) return;
+    jump(h.slice(1), e);
+  }, [jump]);
   /* the footer: the end board, built from the day pages' data as it stands before the day */
   const P = useMemo(() => clampParts(partsSaved as Partial<PartsCfg>), []);
   const day = useMemo(() => dayOf(0), []), minute = realMinute(nowMs), W = useMemo(() => homeAt(day, minute), [day, minute]);
@@ -366,7 +377,7 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
         {line ? null : <p className="pf-lede pf-plain-lede">{lede}</p>}
         {order.map(section)}
       </main>
-      <div className="pf-foot" data-part="">
+      <div className="pf-foot" data-part="" onClick={footJump}>
         {end.end === 'board'
           ? <DayFooter W={W} day={day} href={(id) => '/city/' + id} sound={P.sound === 'steps'} city={city.id} cfg={foot} minute={minute}
             sections={{ how: '#how', prizes: '#prizes' }} style={partsVars(P) as CSSProperties} face={P.face} noCities placed={mine >= 0 && forms ? () => forms.account() : undefined} />

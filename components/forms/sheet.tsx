@@ -119,14 +119,15 @@ export function Sheet({ label, wide, art, focusRef, onDone, children }: { label:
   const value = useMemo(() => ({ id, close, busy, focus, open: isOpen }), [id, close, focus]);
   const look = useArtLook(), mode = art ? look.mode : 'none';
   return (
-    <dialog ref={ref} className={shellClass(mode, wide)} style={shellStyle(mode, look)} aria-labelledby={id + '-h'} onCancel={onCancel} onClose={onClose} onClick={onClick} onKeyDown={onKeyDown}>
+    <dialog ref={ref} data-sk-skip="" className={shellClass(mode, wide)} style={shellStyle(mode, look)} aria-labelledby={id + '-h'} onCancel={onCancel} onClose={onClose} onClick={onClick} onKeyDown={onKeyDown}>
       <SheetShell label={label} art={mode === 'none' ? undefined : art} value={value}>{children}</SheetShell>
     </dialog>
   );
 }
 
 const CloseKey = () => <button className="fm-x -mr-3 grid size-11 cursor-pointer touch-manipulation place-items-center text-ink transition-[background-color] duration-hover ease-[ease-out] [-webkit-tap-highlight-color:transparent] hover:bg-tint-1" type="button" data-close aria-label="Close"><IconX className={clsx('size-4', SVG_LINE)} /></button>;
-/* the sheet's frame, shared by the dialog and the lab's still frames */
+/* the sheet's frame, shared by the dialog and the lab's still frames. data-sk-skip: the screen's lines and colour
+   fringe stay off the sheet's big type (its titles), as on every small text */
 function shellClass(mode: string, wide?: boolean) { return 'fm' + (wide ? ' is-wide' : '') + (mode !== 'none' ? ' has-art is-' + mode : ''); }
 function shellStyle(mode: string, look: { band: number; side: number }) { return mode === 'none' ? undefined : ({ '--fm-band': look.band + 'px', '--fm-side': look.side + 'px' } as React.CSSProperties); }
 function SheetShell({ label, art, value, children }: { label: string; art?: ArtSubject; value: SheetValue; children: ReactNode }) {
@@ -148,5 +149,5 @@ export function StillSheet({ label, wide, art, children }: { label: string; wide
   const look = useArtLook(), mode = art ? look.mode : 'none', id = 'fm-' + useId().replace(/[^a-z0-9]/gi, '');
   const busy = useRef(false), open = useRef(true);
   const value = useMemo<SheetValue>(() => ({ id, close: () => {}, busy, focus: () => {}, open }), [id]);
-  return <div className={shellClass(mode, wide) + ' is-still'} style={shellStyle(mode, look)} data-state="open" role="group" aria-labelledby={id + '-h'}><SheetShell label={label} art={mode === 'none' ? undefined : art} value={value}>{children}</SheetShell></div>;
+  return <div data-sk-skip="" className={shellClass(mode, wide) + ' is-still'} style={shellStyle(mode, look)} data-state="open" role="group" aria-labelledby={id + '-h'}><SheetShell label={label} art={mode === 'none' ? undefined : art} value={value}>{children}</SheetShell></div>;
 }

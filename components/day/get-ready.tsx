@@ -1,4 +1,5 @@
 'use client';
+import { away } from '@/lib/routes';
 import { useEffect, useId, useRef, useState, type RefObject } from 'react';
 import { EDITOR_ROOM } from '@/lib/event/rule';
 import { EDITORS, RULES, SERVER, SUPABASE_MCP, checkIt, lineFor, sayIt } from '@/lib/hackday-server';
@@ -123,7 +124,7 @@ export function GetReady({ state = 'before', city, cityId, live = SERVER.live, u
             {pass
               ? <div className="gr-body"><p className="ex-t">You’re on the list for {pass.cityName}</p><p className="gr-note">On the day, type the code shown in the room to submit.</p></div>
               : <div className="gr-body"><p className="ex-t">Register for {city ?? 'your city'} on Luma</p>
-                  {LUMA_LIVE ? <a className="gr-a" href={lumaHref(cityId)}>Register</a> : <p className="gr-cmd" data-off="">The Luma pages are not open yet.</p>}
+                  {LUMA_LIVE ? <a className="gr-a" href={lumaHref(cityId)} {...away(lumaHref(cityId))}>Register</a> : <p className="gr-cmd" data-off="">The Luma pages are not open yet.</p>}
                   <p className="gr-note">Only people on the list can submit.</p></div>}
           </li>
         ) : null}

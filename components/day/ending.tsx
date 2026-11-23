@@ -12,7 +12,7 @@ import { clampEnd, type EndCfg } from './ending-config';
 import { cellSize, drawMap, mapLines, nightLines, placeMarks, printedAt, type MapGrid } from './flat-map';
 import { atZone, yourTime } from './ending-time';
 import './ending.css';
-import { at } from '@/lib/routes';
+import { at, away } from '@/lib/routes';
 
 /* How the preview page ends: the world opened flat. One map across the full width in the
    text globe's characters and hatch, every city a + with its code; each mark is the link to register there, and
@@ -82,7 +82,7 @@ export function Ending({ cfg: given, wheel, cities, start, last, date, sound, li
   const telex = cfg.signoff === 'telex';
   const reg = c.press
     ? <button type="button" className="en-reg" data-sk-skip="" aria-haspopup="dialog" onClick={c.press}><span className="en-lens" data-dot="" data-lat={c.lat} data-lon={c.lon} aria-hidden="true" /><span className="en-reg-t">{c.action}</span></button>
-    : <a className="en-reg" data-sk-skip="" href={at(c.href)}><span className="en-lens" data-dot="" data-lat={c.lat} data-lon={c.lon} aria-hidden="true" /><span className="en-reg-t">{c.action}</span></a>;
+    : <a className="en-reg" data-sk-skip="" href={at(c.href)} {...away(c.href)}><span className="en-lens" data-dot="" data-lat={c.lat} data-lon={c.lon} aria-hidden="true" /><span className="en-reg-t">{c.action}</span></a>;
   const cells = (
     <div className="en-cells">
       {reg}
@@ -109,7 +109,7 @@ export function Ending({ cfg: given, wheel, cities, start, last, date, sound, li
           <ul>{cities.map((x, i) => (
             <li key={x.id}>{x.press
               ? <button type="button" aria-haspopup="dialog" data-on={i === aim ? '' : undefined} onClick={x.press} onPointerEnter={(e) => { if (e.pointerType === 'mouse') point(i); }} onFocus={() => point(i)}>{x.name}<span className="sr-only">: {x.action}</span></button>
-              : <a href={at(x.href)} data-on={i === aim ? '' : undefined} onPointerEnter={(e) => { if (e.pointerType === 'mouse') point(i); }} onFocus={() => point(i)}>{x.name}<span className="sr-only">: {x.action}</span></a>}</li>
+              : <a href={at(x.href)} {...away(x.href)} data-on={i === aim ? '' : undefined} onPointerEnter={(e) => { if (e.pointerType === 'mouse') point(i); }} onFocus={() => point(i)}>{x.name}<span className="sr-only">: {x.action}</span></a>}</li>
           ))}</ul>
         </nav>
       ) : null}
@@ -229,7 +229,7 @@ function FlatMap({ cfg, wheel, cities, aim, point, phone, reduced, play, onPress
               <li key={x.id}>
                 {x.press
                   ? <button type="button" {...props} aria-haspopup="dialog" onClick={x.press}><span className="en-code" style={code}>{x.code}</span><span className="sr-only">{x.action}</span></button>
-                  : <a {...props} href={at(x.href)}><span className="en-code" style={code}>{x.code}</span><span className="sr-only">{x.action}</span></a>}
+                  : <a {...props} href={at(x.href)} {...away(x.href)}><span className="en-code" style={code}>{x.code}</span><span className="sr-only">{x.action}</span></a>}
               </li>
             );
           })}

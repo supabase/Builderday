@@ -17,7 +17,7 @@
   "globeSize": 0.8,
   "mark": true,
   "reveal": "print",
-  "revealMs": 420,
-  "revealDelay": 80,
+  "revealMs": 260,
+  "revealDelay": 0,
   "side": 232
 }

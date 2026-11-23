@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useRef, useState } from 'react';
 import { ART_BOUNDS, ART_HATCHES, ART_MODES, ART_REVEALS, clampArt, type ArtLook } from '@/components/forms/art-config';
-import { ArtLookProvider } from '@/components/forms/sheet-art';
+import { ArtLookProvider, forgetPrints } from '@/components/forms/sheet-art';
 import { StillSheet } from '@/components/forms/sheet';
 import { SignInBody, signInArt } from '@/components/forms/sign-in-sheet';
 import { AccountBody, accountArt } from '@/components/account/account';
@@ -58,7 +58,7 @@ export function SheetLab({ saved }: { saved: ArtLook }) {
         </main>
         <LabPanel title="Sheets lab" cfg={cfg as unknown as Record<string, unknown>} bounds={ART_BOUNDS} choices={{ mode: ART_MODES, reveal: ART_REVEALS, hatch: ART_HATCHES }} optionLabel={(_k, v) => LABELS[v] || v}
           groups={GROUPS} set={set} moments={[]} momentIdx={-1} out={out}
-          buttons={[['Save', () => save({ ...cfg }), true], ['New seed', reseed], ['Print again', () => setRun((r) => r + 1)]]} meter={{ text: 'Seed ' + cfg.seed + ' · ' + cfg.mode, bad: false }} msg={msg} rail={rail}
+          buttons={[['Save', () => save({ ...cfg }), true], ['New seed', reseed], ['Print again', () => { forgetPrints(); setRun((r) => r + 1); }]]} meter={{ text: 'Seed ' + cfg.seed + ' · ' + cfg.mode, bad: false }} msg={msg} rail={rail}
           railLabel={(s) => String(s.mode) + ' · ' + String(s.seed)} apply={(s) => { setCfg(clampArt(s as Partial<ArtLook>)); setRun((r) => r + 1); }} />
       </FormsProvider>
     </ArtLookProvider>
