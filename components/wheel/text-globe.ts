@@ -1,3 +1,4 @@
+import { at } from '@/lib/routes';
 /* The text globe: the world drawn as characters, the globe printed on the event's shirt. One drawing function for every
    canvas that shows it (the wheel's hub, the small globes beside the register links, the prize).
 
@@ -95,7 +96,7 @@ export function genFrame(m: LandMap, facing: number, rows: number, o: GenOpts = 
 /* ---- loading, once per page ---- */
 let framesP: Promise<Frames | null> | null = null, landP: Promise<LandMap | null> | null = null;
 export function loadFrames(): Promise<Frames | null> {
-  framesP ??= fetch(FRAMES_URL).then((r) => (r.ok ? r.text() : Promise.reject(new Error(String(r.status))))).then((t) => {
+  framesP ??= fetch(at(FRAMES_URL)).then((r) => (r.ok ? r.text() : Promise.reject(new Error(String(r.status))))).then((t) => {
     const lines = t.split('\n'), frames: Frames = [];
     for (let k = 0; k < STUDY.frames; k++) {
       const f = lines[k] ?? '', rows: string[] = [];
@@ -117,7 +118,7 @@ export function loadLand(): Promise<LandMap | null> {
       done({ w: c.width, h: c.height, data });
     };
     img.onerror = () => { landP = null; done(null); };
-    img.src = LAND_URL;
+    img.src = at(LAND_URL);
   });
   return landP;
 }

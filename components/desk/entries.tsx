@@ -9,6 +9,7 @@ import { FLAG_WORDS, type DeskAct, type DeskCity, type DeskEntry, type DeskState
 import { BUILDER_DAY, maxScore, meanScore, publicVotes, rankValue, ranked, topTies, type Format } from '@/lib/event/format';
 import { ago, Sec, Status, usePress } from './parts';
 import { EVENT } from '@/lib/day-data';
+import { at } from '@/lib/routes';
 const BUILDER_EVENT = EVENT.id;
 
 /* the entry's numbers, in the event's terms */
@@ -145,7 +146,7 @@ export function Entries({ s, c, now, act }: { s: DeskState; c: DeskCity; now: nu
                     <button type="button" className="dk-t" disabled={busy === k} aria-label={(e.hidden ? 'Show ' : 'Hide ') + e.name} onClick={() => run(k, e.hidden ? 'entry.show' : 'entry.hide', { city: c.id, no: e.no }, () => e.hidden ? 'Shown again on the city page.' : 'Hidden from the city page and the ranking.')}>{e.hidden ? 'Show' : 'Hide'}</button>
                   ) : null}
                   {s.can.host ? <button type="button" className="dk-t" disabled={busy === k} aria-label={'Refresh ' + e.name + '’s picture'} onClick={() => run(k, 'entry.picture', { city: c.id, no: e.no }, () => 'The picture is fetched again from the project’s page.')}>Refresh picture</button> : null}
-                  {s.event === BUILDER_EVENT ? <a className="dk-t" href={'/city/' + c.id + '/p/' + e.slug} target="_blank" rel="noreferrer" aria-label={'Open ' + e.name + ' on the city page'}>Open</a> : null}
+                  {s.event === BUILDER_EVENT ? <a className="dk-t" href={at('/city/' + c.id + '/p/' + e.slug)} target="_blank" rel="noreferrer" aria-label={'Open ' + e.name + ' on the city page'}>Open</a> : null}
                   {e.url && e.url !== e.repo ? <a className="dk-t" href={e.url} target="_blank" rel="noreferrer" aria-label={e.name + '’s live link'}>Live link</a> : null}
                   {e.repo ? <a className="dk-t" href={e.repo} target="_blank" rel="noreferrer" aria-label={e.name + '’s repository'}>Repository</a> : null}
                 </div>

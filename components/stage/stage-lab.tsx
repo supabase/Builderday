@@ -11,6 +11,7 @@ import { LabPanel, useLabSave, type Group } from '@/components/admin/kit';
 import { StageWall } from './wall';
 import { StageRemote } from './remote';
 import './stage-lab.css';
+import { at } from '@/lib/routes';
 
 /* /lab/stage: the wall and a phone-sized remote side by side, joined by the local driver, so the whole presentation
    can be tried with no backend. The remote's presses move the wall; so do the laptop's keys while the pointer is on
@@ -80,7 +81,7 @@ export function StageLab({ start }: { start: LabStart }) {
   const { save, msg, rail } = useLabSave('stage', 'lab-stage-saved');
   const out = (k: string) => { const v = Number(cfg[k as keyof StageCfg]); return Number.isInteger(v) ? String(v) : v.toFixed(3).replace(/0+$/, ''); };
   const name = CITIES[Math.max(0, CITY_IDS.indexOf(cityId))].name;
-  const url = start.origin + '/city/' + cityId;
+  const url = start.origin + at('/city/' + cityId);
   const panelCfg = useMemo(() => ({ ...cfg, content, link, hold: hold ? 1 : 0, speed: String(speed), sup: sup ? 1 : 0, city: cityId, seed: start.seed }), [cfg, content, link, hold, speed, sup, cityId, start.seed]);
 
   /* a still of one side alone: the wall filling the window, or the remote filling a phone */
@@ -93,8 +94,8 @@ export function StageLab({ start }: { start: LabStart }) {
           <h1>Stage · {DIR_LABEL[cfg.dir]}</h1>
           <p>The remote drives the wall. With the pointer on the wall, the keys do too: Right or Space for next, Left for back, a number then Enter, B, Q, ?. A second tab of this page is a second screen.</p>
           <p className="sl-note">Local driver: the wall and the remote talk inside this browser. {start.rt
-            ? <>Realtime is here: <a href={'/city/' + cityId + '/stage'}>the real wall</a> and <a href={'/desk/' + cityId + '/remote'}>the real remote</a> run on the <code>stage</code> and <code>scenes</code> tables.</>
-            : <>Realtime is not available on this server (no backend, or its tables are not there), so <a href={'/city/' + cityId + '/stage'}>the real wall</a> falls back to the seeded day.</>}</p>
+            ? <>Realtime is here: <a href={at('/city/' + cityId + '/stage')}>the real wall</a> and <a href={at('/desk/' + cityId + '/remote')}>the real remote</a> run on the <code>stage</code> and <code>scenes</code> tables.</>
+            : <>Realtime is not available on this server (no backend, or its tables are not there), so <a href={at('/city/' + cityId + '/stage')}>the real wall</a> falls back to the seeded day.</>}</p>
         </header>
         <div className="sl-room">
           <section className="sl-wall" aria-label="The wall, 16:9">

@@ -23,6 +23,7 @@ import { calendarEvents } from './luma';
 import { teamCode } from '@/lib/team';
 import { formatProblem, formatRow, publicVotes, rankValue, ranked, PRESETS, type Format } from '@/lib/event/format';
 import { EVENT } from '@/lib/day-data';
+import { BASE } from '@/lib/routes';
 const EVENT_DAY = EVENT.year + '-12-' + String(EVENT.day).padStart(2, '0');
 
 type Row = Record<string, unknown>;
@@ -516,7 +517,7 @@ export async function deskAct(d: Desk, a: Act, req: Request): Promise<ActResult>
       const budget = kind === 'judge' ? Math.max(1, Math.min(1000, Math.trunc(Number(a.budget) || evRec?.f.judgeBudget || 50))) : 50;
       const { error } = await db.from('roles').insert({ person: p.id, role: kind, event: kind === 'super' ? null : event, city: rc, budget, added_by: d.person.id });
       if (error) return { ok: false, error: error.code === '23505' ? email + ' already has that role.' : 'The role was not added. Try again.' };
-      const cn = rc ? ((await cityRow(rc))?.name as string) : undefined, base = new URL(req.url).origin;
+      const cn = rc ? ((await cityRow(rc))?.name as string) : undefined, base = new URL(req.url).origin + BASE;
       const link = base + '/desk' + (kind === 'super' ? '' : '?event=' + event + (rc ? '&city=' + rc : ''));
       await send(p.email, 'role', { role: (kind === 'admin' ? 'host' : kind) as 'host' | 'judge' | 'super', city: cn || (kind === 'super' ? undefined : evRec?.short), name: p.name || undefined, link }, rc);
       await log(d, 'add ' + kind, rc, p.id, {}, kind === 'super' ? null : event);
@@ -533,7 +534,7 @@ export async function deskAct(d: Desk, a: Act, req: Request): Promise<ActResult>
     case 'role.again': {
       const { data } = await db.from('roles').select('role, event, city, people!roles_person_fkey(email, name)').eq('id', String(a.id)).maybeSingle();
       if (!data) return { ok: false, error: 'That role is gone.', status: 404 };
-      const p = data.people as unknown as Row, rc = data.city as string | null, base = new URL(req.url).origin;
+      const p = data.people as unknown as Row, rc = data.city as string | null, base = new URL(req.url).origin + BASE;
       const link = base + '/desk' + (data.event ? '?event=' + data.event + (rc ? '&city=' + rc : '') : '');
       await send(p.email as string, 'role', { role: (data.role === 'admin' ? 'host' : data.role) as 'host', city: rc ? ((await cityRow(rc))?.name as string) : evRec?.short, name: (p.name as string) || undefined, link }, rc);
       return { ok: true };

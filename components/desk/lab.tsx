@@ -6,6 +6,7 @@ import type { DeskAct, DeskState } from '@/lib/event/desk';
 import { Desk } from './desk';
 import { DeskSignIn } from './sign-in';
 import { MOMENTS, sampleState, timesFor, type Moment, type Role } from './sample';
+import { at } from '@/lib/routes';
 
 type Who = Role | 'out';
 export function DeskLab({ who: who0, moment: m0, tab }: { who: Who; moment: Moment; tab?: string }) {
@@ -32,7 +33,7 @@ export function DeskLab({ who: who0, moment: m0, tab }: { who: Who; moment: Mome
         return { ok: true, added: String(p.text || '').split('\n').filter((x) => x.indexOf('@') > 0).length, sent: 0 };
       case 'guest.add': upd((s) => ({ ...s, guests: [{ person: 'n' + Date.now(), email: String(p.email), name: String(p.name || ''), source: 'host', sent: Date.now(), opened: null, signedIn: false, inRoom: null, inRoomHow: null, entry: false }, ...s.guests] })); return { ok: true };
       case 'guest.again': return { ok: true, status: 'not_sent' };
-      case 'guest.link': return { ok: true, link: location.origin + '/in/sample-link' };
+      case 'guest.link': return { ok: true, link: location.origin + at('/in/sample-link') };
       case 'guest.in': case 'guest.out': upd((s) => ({ ...s, guests: s.guests.map((g) => (g.person === p.person ? { ...g, inRoom: action === 'guest.in' ? Date.now() : null, inRoomHow: action === 'guest.in' ? 'host' : null } : g)) })); return { ok: true };
       case 'guest.remove': upd((s) => ({ ...s, guests: s.guests.filter((g) => g.person !== p.person) })); return { ok: true };
       case 'entry.hide': case 'entry.show': upd((s) => ({ ...s, entries: s.entries.map((e) => (e.no === p.no ? { ...e, hidden: action === 'entry.hide' } : e)) })); return { ok: true };

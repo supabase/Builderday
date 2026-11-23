@@ -104,7 +104,7 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
      countdown cell on the wheel: every city opens on the same day, so it said the same thing ten times. */
   const reg = useMemo(() => cities.map((c, i) => (i === mine && forms
     ? { ...c, soon: undefined, href: '#ready', action: 'Your place in ' + c.name, press: () => forms.account() }
-    : { ...c, soon: undefined, href: lumaHref(c.id), action: c.status === 'full' ? 'Join the waiting list in ' + c.name : 'Register for ' + c.name })), [cities, mine, forms]);
+    : { ...c, soon: undefined, href: lumaHref(c.id), action: c.status === 'full' ? 'Join the waiting list in ' + c.name : c.status === 'sold' ? c.name + ' is sold out' : 'Register for ' + c.name })), [cities, mine, forms]);
   const board: BoardCity[] = useMemo(() => reg.map((c) => ({ ...c, reg: c.href, regLabel: c.action })), [reg]);
   const placed = useRef(false);
   useEffect(() => {

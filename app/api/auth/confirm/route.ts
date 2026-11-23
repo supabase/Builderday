@@ -5,12 +5,13 @@ import { confirmToken } from '@/lib/server/auth';
 import { backendOn, siteUrl } from '@/lib/server/env';
 import { passOf } from '@/lib/server/people';
 import { landing } from '@/lib/server/gate';
+import { unbase } from '@/lib/routes';
 
 export async function POST(req: Request) {
   const base = siteUrl(req);
   if (!backendOn()) return NextResponse.redirect(base + '/in?e=offline', 303);
   const f = await req.formData().catch(() => null);
-  const th = String(f?.get('th') || ''), next = String(f?.get('next') || '');
+  const th = String(f?.get('th') || ''), next = unbase(String(f?.get('next') || ''));
   const r = await confirmToken(th);
   if (!r.ok) return NextResponse.redirect(base + '/in?e=' + encodeURIComponent(r.error), 303);
   if (next.startsWith('/') && !next.startsWith('//') && next !== '/') return NextResponse.redirect(base + next, 303);

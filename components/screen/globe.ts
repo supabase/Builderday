@@ -1,5 +1,6 @@
 import { WHEEL_DEF } from '@/components/wheel/config';
 import { glassGlsl } from '@/components/wheel/crt';
+import { at as withBase } from '@/lib/routes';
 
 /* The kit's glass globes: one canvas over the page draws every [data-globe] element as the wheel's glass globe, with
    its city as a light (data-lat, data-lon in degrees). Sizes: the hub, the lens (64px) and the dot (24px) are just
@@ -105,7 +106,7 @@ export function mountGlobes(doc: Document, face = WHEEL_DEF.face): () => void {
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   };
   const ask = () => { if (!raf) raf = win.requestAnimationFrame(draw); };
-  const img = new win.Image(); img.onload = () => { gl.bindTexture(gl.TEXTURE_2D, tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img); force = true; ask(); }; img.src = '/wheel/land.png';
+  const img = new win.Image(); img.onload = () => { gl.bindTexture(gl.TEXTURE_2D, tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img); force = true; ask(); }; img.src = withBase('/wheel/land.png');
   win.addEventListener('scroll', ask, { passive: true, capture: true }); win.addEventListener('resize', ask);
   const mo = new MutationObserver(ask); mo.observe(doc.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-globe', 'data-lat', 'data-lon', 'data-half', 'style', 'class'] });
   ask();

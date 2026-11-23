@@ -7,6 +7,7 @@ import qrcode from 'qrcode-generator';
 import type { DeskState } from '@/lib/event/desk';
 import './desk.css';
 import { EVENT } from '@/lib/day-data';
+import { at } from '@/lib/routes';
 
 function Qr({ url }: { url: string }) {
   const p = useMemo(() => {
@@ -25,18 +26,18 @@ function Qr({ url }: { url: string }) {
 export function Poster({ city, site }: { city: string | null; site: string }) {
   const [s, setS] = useState<DeskState | null>(null), [err, setErr] = useState('');
   useEffect(() => {
-    fetch('/api/desk/state' + (city ? '?city=' + encodeURIComponent(city) : ''), { cache: 'no-store' })
+    fetch(at('/api/desk/state') + (city ? '?city=' + encodeURIComponent(city) : ''), { cache: 'no-store' })
       .then(async (r) => { const j = await r.json().catch(() => ({})); if (r.ok) setS(j); else setErr(r.status === 401 ? 'Sign in to the desk first, then print the poster from the Door screen.' : j.error || 'The poster could not be made.'); })
       .catch(() => setErr('The desk could not be reached.'));
   }, [city]);
   const c = s?.cities.find((x) => x.id === s.city);
-  if (err || (s && (!c || !s.can.host))) return <div className="dk"><main className="dk-in"><div className="dk-in-card"><div><h1 className="dk-h">No poster</h1><p className="dk-p">{err || 'Only a host of this city can print its poster.'}</p></div><a className="dk-t" href={'/desk?city=' + encodeURIComponent(city || '') + '&tab=door'}>Back to the desk</a></div></main></div>;
+  if (err || (s && (!c || !s.can.host))) return <div className="dk"><main className="dk-in"><div className="dk-in-card"><div><h1 className="dk-h">No poster</h1><p className="dk-p">{err || 'Only a host of this city can print its poster.'}</p></div><a className="dk-t" href={at('/desk?city=' + encodeURIComponent(city || '') + '&tab=door')}>Back to the desk</a></div></main></div>;
   if (!s || !c) return <div className="dk"><main className="dk-in" aria-busy="true"><p className="dk-p">Making the poster…</p></main></div>;
   const url = site + '/city/' + c.id, addr = url.replace(/^https?:\/\//, '');
   return (
     <div className="dk dk-poster-page">
       <div className="dk-poster-bar">
-        <a className="dk-t" href={'/desk?city=' + c.id + '&tab=door'}>Back to the desk</a>
+        <a className="dk-t" href={at('/desk?city=' + c.id + '&tab=door')}>Back to the desk</a>
         <button type="button" className="fm-b" onClick={() => window.print()}>Print</button>
       </div>
       <article className="dk-poster" aria-label={'Poster for ' + c.name}>

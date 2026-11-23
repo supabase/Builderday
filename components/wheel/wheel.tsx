@@ -15,6 +15,7 @@ import { SupabaseMark } from '@/components/shared/supabase-mark';
 import { tokEase, tokMs } from '@/components/shared/motion';
 import type { WheelStatus } from './click';
 import './wheel.css';
+import { at } from '@/lib/routes';
 
 /* The city wheel as a page: the canvas, the mark, the link with its small globe, and the facts of the active city as
    a row of cells before its name. The screen lines are drawn over all of it, with holes for the two globes.
@@ -34,13 +35,13 @@ export function MarkFace({ mark, id }: { mark: MarkMode; id?: string }) {
   if (mark === 'builder') return <><BuilderLogo className="wh-builder" /><span className="wh-name">{EVENT.short}</span></>;
   return <>{mark === 'both' ? <SupabaseMark /> : null}<HackMark id={id} label={mark === 'both' ? EVENT.name : mark === 'name' ? '' : EVENT.short} />{mark === 'name' ? <span className="wh-name">{EVENT.name}</span> : null}</>;
 }
-export const STATUS_LABEL: Record<WheelStatus, string> = { open: 'Open', nearing: 'Filling up', full: 'Waiting list', soon: 'Opens soon' };
+export const STATUS_LABEL: Record<WheelStatus, string> = { open: 'Open', nearing: 'Filling up', full: 'Waiting list', sold: 'Sold out', soon: 'Opens soon' };
 
 /* each state has its words and its own shape, a ring that fills up, so it does not read by colour alone */
 export function StatusIcon({ status }: { status: WheelStatus }) {
   return (
     <svg viewBox="0 0 12 12" aria-hidden="true">
-      {status === 'full' ? <circle cx="6" cy="6" r="5" fill="currentColor" /> : <circle cx="6" cy="6" r="4.25" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray={status === 'soon' ? '2 2' : undefined} />}
+      {status === 'full' || status === 'sold' ? <circle cx="6" cy="6" r="5" fill="currentColor" /> : <circle cx="6" cy="6" r="4.25" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray={status === 'soon' ? '2 2' : undefined} />}
       {status === 'nearing' ? <path d="M6 1.75a4.25 4.25 0 0 1 0 8.5z" fill="currentColor" /> : null}
     </svg>
   );
@@ -62,7 +63,7 @@ function Pill({ ref, href, press, text }: { ref: RefObject<(HTMLAnchorElement & 
   const words = <span key={seen.n} className={'wh-pill-text' + (seen.n ? ' is-fresh' : '')}>{text}</span>;
   return press
     ? <button ref={ref} type="button" className={PILL} aria-haspopup="dialog" onClick={press}>{words}</button>
-    : <a ref={ref} className={PILL} href={href}>{words}</a>;
+    : <a ref={ref} className={PILL} href={at(href)}>{words}</a>;
 }
 
 /* A cell as a block that turns on its long axis when `k` changes, like a drum of cards: the face that was there rolls
@@ -175,7 +176,7 @@ export function Wheel({ cities, cfg, start = 0, noGl = false, cells = true, mark
             </dl>
           ) : null}
           <div className="wh-col-foot">
-            <Pill ref={cta} href={city.href} press={city.press} text={city.press ? city.action : city.status === 'full' ? 'Join the waiting list on Luma' : city.status === 'soon' ? 'Opens soon on Luma' : 'Register on Luma'} />
+            <Pill ref={cta} href={city.href} press={city.press} text={city.press ? city.action : city.status === 'full' ? 'Join the waiting list on Luma' : city.status === 'sold' ? 'Sold out on Luma' : city.status === 'soon' ? 'Opens soon on Luma' : 'Register on Luma'} />
             {foot}
           </div>
         </div>
@@ -189,7 +190,7 @@ export function Wheel({ cities, cfg, start = 0, noGl = false, cells = true, mark
                 <span className="wh-cta-text"><span className="wh-cta-action">{city.action}</span> <span>{date}</span></span>
               </button>
             ) : (
-              <a ref={cta} className="wh-cta" href={city.href}>
+              <a ref={cta} className="wh-cta" href={at(city.href)}>
                 <span ref={lens} className="wh-lens" aria-hidden="true" {...dot} />
                 <span className="wh-cta-text"><span className="wh-cta-action">{city.action}</span> <span>{date}</span></span>
               </a>

@@ -6,6 +6,7 @@ import type { ClockInit } from '@/lib/clock';
 import { store, useFormsState, useJudged, useVotes, type Entry } from '@/components/forms/store';
 import { useForms } from '@/components/forms/forms-provider';
 import { applyGround } from '@/components/ground/apply-ground';
+import { at } from '@/lib/routes';
 
 /* A city page's live state. The server draws the first frame at clock.at; the browser starts from the same minute
    (so hydration matches), then ticks once a second: votes arrive as the day's data says. What changes between ticks
@@ -129,12 +130,12 @@ export function CityProvider({ cfg: cfgIn, clock, links, live = true, frame = 's
     const L = latest.current; if (L.links.kind !== 'page') return;
     const onP = /\/p\/[^/]+$/.test(location.pathname), city = L.W.city.id;
     if (slug) {
-      const path = projectPath(city, slug); if (location.pathname === path) return;
+      const path = at(projectPath(city, slug)); if (location.pathname === path) return;
       if (onP) history.replaceState(history.state, '', path + location.search);
       else { history.pushState(history.state, '', path + location.search); pushed.current = true; }
     } else if (onP) {
       if (pushed.current) { pushed.current = false; history.back(); }
-      else history.replaceState(history.state, '', '/city/' + city + location.search);
+      else history.replaceState(history.state, '', at('/city/' + city) + location.search);
     }
   }, []);
   const openProject = useCallback((id: number, from?: HTMLElement | null) => {

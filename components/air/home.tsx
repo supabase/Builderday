@@ -9,7 +9,7 @@ import { EPOCH, EVENT } from '@/lib/day-data';
 import { slugOf } from '@/lib/city';
 import { CODE, PLACE } from '@/lib/places';
 import { hhmm, ord } from '@/lib/format';
-import { routes } from '@/lib/routes';
+import { routes, at } from '@/lib/routes';
 import { Picture } from '@/components/pictures/picture';
 import { HowItWorks, PrizeBlock } from '@/components/day/explain';
 import { Ending, type EndCity } from '@/components/day/ending';
@@ -249,7 +249,7 @@ function NowCell({ x, v, now, action, zone }: { x: HomeCity; v: ReturnType<typeo
       <StateCell s={v.s} word={v.word} />
       <p className="oa-now-l">{lead ? <>{x.state === 'done' ? '1st' : 'Leading'}: <b>{lead.p.name}</b>{v.hidden ? null : <span className="oa-tab"> · {lead.v} votes</span>}</> : x.state === 'next' ? 'No entries yet' : 'No entries'}</p>
       <p className="oa-now-l oa-tab">{entriesOf(x)} entries · {when}</p>
-      <a className="oa-act" href={action.href}>{action.words}</a>
+      <a className="oa-act" href={at(action.href)}>{action.words}</a>
     </div>
   );
 }
@@ -273,7 +273,7 @@ function CitiesPart({ W, views, href, zone, you }: { W: HomeWorld; views: Return
               <Fragment key={x.id}>
                 {i === nowAt ? <tr className="k-now" aria-hidden="true"><td colSpan={5}><span className="k-now-l">Now · {hhmm(W.now)} UTC</span></td></tr> : null}
                 <tr data-you={i === you ? '' : undefined}>
-                  <th scope="row"><a href={href(x.id)}><span className="oa-code">{CODE[x.id]}</span> {x.name}</a></th>
+                  <th scope="row"><a href={at(href(x.id))}><span className="oa-code">{CODE[x.id]}</span> {x.name}</a></th>
                   <td className="oa-tab">{hhmm(x.start + x.city.offset)}<span className="oa-muted">{zone ? ' · ' + inZone(x.start, zone) + ' yours' : ''}</span></td>
                   <td><Chip s={v.s} word={v.word} />{live ? <span className="oa-muted oa-tab oa-left"> {mmss(leftOf(x, W.now))} left</span> : null}</td>
                   <td className="oa-lead">{lead ? <a className="oa-lead-row" href={routes.project(x.id, slugOf(lead.p))}><Picture p={lead.p} cls="oa-pic oa-pic-s" /><span className="oa-lead-n">{lead.p.name}</span>{v.hidden ? null : <span className="oa-muted oa-tab oa-lead-v">· {lead.v}</span>}</a> : <span className="oa-muted">–</span>}</td>

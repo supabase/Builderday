@@ -6,6 +6,7 @@ import { STUDY, loadLand, subsolar, type LandMap } from '@/components/wheel/text
 import { cellSize, drawMap, mapLines, nightLines, placeMarks, printedAt, type MapGrid } from '@/components/day/flat-map';
 import { EPOCH } from '@/lib/day-data';
 import { lineCol, lineLon } from './devices';
+import { at } from '@/lib/routes';
 
 /* The home's first screen on the day: the world opened flat (the preview's ending), live.
    - Every city is a mark with its code; the mark is its state (devices.ts), the active city the green brackets.
@@ -107,7 +108,7 @@ export function LiveMap({ cities, aim, point, look: M, wheel, minute, label }: {
               const code = { left: ((m.code.c - lo) / (hi - lo + 1)) * 100 + '%', top: ((m.code.r - top + 0.5) / (bottom - top)) * 100 + '%' } as CSSProperties;
               return (
                 <li key={x.id}>
-                  <a className="en-mk" style={box} href={x.href} data-on={m.i === aim ? '' : undefined} data-side={m.label.side}
+                  <a className="en-mk" style={box} href={at(x.href)} data-on={m.i === aim ? '' : undefined} data-side={m.label.side}
                     onPointerEnter={(e: PointerEvent) => { if (e.pointerType === 'mouse') point(m.i); }} onFocus={() => point(m.i)}>
                     <span className="en-code" style={code}>{x.code}</span><span className="sr-only">{x.name}: {x.said}</span>
                   </a>
@@ -118,7 +119,7 @@ export function LiveMap({ cities, aim, point, look: M, wheel, minute, label }: {
         </div>
       </div>
       <div className="oa-keys" role="group" aria-label="Choose a city">
-        {cities.map((x, i) => <a key={x.id} href={x.href} aria-current={i === aim ? 'true' : undefined} onFocus={() => point(i)}><span aria-hidden="true">{x.mark.length === 3 ? x.mark : ' ' + x.mark + ' '}</span>{x.code}<span className="sr-only"> {x.name}: {x.said}</span></a>)}
+        {cities.map((x, i) => <a key={x.id} href={at(x.href)} aria-current={i === aim ? 'true' : undefined} onFocus={() => point(i)}><span aria-hidden="true">{x.mark.length === 3 ? x.mark : ' ' + x.mark + ' '}</span>{x.code}<span className="sr-only"> {x.name}: {x.said}</span></a>)}
       </div>
     </div>
   );

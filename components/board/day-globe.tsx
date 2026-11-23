@@ -2,6 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { WHEEL_DEF } from '@/components/wheel/config';
 import { glassGlsl } from '@/components/wheel/crt';
+import { at } from '@/lib/routes';
 
 /* The globe as the day's clock: the wheel's glass globe, turned so the places where it is ten in the morning face the
    page (the hour the cities run at), with the night side in shade from the real sun on Dec 10. Live cities are the
@@ -83,7 +84,7 @@ export function DayGlobe({ lights, minute, face = WHEEL_DEF.face, night = 1, lab
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
         /* the globe shows once its land is drawn (or failed to load), so it fades in whole instead of empty first */
-        const img = new Image(); img.onload = () => { gl.bindTexture(gl.TEXTURE_2D, tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img); drawRef.current?.(); canvas.dataset.ready = ''; }; img.onerror = () => { canvas.dataset.ready = ''; }; img.src = '/wheel/land.png';
+        const img = new Image(); img.onload = () => { gl.bindTexture(gl.TEXTURE_2D, tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img); drawRef.current?.(); canvas.dataset.ready = ''; }; img.onerror = () => { canvas.dataset.ready = ''; }; img.src = at('/wheel/land.png');
       } else { prog = null; }
     }
     if (gl && prog) {

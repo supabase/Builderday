@@ -19,6 +19,7 @@ import { LiveSegment } from './shared';
 import { PIC_DEF, Thumb, type PicCfg } from './rank-pictures';
 import { RankTime, lineOf } from './rank-time';
 import { DATE, cardCity, fmtLeft } from './home-parts';
+import { at } from '@/lib/routes';
 
 /* A city's page on the day, as parts the three directions share: the opening (name, local time, the time left and
    the one thing to do now, beside the city's monitor), the ranking rows with vote cells, the pylon, the cut, and the
@@ -53,8 +54,8 @@ export function CityHero({ W, hx, clock, first, look, onRemind, reminded, onSubm
 }) {
   const c = W.city, seed = look.cards[c.id] ?? seedOf(c.id), lead = W.lead, left = leftOf(W), jump = mon ? '#rank' : '#top';
   const doing = W.state === 'next' ? <><button type="button" className="ch2-btn ch2-remind" onClick={onRemind} aria-pressed={reminded}><span className="ch2-tick" aria-hidden="true">{reminded ? '✓ ' : ''}</span>Remind me</button><span className="bd-k">Opens {hhmm(W.x.start + W.off)} local</span></>
-    : W.state === 'build' ? <>{onSubmit ? <button type="button" className="ch2-btn" onClick={onSubmit}>Submit your project</button> : null}{W.arrived.length ? <a className="ch2-btn" href={jump}>Vote below</a> : null}<span className="bd-k">Building is on: submit your project before {hhmm(W.x.buildEnd + W.off)}</span></>
-    : W.state === 'vote' ? (W.arrived.length ? <><a className="ch2-btn" href={jump}>Vote below</a><span className="bd-k">Entries are closed; votes close at {hhmm(W.x.end + W.off)}</span></> : <span className="bd-k">Entries are closed. No projects came in.</span>)
+    : W.state === 'build' ? <>{onSubmit ? <button type="button" className="ch2-btn" onClick={onSubmit}>Submit your project</button> : null}{W.arrived.length ? <a className="ch2-btn" href={at(jump)}>Vote below</a> : null}<span className="bd-k">Building is on: submit your project before {hhmm(W.x.buildEnd + W.off)}</span></>
+    : W.state === 'vote' ? (W.arrived.length ? <><a className="ch2-btn" href={at(jump)}>Vote below</a><span className="bd-k">Entries are closed; votes close at {hhmm(W.x.end + W.off)}</span></> : <span className="bd-k">Entries are closed. No projects came in.</span>)
     : pick ? <span className="ch2-pick">{EVENT.pickers} picked {pick.name}, {ord(pick.place)} here, from the {EVENT.finalists * 10} finalists.</span>
     : <span className="bd-k">{W.ranked.length ? (elsewhere ? 'Voting has closed and the top ' + EVENT.finalists + ' went to the final. ' + EVENT.pickers + ' picked ' + elsewhere.name + ', from ' + elsewhere.city + '.' : 'Voting has closed. The top ' + EVENT.finalists + ' go to the final.') : 'No projects came in.'}</span>;
   return (

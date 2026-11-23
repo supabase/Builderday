@@ -44,7 +44,7 @@ export function SheetWheel({ cfg, noGl, mark, engineRef, ours, forced }: SheetPr
     if (!d || (id !== 'questions' && id !== 'how')) return;
     d.showModal(); const el = document.getElementById(id === 'how' ? 'wd-how-h' : 'questions'); el?.scrollIntoView({ block: 'start' }); if (id === 'questions') el?.focus({ preventScroll: true });
   }, []);
-  const reg = cities.map((c) => ({ ...c, href: lumaHref(c.id), action: c.status === 'full' ? 'Join the waiting list in ' + c.name : 'Register for ' + c.name }));
+  const reg = cities.map((c) => ({ ...c, href: lumaHref(c.id), action: c.status === 'full' ? 'Join the waiting list in ' + c.name : c.status === 'sold' ? c.name + ' is sold out' : 'Register for ' + c.name }));
   const f = { buildMin: ours.buildMin, voteAfter: ours.voteAfter, startHour: ours.startHour, date: ours.date };
   return (
     <Wheel cities={reg} cfg={cfg} noGl={noGl} mark={mark} engineRef={engineRef} start={start} date={ours.date} caption={CAPTION}>

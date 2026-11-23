@@ -11,6 +11,7 @@ import type { CitySnap, DaySnap } from '@/lib/event/snapshot';
 import { stageCity, stageDrive } from '@/app/desk/[city]/remote/actions';
 import { StageWall } from './wall';
 import { StageRemote } from './remote';
+import { at } from '@/lib/routes';
 
 /* The real wall (/city/<id>/stage) and the real remote (/desk/<id>/remote). With the backend reachable both run on
    the Realtime driver, and the wall draws the city's own numbers (the snapshots the pages read, every few seconds).
@@ -31,7 +32,7 @@ function useNumbers(id: string, on: boolean) {
   useEffect(() => {
     if (!on) return;
     let stop = false;
-    const get = async <T,>(u: string, f: (v: T) => void) => { try { const r = await fetch(u, { cache: 'no-store' }); if (r.ok && !stop) f(await r.json() as T); } catch { /* the next read tries again */ } };
+    const get = async <T,>(u: string, f: (v: T) => void) => { try { const r = await fetch(at(u), { cache: 'no-store' }); if (r.ok && !stop) f(await r.json() as T); } catch { /* the next read tries again */ } };
     const city = () => get<CitySnap>('/api/city/' + id + '/snapshot', setSnap), all = () => get<DaySnap>('/api/day/snapshot', setDay);
     void city(); void all();
     const a = window.setInterval(city, 5000), b = window.setInterval(all, 30000);

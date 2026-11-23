@@ -2,6 +2,7 @@
 /* Door: the room code at a size a room can read from a phone held up, a new code, and the poster to print. */
 import type { DeskAct, DeskCity } from '@/lib/event/desk';
 import { IconOut, Status, usePress } from './parts';
+import { at } from '@/lib/routes';
 
 export function Door({ c, act, site }: { c: DeskCity; act: DeskAct; site: string }) {
   const { busy, said, run } = usePress(act);
@@ -14,7 +15,7 @@ export function Door({ c, act, site }: { c: DeskCity; act: DeskAct; site: string
       <p className="dk-note">Only guests on the list can use it; it checks them in, and only checked-in guests can submit. Anyone else comes to you: add them on Guests. Voting needs no code. Hold the phone up, or put Doors on the stage: it shows the same code beside a QR. A new code ends the old one after 15 minutes, and anyone already checked in stays checked in.</p>
       <div className="dk-acts-row" style={{ marginTop: 'var(--s-5)' }}>
         <button type="button" className="fm-b" disabled={busy === 'code'} aria-busy={busy === 'code'} onClick={() => run('code', 'door.code', { city: c.id }, (r) => 'The new code is ' + r.code + '.')}>{busy === 'code' ? 'Making…' : 'New code'}</button>
-        <a className="fm-b" href={'/desk/poster?city=' + c.id} target="_blank" rel="noreferrer">Print the poster<IconOut /></a>
+        <a className="fm-b" href={at('/desk/poster?city=' + c.id)} target="_blank" rel="noreferrer">Print the poster<IconOut /></a>
       </div>
       <Status said={said} k="code" />
     </section>

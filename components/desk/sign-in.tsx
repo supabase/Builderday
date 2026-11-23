@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Status } from './parts';
 import { RESEND_S } from '@/lib/forms';
+import { at } from '@/lib/routes';
 
 export function DeskSignIn({ onIn, why, mail }: { onIn: () => void; why?: string; mail: 'resend' | 'outbox' }) {
   const [email, setEmail] = useState(''), [code, setCode] = useState(''), [step, setStep] = useState<'email' | 'code'>('email');
@@ -21,7 +22,7 @@ export function DeskSignIn({ onIn, why, mail }: { onIn: () => void; why?: string
   useEffect(() => { if ('ontouchstart' in window) return; (step === 'code' ? codeRef : emailRef).current?.focus(); }, [step]);
 
   const post = async (url: string, b: object) => {
-    try { const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) }); return { status: r.status, j: await r.json().catch(() => ({})) }; }
+    try { const r = await fetch(at(url), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) }); return { status: r.status, j: await r.json().catch(() => ({})) }; }
     catch { return { status: 0, j: { error: 'The desk could not be reached. Check the connection and try again.' } }; }
   };
   const send = async (e?: FormEvent) => {

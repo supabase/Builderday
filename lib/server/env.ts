@@ -2,6 +2,7 @@
    otherwise every page draws the seeded world and sign-in stays in the browser. Names are listed in env.example.
    Server only (nothing under lib/server is imported by a client component): the service key and the key secret
    never reach a browser. */
+import { BASE } from '@/lib/routes';
 
 export function backendOn(): boolean {
   return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -13,12 +14,13 @@ export function need(name: string): string {
   return v;
 }
 
-/* the site's own address for links in emails and the install line: SITE_URL, else the request's origin */
+/* the site's own address for links in emails and the install line, base path included: SITE_URL (which carries the
+   base, e.g. https://supabase.com/builderday), else the request's origin and the base */
 export function siteUrl(req?: Request): string {
   const s = process.env.SITE_URL;
   if (s) return s.replace(/\/+$/, '');
-  if (req) { const u = new URL(req.url); return u.origin; }
-  return 'http://localhost:4320';
+  if (req) { const u = new URL(req.url); return u.origin + BASE; }
+  return 'http://localhost:4320' + BASE;
 }
 
 export const devMail = () => process.env.NODE_ENV !== 'production' && process.env.HACKDAY_DEV_MAIL === '1';

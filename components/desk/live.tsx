@@ -8,12 +8,13 @@ import { Desk } from './desk';
 import { DeskSignIn } from './sign-in';
 import './desk.css';
 import '@/components/forms/forms.css';
+import { at as withBase } from '@/lib/routes';
 
 const stateUrl = (event: string | null, city: string | null) => {
   const q = new URLSearchParams();
   if (event) q.set('event', event);
   if (city) q.set('city', city);
-  return '/api/desk/state' + (q.toString() ? '?' + q.toString() : '');
+  return withBase('/api/desk/state') + (q.toString() ? '?' + q.toString() : '');
 };
 
 type Load = { kind: 'loading' } | { kind: 'in'; why?: string } | { kind: 'no'; text: string } | { kind: 'ok'; s: DeskState };
@@ -67,7 +68,7 @@ export function DeskLive({ event: event0, city: city0, mail, site, tab }: { even
   }, [read]);
 
   const act: DeskAct = useCallback(async (action, p = {}) => {
-    const r = await fetch('/api/desk', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action, ...p }) });
+    const r = await fetch(withBase('/api/desk'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action, ...p }) });
     const j = await r.json().catch(() => ({ ok: false, error: 'That did not work. Try again.' }));
     if (r.status === 401) setLoad({ kind: 'in' });
     else if (r.ok && action !== 'import.preview' && action !== 'guest.link') await read();
@@ -81,7 +82,7 @@ export function DeskLive({ event: event0, city: city0, mail, site, tab }: { even
     if (!okay) { event.current = shown.current.event; city.current = shown.current.city; }
     return okay;
   };
-  const signOut = async () => { await fetch('/api/auth/out', { method: 'POST' }).catch(() => null); setLoad({ kind: 'in' }); };
+  const signOut = async () => { await fetch(withBase('/api/auth/out'), { method: 'POST' }).catch(() => null); setLoad({ kind: 'in' }); };
 
   if (load.kind === 'loading') return <div className="dk"><main className="dk-in" aria-busy="true"><p className="dk-p">Opening the desk…</p></main></div>;
   if (load.kind === 'in') return <DeskSignIn mail={mail} why={load.why} onIn={() => { setLoad({ kind: 'loading' }); read(); }} />;

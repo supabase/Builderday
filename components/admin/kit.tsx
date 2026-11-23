@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import './panel.css';
+import { at } from '@/lib/routes';
 
 /* The tuning chrome: the knob panel, its toggle, the layout picker, Save and the meters. The tuning pages under /lab
    use it, and the real pages show it under ?admin (moments, the clock and the saved look); without ?admin a real page
@@ -27,7 +28,7 @@ export function useLabSave(name: string, storeKey: string) {
     try { copy = navigator.clipboard.writeText(json).then(() => true, () => false); } catch { copy = Promise.resolve(false); }
     try { const l = rail.filter((s) => JSON.stringify(s) !== JSON.stringify(out)); l.unshift(out); localStorage.setItem(storeKey, JSON.stringify(l.slice(0, 10))); } catch { /* storage blocked */ }
     railListeners.forEach((f) => f());
-    return fetch('/api/save?name=' + name, { method: 'POST', headers: { 'content-type': 'application/json' }, body: json })
+    return fetch(at('/api/save?name=' + name), { method: 'POST', headers: { 'content-type': 'application/json' }, body: json })
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then(async (j: { path: string }) => { setMsg('Saved to ' + j.path + ((await copy) ? ' and copied.' : '. Not copied: the clipboard refused.')); })
       .catch(async (e: unknown) => {

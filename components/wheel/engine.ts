@@ -4,6 +4,7 @@ import { GlobeClock } from './globe-clock';
 import { globeClockCfg, globeLook, handoverDrop } from './globe-look';
 import { createCrt, type Crt, type CrtFrame } from './crt';
 import { click, settle, setVolume, unlock, type WheelStatus } from './click';
+import { at } from '@/lib/routes';
 
 /* The wheel: the city names are the spokes of a wheel around a glass globe whose centre sits on the right edge of
    the screen. The name that points left is the active city. The mouse wheel, a drag, the arrow keys and a click on a
@@ -691,7 +692,7 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
   const img = new Image();
   img.onload = () => { land = img; crt?.setLand(img); dirty = true; lastGl = ''; };
   img.onerror = () => console.warn('The land map did not load.');
-  img.src = LAND_URL;
+  img.src = at(LAND_URL);
 
   setVolume(cfg.volume); wantAscii();
   measureEms(); resize(); measureCells(); start();
