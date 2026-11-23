@@ -24,7 +24,7 @@ export type DeskState = {
   counts: { listed: number; opened: number; signedIn: number; inRoom: number; entries: number; votes: number; editors?: number; unsent?: number } | null;
   guests: DeskGuest[]; entries: DeskEntry[]; scenes: DeskScene[];
   people: DeskPerson[]; outbox: DeskOutbox[]; log: DeskLog[]; pick: { no: number; name: string; city: string; at: number } | null;
-  mail: 'resend' | 'outbox'; mailHeld?: boolean; devCodes: boolean;
+  mail: 'resend' | 'outbox'; mailHeld?: boolean; mailTest?: number; devCodes: boolean;
   /* true when the server holds a Luma key: the Guests screen offers Sync from Luma for a city with its event set */
   luma: boolean;
   /* when the day pages open (a super admin's switch): the time, the desk's override and where that leaves the gate */

@@ -34,7 +34,18 @@ export function ipOf(req: Request): string | null {
   return /^[0-9a-f.:]+$/i.test(ip) ? ip : null;
 }
 
-/* the hold on outgoing email (owner, 2026-11-19: no emails until the site is done, while Luma registration is open).
-   On unless MAIL_HOLD=off: every email still becomes an outbox row (not sent), so nothing is lost; once lifted, the
-   desk's "send unsent links" catches up the places whose link never went out. */
+/* the hold on place emails (owner, 2026-11-19, narrowed 2026-11-23: sign-in codes and other emails a person asks for
+   go out; the place emails sent to the whole list, by Luma's webhook or the desk, wait). On unless MAIL_HOLD=off: a
+   held email still becomes an outbox row (not sent), so nothing is lost; once lifted, the desk's "send unsent links"
+   catches up the places whose link never went out. */
 export function mailHeld(): boolean { return (process.env.MAIL_HOLD || '').trim().toLowerCase() !== 'off'; }
+
+/* the test list (MAIL_ALLOW): addresses, or whole domains written as @example.com, that get place emails while the
+   hold is on, so the team can try them on themselves before anyone else gets one. */
+export function mailAllowList(): string[] {
+  return (process.env.MAIL_ALLOW || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+}
+export function mailAllowed(to: string): boolean {
+  const t = to.trim().toLowerCase();
+  return mailAllowList().some((a) => (a.startsWith('@') ? t.endsWith(a) : t === a));
+}

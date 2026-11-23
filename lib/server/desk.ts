@@ -12,7 +12,7 @@ import { parseGuests, type Parsed } from '@/lib/luma';
 import { approvedGuests, lumaOn } from './luma';
 import { emailOK } from '@/lib/forms';
 import { mailDriver } from './mail';
-import { devMail, mailHeld } from './env';
+import { devMail, mailAllowList, mailHeld } from './env';
 import { dayGate, forgetGate } from './gate';
 import { replaceEditorKey } from './repo-key';
 import { applyGuest, type CityLite } from './registrations';
@@ -62,7 +62,7 @@ export async function deskState(d: Desk, city: string | null): Promise<DeskState
     me: { email: d.person.email, name: d.person.name, super: d.super, roles: d.roles.map((r) => ({ role: r.role, city: r.city, budget: r.budget })) },
     city: cur, cities: mine, can: { host, judge, super: d.super },
     counts: null, guests: [], entries: [], scenes: [], people: [], outbox: [], log: [], pick: null,
-    mail: mailDriver(), mailHeld: mailHeld(), devCodes: devMail(), luma: lumaOn(), hook: !!process.env.LUMA_WEBHOOK_SECRET,
+    mail: mailDriver(), mailHeld: mailHeld(), mailTest: process.env.RESEND_API_KEY ? mailAllowList().length : 0, devCodes: devMail(), luma: lumaOn(), hook: !!process.env.LUMA_WEBHOOK_SECRET,
     gate: d.super ? await dayGate() : null,
   };
   if (!cur) return state;

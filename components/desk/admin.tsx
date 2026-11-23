@@ -232,7 +232,7 @@ export function Outbox({ s, now, act }: { s: DeskState; now: number; act: DeskAc
   const [shown, setShown] = useState<{ id: string; link: string } | null>(null);
   const what = (o: DeskState['outbox'][number]) => (TEMPLATE[o.template] || o.template) + (o.city ? ', ' + (s.cities.find((x) => x.id === o.city)?.name || o.city) : '');
   return (
-    <Sec title="Outbox" id="dk-out" aside={s.mail === 'outbox' ? (s.mailHeld ? 'Email on hold: nothing is sent' : 'Email not connected: nothing is sent') : 'Sending through Resend'}>
+    <Sec title="Outbox" id="dk-out" aside={s.mail === 'outbox' ? 'Email not connected: nothing is sent' : s.mailHeld ? (s.mailTest ? 'Place emails on hold, except the test list' : 'Place emails on hold; sign-in emails send') : 'Sending through Resend'}>
       {s.outbox.length ? (
         <table className="dk-tbl">
           <thead><tr><th>To</th><th>What</th><th>State</th><th>When</th><th><span className="sr-only">Actions</span></th></tr></thead>

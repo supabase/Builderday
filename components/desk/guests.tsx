@@ -17,7 +17,9 @@ export function Guests({ s, c, now, act, ask }: { s: DeskState; c: DeskCity; now
   const canLuma = s.luma && !!c.lumaEvent;
   const [email, setEmail] = useState(''), [name, setName] = useState(''), [q, setQ] = useState('');
   const [shown, setShown] = useState<{ person: string; link: string } | null>(null);
-  const outbox = s.mail === 'outbox';
+  /* place emails wait in the outbox when email is not connected, or while the hold is on (the test list still gets them) */
+  const held = s.mail !== 'outbox' && !!s.mailHeld, outbox = s.mail === 'outbox' || held;
+  const why = held ? 'place emails are on hold' : 'email is not connected yet';
   const inRoom = useMemo(() => s.guests.filter((g) => g.inRoom).length, [s.guests]);
 
   const list = useMemo(() => {
@@ -38,7 +40,7 @@ export function Guests({ s, c, now, act, ask }: { s: DeskState; c: DeskCity; now
   const commit = () => run('imp', 'import.commit', from === 'luma' ? { city: c.id, from: 'luma', send: sendNow } : { city: c.id, text, send: sendNow }, (r) => {
     setText(''); setPreview(null); setFrom('text');
     const added = r.added as number, sent = r.sent as number;
-    return plural(added, 'guest', 'guests') + ' added to ' + c.name + '.' + (sendNow ? (outbox ? ' Their links are in the outbox, not sent: email is not connected yet.' : ' ' + plural(sent, 'link', 'links') + ' on the way.') : '');
+    return plural(added, 'guest', 'guests') + ' added to ' + c.name + '.' + (sendNow ? (outbox ? ' Their links are in the outbox, not sent: ' + why + '.' : ' ' + plural(sent, 'link', 'links') + ' on the way.') : '');
   });
   const onFile = async (f: File | undefined) => {
     if (!f) return;
@@ -62,7 +64,7 @@ export function Guests({ s, c, now, act, ask }: { s: DeskState; c: DeskCity; now
 
   return (
     <>
-      {outbox ? <p className="dk-warn"><b>Email is not connected yet.</b> Nothing is sent: each email waits in the outbox. Use Copy link and send it yourself.</p> : null}
+      {outbox ? <p className="dk-warn">{held ? <><b>Place emails are on hold.</b> Links wait in the outbox{s.mailTest ? ', except for the test list' : ''}. Sign-in codes still send. Use Copy link to send one yourself.</> : <><b>Email is not connected yet.</b> Nothing is sent: each email waits in the outbox. Use Copy link and send it yourself.</>}</p> : null}
       <Sec title="Import" id="dk-imp" aside={s.guests.length ? plural(s.guests.length, 'person', 'people') + ' on the list' : 'The list is empty'}>
         <form className="dk-form" onSubmit={doPreview}>
           <div className="dk-f">
@@ -101,7 +103,7 @@ export function Guests({ s, c, now, act, ask }: { s: DeskState; c: DeskCity; now
       {s.counts?.unsent ? (
         <Sec title="Links not sent" id="dk-unsent" aside={plural(s.counts.unsent, 'link', 'links')}>
           <p className="dk-note">{plural(s.counts.unsent, 'person on the list has', 'people on the list have')} not been sent their link yet.</p>
-          <div className="dk-acts-row"><button type="button" className="fm-b" disabled={busy === 'uns'} aria-busy={busy === 'uns'} onClick={() => run('uns', 'guest.unsent', { city: c.id }, (r) => outbox ? plural(r.sent as number, 'link is', 'links are') + ' in the outbox, not sent: email is not connected yet.' : plural(r.sent as number, 'link', 'links') + ' on the way.')}>{busy === 'uns' ? 'Sending…' : 'Send ' + plural(s.counts.unsent, 'link', 'links')}</button></div>
+          <div className="dk-acts-row"><button type="button" className="fm-b" disabled={busy === 'uns'} aria-busy={busy === 'uns'} onClick={() => run('uns', 'guest.unsent', { city: c.id }, (r) => outbox && !(r.sent as number) ? 'The links are in the outbox, not sent: ' + why + '.' : plural(r.sent as number, 'link', 'links') + ' on the way.')}>{busy === 'uns' ? 'Sending…' : 'Send ' + plural(s.counts.unsent, 'link', 'links')}</button></div>
           <Status said={said} k="uns" />
         </Sec>
       ) : null}
