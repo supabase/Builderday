@@ -2,6 +2,7 @@
    cells, borders shared; a torn stub with the city's code and page. Every field is the project's own: the name, the
    city, the builder, the minute it came in, its place and votes now, and its link. Nothing on it is made up to look
    like data: there is no barcode. */
+import { EVENT } from '@/lib/day-data';
 
 export type PassData = {
   project: string; pitch?: string; city: string; code: string; builder: string;
@@ -12,7 +13,7 @@ export function BoardingPass({ d, className }: { d: PassData; className?: string
   return (
     <article className={'bp' + (className ? ' ' + className : '')} aria-label={'Boarding pass for ' + d.project}>
       <div className="bp-main">
-        <div className="bp-top"><span className="bp-k">Supabase Hackday</span><span className="bp-k">{d.date}</span></div>
+        <div className="bp-top"><span className="bp-k">{EVENT.name}</span><span className="bp-k">{d.date}</span></div>
         <p className="bp-name">{d.project}</p>
         {d.pitch ? <p className="bp-pitch">{d.pitch}</p> : null}
         <dl className="bp-cells">

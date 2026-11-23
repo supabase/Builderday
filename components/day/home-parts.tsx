@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { CITIES, EVENT } from '@/lib/day-data';
+import { CITIES, EVENT, CITY_WORD, CITY_WORD_CAP } from '@/lib/day-data';
 import type { HomeCity, HomeWorld } from '@/lib/home';
 import { dur, fmtN, hhmm, ord, tz } from '@/lib/format';
 import { StateChip } from '@/components/screen/chip';
@@ -22,7 +22,7 @@ import { cityPrizeName, finalCount, finalLine, globalPrizeName, places } from '@
 import { LiveSegment } from './shared';
 
 /* The home on the day, as parts the three directions share: the opening (name, date, what is on now and the time left),
-   the board of ten cities, the wall of ten monitors, the final as thirty cells, the prizes and the footer. Every
+   the board of the cities, the wall of monitors, the final as one cell per finalist, the prizes and the footer. Every
    number comes from the home's world at the board's minute. Class prefixes: dh hero, db board, dw wall, dt thirty,
    dp prizes, df footer, fx fastext. */
 
@@ -60,24 +60,28 @@ function PickSegment({ clock, first, at }: { clock: DayClock; first: number; at:
   const s = useSecond(clock, first), secs = at * 60 - s;
   return <Segment secs={secs} lit="CLOSED" label={'The pick is in ' + Math.max(1, Math.round(secs / 60)) + ' minutes.'} withSecs />;
 }
-export function Hero({ W, day, clock, first, href, segSecs, globe, children }: {
-  W: HomeWorld; day: Day; clock: DayClock; first: number; href: Href; segSecs: boolean; globe?: 'edge' | 'none'; children?: ReactNode;
+export function Hero({ W, day, clock, first, href, segSecs, globe, mine, children }: {
+  W: HomeWorld; day: Day; clock: DayClock; first: number; href: Href; segSecs: boolean; globe?: 'edge' | 'none';
+  /* the visitor's own city (a place on its list): its builders vote from the start, everyone else from publicAt */
+  mine?: string | null; children?: ReactNode;
 }) {
   const fx = focusCity(W), n = nextOf(fx, W);
+  const early = (fx.state === 'build' || fx.state === 'vote') && fx.publicAt != null && W.now < fx.publicAt && mine !== fx.id;
   const now = W.picked ? null : W.allDone ? { k: 'The final', t: 'The pick is at ' + hhmm(W.S.pickAt) + ' UTC' }
     : { k: fx.name, t: n.what + ' at ' + hhmm(n.at) + ' local' };
   return (
     <section className="dh" aria-labelledby="dh-h" data-hero-globe={globe ?? 'none'}>
       <div className="dh-text">
-        <p className="bd-k dh-k"><span className="dh-kp">{DATE}</span> <span className="dh-kp"><span className="dh-dot">· </span>ten cities, east to west</span></p>
-        {W.picked ? <><p className="dh-hk">Picked</p><h1 id="dh-h" className="dh-h dh-hp">{W.final.p.name}</h1></> : <h1 id="dh-h" className="dh-h">Supabase Hackday</h1>}
-        {W.picked ? null : <p className="dh-sub">Each city builds for {day.buildMin} minutes from {hhmm(day.startHour * 60)} local, and votes from the start until {dur(day.voteAfter)} after. The top 3 in each city go to the final, and {EVENT.pickers} pick one of them.</p>}
+        <p className="bd-k dh-k"><span className="dh-kp">{DATE}</span> <span className="dh-kp"><span className="dh-dot">· </span>{CITY_WORD} cities, east to west</span></p>
+        {W.picked ? <><p className="dh-hk">Picked</p><h1 id="dh-h" className="dh-h dh-hp">{W.final.p.name}</h1></> : <h1 id="dh-h" className="dh-h">{EVENT.name}</h1>}
+        {W.picked ? null : <p className="dh-sub">Each city builds for {day.buildMin} minutes from its own start and votes from the start until {dur(day.voteAfter)} after. The top 3 in each city go to the final, and {EVENT.pickers} pick one of them.</p>}
         {now ? (
           <div className="dh-now">
             <p className="dh-nk"><span className="bd-k">{W.allDone || fx.state === 'next' ? 'Next' : 'Now'}</span> {now.k} <span className="dh-nt"><span className="dh-dot">· </span>{now.t}</span></p>
             {W.allDone ? <PickSegment clock={clock} first={first} at={W.S.pickAt} /> : <LiveSegment clock={clock} first={first} x={fx} withSecs={segSecs} name={fx.name} />}
             {W.allDone ? <p className="dh-go"><a className="dh-btn" href="#final">See the {W.finalists.length} finalists<span aria-hidden="true">→</span></a></p> : (
-              <p className="dh-go"><Link className="dh-btn" href={href(fx.id)}>{fx.state === 'next' ? 'See ' + fx.name : 'Vote in ' + fx.name}<span aria-hidden="true">→</span></Link>
+              <p className="dh-go"><Link className="dh-btn" href={href(fx.id)}>{fx.state === 'next' ? 'See ' + fx.name : early ? 'Watch ' + fx.name : 'Vote in ' + fx.name}<span aria-hidden="true">→</span></Link>
+                {early ? <span className="bd-k">Everyone votes from {hhmm(fx.publicAt! + fx.city.offset)} local</span> : null}
                 {W.live.length > 1 ? <span className="bd-k">{W.live.length} cities are live</span> : null}</p>
             )}
           </div>
@@ -118,11 +122,11 @@ export function Board({ W, day, look, href, tick, strips, pic }: { W: HomeWorld;
   return (
     <section className="db" aria-labelledby="db-h" data-strips={strips ? '' : undefined} {...h.props}>
       <div className="db-top">
-        <h2 id="db-h" className="db-h">Ten cities</h2>
+        <h2 id="db-h" className="db-h">{CITY_WORD_CAP} cities</h2>
         <span className="bd-k db-note">{V.allDone ? 'East to west. Every city has closed.' : <>East to west. The board turns every {tick} s{h.held ? '; held while you read it' : ''}.</>}</span>
       </div>
       <table className="db-t" role="table">
-        <caption className="sr-only">The ten cities at {hhmm(V.now)} UTC: state, leader, votes, entries and what comes next.</caption>
+        <caption className="sr-only">The {CITY_WORD} cities at {hhmm(V.now)} UTC: state, leader, votes, entries and what comes next.</caption>
         <thead><tr>
           <th scope="col" className="db-city">City</th><th scope="col" className="db-local">Local</th><th scope="col" className="db-st">State</th>
           <th scope="col" className="db-lead">Leader</th><th scope="col" className="db-v">Leader&rsquo;s votes</th><th scope="col" className="db-n">Entries</th><th scope="col" className="db-next">Next</th>
@@ -154,7 +158,7 @@ export function Wall({ W, day, look, href }: { W: HomeWorld; day: Day; look: Loo
   return (
     <section className="dw" aria-labelledby="dw-h" {...h.props}>
       <div className="db-top">
-        <h2 id="dw-h" className="db-h">Ten cities</h2>
+        <h2 id="dw-h" className="db-h">{CITY_WORD_CAP} cities</h2>
         <span className="bd-k db-note">East to west. A test card before a city opens, its leader while it is live, its finalists after{h.held ? '; held while you read it' : ''}.</span>
       </div>
       <ol className="dw-grid">{V.cs.map((x) => {
@@ -216,7 +220,7 @@ export function Prizes({ W }: { W?: HomeWorld }) {
 export function DayFooter({ href, sound }: { href: Href; sound: boolean }) {
   return (
     <footer className="df">
-      <nav aria-label="The ten cities"><ul className="df-cities">{CITIES.map((c) => <li key={c.id}><Link href={href(c.id)}><span className="dw-code">{CODE[c.id]}</span> {c.name} <span className="bd-k">{tz(c.offset)}</span></Link></li>)}</ul></nav>
+      <nav aria-label={`The ${CITY_WORD} cities`}><ul className="df-cities">{CITIES.map((c) => <li key={c.id}><Link href={href(c.id)}><span className="dw-code">{CODE[c.id]}</span> {c.name} <span className="bd-k">{tz(c.offset)}</span></Link></li>)}</ul></nav>
       <div className="df-end"><Switches sound={sound} /><span className="bd-k">{EVENT.name} · {DATE}</span></div>
     </footer>
   );

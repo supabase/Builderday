@@ -38,3 +38,7 @@
   .pl-board td:nth-child(4), .pl-board th:nth-child(4) { display: none; }
   .pl-board th:nth-child(1) { width: 8ch; }
 }
+
+/* the day on air, in the parts lab */
+.pl-air { display: grid; gap: 12px; max-width: 900px; }
+.pl-air-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 14px; margin: 0; font-family: var(--oa-mono, ui-monospace, monospace); }

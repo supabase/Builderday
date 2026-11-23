@@ -1,0 +1,110 @@
+/* ending.tsx: how the preview page ends. On the board's ground and cells (board.css); prefix en. */
+
+.en { --en-ink: var(--bd-ink, #f4f4f2); --en-muted: var(--bd-muted, #a3a39f); --en-line: var(--bd-border, #6b6c6b);
+  position: relative; display: grid; gap: calc(var(--bd-u, 8px) * 3); padding: calc(var(--bd-u, 8px) * 6) var(--bd-m, 24px) max(calc(var(--bd-u, 8px) * 5), env(safe-area-inset-bottom));
+  background: var(--bd-ground, #0c0d0d); color: var(--en-ink); }
+.en a { color: inherit; }
+/* on the preview page the ending keeps the sections' gutter (20 px on a phone), so their left edges line up */
+.bd.en { --bd-m: var(--pf-gutter, max(16px, 4.6vw)); }
+
+/* the teleprinter's start and end marks */
+.en-tx { margin: 0; font: 500 var(--bd-num, 13px)/1 var(--bd-face, ui-monospace, monospace); letter-spacing: 0.3em; color: var(--en-muted); }
+
+/* today's mark, big */
+.en-big svg { display: block; width: auto; height: 34vh; aspect-ratio: 1; }
+
+/* ---------- the world opened flat ---------- */
+/* the map's edges on the gutter, in line with the cells under it */
+.en-map { margin: 0; }
+.en-map-in { position: relative; width: 100%; aspect-ratio: var(--en-ar, 3); container-type: inline-size; }
+.en-map-in canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.en-mks { position: absolute; inset: 0; margin: 0; padding: 0; list-style: none; }
+/* a mark and its code are one link; the target is at least 44 px tall, past the row's own height */
+.en-mk { position: absolute; display: block; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; text-decoration: none; }
+.en-mk::before { content: ''; position: absolute; left: 0; right: 0; top: min(0px, calc((100% - 44px) / 2)); bottom: min(0px, calc((100% - 44px) / 2)); }
+.en-code { position: absolute; translate: 0 -50%; font: 500 calc(100cqw / var(--en-cols) / 0.6 * var(--en-tag, 1))/1 var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0; white-space: nowrap; color: var(--en-muted);
+  transition: color var(--dur-hover, 150ms) var(--ease-out, ease-out); }
+.en-mk[data-on] .en-code { color: var(--green, #3ecf8e); }
+.en-mk[data-wait] .en-code { visibility: hidden; }
+@media (hover: hover) and (pointer: fine) { .en-mk:not([data-on]):hover .en-code { color: var(--en-ink); } }
+.en-mk:focus-visible { outline: 2px solid var(--en-ink); outline-offset: 4px; }
+
+/* ---------- the row of cells ---------- */
+.en-cells { display: grid; grid-template-columns: var(--en-tpl, minmax(0, 2fr) repeat(3, minmax(0, 1fr))); padding: 0 1px 1px 0; }
+.en-cells > * { box-sizing: border-box; min-height: var(--en-cell, 64px); margin: 0 -1px -1px 0; border: 1px solid var(--en-line); }
+/* the labels on one line across the row, whatever is under them */
+.en-cell { display: grid; align-content: start; gap: 4px; padding: 10px 14px; font-size: 15px; line-height: 1.3; }
+.en-sub { color: var(--en-muted); }
+/* the one action: the largest thing in the ending */
+.en-reg { display: flex; align-items: center; gap: 16px; padding: 0 20px; background: var(--en-ink); font: 500 clamp(20px, 2vw, 28px)/1.15 var(--bd-sans, inherit); letter-spacing: -0.015em; text-align: left; text-decoration: none; cursor: pointer;
+  transition: background-color var(--dur-hover, 150ms) var(--ease-out, ease-out); }
+/* it shares its borders with the cells beside it: a press darkens it, never scales */
+.en-reg:active { background: #c4c4c1; transition-duration: 0s; }
+.en .en-reg { color: var(--bd-ground, #0c0d0d); }
+.en-reg:focus-visible { outline: 2px solid var(--en-ink); outline-offset: 3px; }
+@media (hover: hover) and (pointer: fine) { .en-reg:hover { background: #d6d6d3; } }
+.en-reg-t { min-width: 0; }
+.en-lens { position: relative; flex: none; width: 36px; height: 36px; border-radius: 50%; background: #0c0d0d; }
+.en-lens canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* the keys that change city (a phone, and the test card) */
+.en-keys { display: none; gap: 6px; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; margin: 0 calc(var(--bd-m, 24px) * -1); padding: 0 var(--bd-m, 24px); }
+.en-keys::-webkit-scrollbar { display: none; }
+/* the row runs on past the edge: it fades there, so it reads as more to scroll, not cut off */
+.en-keys { mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
+.en-keys button { flex: none; min-width: 52px; min-height: 44px; padding: 0 10px; border: 1px solid var(--en-line); background: none; color: var(--en-muted); font: 500 var(--bd-num, 13px)/1 var(--bd-face, ui-monospace, monospace); cursor: pointer; }
+/* the row clips above and below (it scrolls sideways), so the ring sits inside the key */
+.en-keys button:focus-visible { outline: 2px solid var(--en-ink); outline-offset: -2px; }
+.en-keys button:active, .en-links nav a:active { opacity: 0.7; }
+.en-keys button[aria-pressed='true'] { border-color: var(--green, #3ecf8e); color: var(--green, #3ecf8e); }
+.en[data-end='ident'] .en-keys { display: flex; }
+
+/* ---------- the links and the switches ---------- */
+.en-links { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; }
+.en-links nav { display: flex; flex-wrap: wrap; gap: 0 4px; }
+.en-links nav a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 10px; font: 500 var(--bd-num, 13px)/1 var(--bd-face, ui-monospace, monospace); text-decoration: none; }
+.en-links nav a:first-child { padding-left: 0; }
+@media (hover: hover) and (pointer: fine) { .en-links nav a:hover { text-decoration: underline; text-underline-offset: 3px; } }
+
+/* ---------- the last line and the imprint ---------- */
+.en-end { display: grid; gap: 10px; }
+.en-last { margin: 0; max-width: 52ch; font: 500 clamp(17px, 1.6vw, 21px)/1.35 var(--bd-sans, inherit); letter-spacing: -0.01em; text-wrap: pretty; }
+.en-imp { display: flex; align-items: center; gap: 10px; margin: 0; }
+.en-mark { display: inline-flex; flex: none; }
+.en-mark svg { display: block; width: 18px; height: 18px; color: var(--en-ink); }
+
+/* ---------- the test card ---------- */
+.en-ident { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 520px) minmax(0, 1fr); grid-template-areas: 'reg globe start' 'date globe host'; align-items: center; gap: 12px 24px; }
+.en-ident canvas { grid-area: globe; width: 100%; aspect-ratio: 1; display: block; }
+.en-ident .en-cells { display: contents; }
+.en-ident .en-cells > * { margin: 0; }
+.en-ident .en-reg { grid-area: reg; } .en-ident .en-cells > :nth-child(2) { grid-area: date; } .en-ident .en-cells > :nth-child(3) { grid-area: start; } .en-ident .en-cells > :nth-child(4) { grid-area: host; }
+
+/* ---------- the city names ---------- */
+.en-names ul { display: flex; flex-wrap: wrap; gap: 0 0.5em; margin: 0; padding: 0; list-style: none; font: 500 clamp(32px, 5.2vw, 84px)/1.02 var(--bd-sans, inherit); letter-spacing: -0.04em; }
+.en-names a, .en-names button { padding: 0; border: 0; background: none; font: inherit; letter-spacing: inherit; color: var(--en-muted); text-decoration: none; cursor: pointer; transition: color var(--dur-hover, 150ms) var(--ease-out, ease-out); }
+.en-names [data-on] { color: var(--en-ink); }
+@media (hover: hover) and (pointer: fine) { .en-names a:hover, .en-names button:hover { color: var(--en-ink); } }
+
+/* ---------- a phone: the map as dots, the cities as keys, the whole ending on one screen ---------- */
+@media (max-width: 640px) {
+  .en { gap: calc(var(--bd-u, 8px) * 2); padding-top: calc(var(--bd-u, 8px) * 3); padding-bottom: max(calc(var(--bd-u, 8px) * 3), env(safe-area-inset-bottom)); }
+  .en-map { margin: 0; }
+  .en-mks { display: none; }
+  .en[data-end='flat'] .en-keys { display: flex; }
+  .en-cells { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .en-cells > * { min-height: 56px; }
+  .en-reg { grid-column: 1 / -1; min-height: 64px; font-size: 20px; }
+  .en-cells > :nth-child(3) { grid-row: 3; grid-column: 1 / -1; }
+  .en-cell { padding: 8px 12px; font-size: 14px; }
+  /* the links wrap with room between them, each a full 44 px target; the Sound switch on its own line under them */
+  .en-links { display: grid; gap: 8px; justify-content: stretch; }
+  .en-links nav { gap: 0 20px; }
+  .en-links nav a, .en-links nav a:first-child { padding: 0; }
+  .en-links .sw { justify-self: start; }
+  .en-last { font-size: 16px; }
+  .en .en-imp { font-size: 11px; letter-spacing: 0; }
+  .en-big svg { height: 16vh; }
+  .en-ident { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'globe' 'reg' 'date' 'start' 'host'; }
+}
+@media (prefers-reduced-motion: reduce) { .en-code, .en-reg, .en-names a, .en-names button { transition: none; } }

@@ -1,4 +1,4 @@
-/* globals.css: the one set of design tokens for the Supabase Hackday site, and the Tailwind setup that reads them.
+/* globals.css: the one set of design tokens for the Supabase Builder Day site, and the Tailwind setup that reads them.
    app/layout.tsx loads it first. Everything else reads these names; new styles must not introduce raw colours, curves,
    sizes or spacing.
    The base palette (--ground, --ink, --ink2, --minor, --major, --green, --tagink, --brand) is written on <html> before
@@ -136,6 +136,7 @@
   --dur-slide: 220ms;                            /* the wire's new line slides in */
   --dur-draw: 480ms; --stagger: 60ms; --dur-scene: 900ms; --dur-flash: 1600ms;
   --dur-reveal: 2400ms;                          /* the pick reveal: once, ever, staged inside this one duration */
+  --dur-air-reveal: 1600ms; --dur-air-print: 600ms; /* the day on air: a city's votes revealed; a finished print */
   --tour-step: 12000ms;                          /* How it works: each step of the tour, at least */
   --dur-jump: 700ms;                             /* How it works: a press moves the drawing to its step */
   --dur-dot: 360ms;                              /* the footer: Screen off collapses to a line and a dot */
@@ -162,14 +163,14 @@ html[data-paper="night"] {
 html.preload *, html.preload *::before, html.preload *::after { transition: none !important; }
 
 @media (prefers-reduced-motion: reduce) {
-  :root { --dur-press: 0ms; --dur-hover: 0ms; --dur-wash: 0ms; --dur-panel: 0ms; --dur-panel-exit: 0ms; --dur-vt: 0ms; --dur-slide: 0ms; --dur-draw: 0ms; --stagger: 0ms; --dur-scene: 0ms; --dur-flash: 0ms; --dur-reveal: 0ms; --dur-jump: 0ms; --dur-dot: 0ms; --dur-turn: 0ms; --press: 1; --preview-scale: 1; }
+  :root { --dur-press: 0ms; --dur-hover: 0ms; --dur-wash: 0ms; --dur-panel: 0ms; --dur-panel-exit: 0ms; --dur-vt: 0ms; --dur-slide: 0ms; --dur-draw: 0ms; --stagger: 0ms; --dur-scene: 0ms; --dur-flash: 0ms; --dur-reveal: 0ms; --dur-jump: 0ms; --dur-dot: 0ms; --dur-turn: 0ms; --dur-air-reveal: 0ms; --dur-air-print: 0ms; --press: 1; --preview-scale: 1; }
 }
 
 /* ---- the page itself ---- */
 @layer base {
-  html { background: var(--c-ground); color-scheme: dark; scrollbar-gutter: stable; overflow-x: clip; }
+  html { background: var(--c-ground); color-scheme: dark; scrollbar-gutter: stable; overflow-x: clip; -webkit-tap-highlight-color: transparent; }
   html[data-paper="graphite"] { color-scheme: light; }
-  body { min-height: 100vh; background: var(--c-ground); color: var(--c-ink); font: var(--w-regular) var(--t-md)/1.5 var(--font-sans);
+  body { min-height: 100svh; background: var(--c-ground); color: var(--c-ink); font: var(--w-regular) var(--t-md)/1.5 var(--font-sans);
     -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; font-synthesis: none; -webkit-text-size-adjust: 100%; }
   :focus-visible { outline: 2px solid var(--c-ink); outline-offset: 2px; }
   ::selection { background: color-mix(in oklch, var(--c-ink) 22%, transparent); }

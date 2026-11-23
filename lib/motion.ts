@@ -21,9 +21,15 @@ export type MotionCfg = {
   /* How it works, stepped through: each step of the tour lasts tourStep at least (or its drawing, if longer), and a
      press on a step moves the drawing there in durJump */
   tourStep: number; durJump: number;
+  /* the morning line (How it works redrawn): one turn of the globe, the rest at the end of Build and of Vote, the rest
+     on the pick, a finalist's flight to its cell, and the ring at a city crossing the 09:00 line */
+  tourTurn: number; tourHold: number; pickHold: number; durFlight: number; durCross: number;
   /* the footer: Screen off collapses the picture to a line and a dot (durDot, on also opens from the line); pointing
      at a city on the horizon turns the globe to it in durTurn */
   durDot: number; durTurn: number;
+  /* the day pages on air: a city's votes revealed when its voting closes (counts print bottom up, the rows take their
+     places, the top 3 print [3]), and a finished print (three lines of the final, a row of the ranking) */
+  durAirReveal: number; durAirPrint: number;
   /* the tuning page only: everything runs this many times slower, to look at it */
   slow: number;
 };
@@ -37,6 +43,8 @@ export const MOTION_DEF: MotionCfg = {
   durDraw: 480, stagger: 60,
   durReveal: 2400,
   tourStep: 12000, durJump: 700, durDot: 360, durTurn: 420,
+  tourTurn: 9000, tourHold: 3500, pickHold: 1800, durFlight: 1100, durCross: 400,
+  durAirReveal: 1600, durAirPrint: 600,
   slow: 1,
 };
 
@@ -49,6 +57,8 @@ export const MOTION_BOUNDS: Record<string, [number, number, number]> = {
   durDraw: [120, 1600, 20], stagger: [0, 240, 10],
   durReveal: [800, 6000, 100],
   tourStep: [12000, 30000, 500], durJump: [300, 990, 10], durDot: [160, 400, 10], durTurn: [0, 600, 10],
+  tourTurn: [7000, 12000, 250], tourHold: [2000, 5000, 100], pickHold: [1800, 5000, 100], durFlight: [700, 1600, 20], durCross: [250, 700, 10],
+  durAirReveal: [600, 2000, 50], durAirPrint: [200, 700, 20],
   slow: [1, 10, 1],
 };
 
@@ -92,6 +102,8 @@ export function motionVars(c: MotionCfg, slow = 1): Record<string, string> {
     '--dur-draw': ms(c.durDraw), '--stagger': ms(c.stagger),
     '--dur-reveal': ms(c.durReveal),
     '--tour-step': ms(c.tourStep), '--dur-jump': ms(c.durJump), '--dur-dot': ms(c.durDot), '--dur-turn': ms(c.durTurn),
+    '--tour-turn': ms(c.tourTurn), '--tour-hold': ms(c.tourHold), '--pick-hold': ms(c.pickHold), '--dur-flight': ms(c.durFlight), '--dur-cross': ms(c.durCross),
+    '--dur-air-reveal': ms(c.durAirReveal), '--dur-air-print': ms(c.durAirPrint),
   };
 }
 /* the saved values as CSS for the root layout: only when motion is allowed, so the reduced-motion zeros in

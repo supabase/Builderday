@@ -1,0 +1,15 @@
+{
+  "mode": "seats",
+  "seed": 7,
+  "dotW": 2,
+  "dotH": 1,
+  "gap": 2,
+  "pad": 1,
+  "shadow": 1,
+  "grid": 3,
+  "empty": "plus",
+  "frame": true,
+  "hatch": "globe",
+  "mark": true,
+  "size": 12
+}

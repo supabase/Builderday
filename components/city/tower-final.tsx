@@ -1,7 +1,7 @@
 'use client';
 import { Fragment, type CSSProperties } from 'react';
 import clsx from 'clsx';
-import { EVENT, top3 } from '@/lib/day-data';
+import { EVENT, top3, FINALIST_COUNT } from '@/lib/day-data';
 import { local, ord, rowCls, sheetLabel, sheetList, view, type CityWorld, type Row } from '@/lib/city';
 import { globalPrize } from '@/lib/prizes';
 import { Picture } from '@/components/pictures/picture';
@@ -32,7 +32,7 @@ export function finalPick(W: CityWorld): { name: string; place: number; city: st
 /* under the sheet: the pick, and the global prize it wins (named once, here) */
 export function FinalFoot() {
   const { W } = useCity(), fp = finalPick(W), g = W.picked && !!fp && fp.here;
-  const t = W.picked && fp ? EVENT.pickers + ' picked ' + fp.name + ', ' + ord(fp.place) + ' in ' + fp.city + '.' : EVENT.pickers + ' pick one of the 30 finalists at ' + local(W, W.S.pickAt) + '.';
+  const t = W.picked && fp ? EVENT.pickers + ' picked ' + fp.name + ', ' + ord(fp.place) + ' in ' + fp.city + '.' : EVENT.pickers + ' pick one of the ' + FINALIST_COUNT + ' finalists at ' + local(W, W.S.pickAt) + '.';
   return (
     <p className="mt-2 flex min-h-10 items-center justify-between gap-x-(--g) text-sm text-ink-2 phone:flex-col phone:items-start phone:gap-y-1 phone:py-2">
       <span className={clsx('min-w-0 truncate', g && 'text-accent')} data-g={g ? '1' : undefined}>{t}</span>

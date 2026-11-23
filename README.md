@@ -1,12 +1,12 @@
-# Supabase Hackday
+# Supabase Builder Day
 
-The site for Supabase Hackday: ten city hackathons on one day. Each city builds for 90 minutes and votes while it builds, with 30 more minutes of voting after building closes. The top 3 projects by votes in each city go to the final, so there are 30 finalists. Each city's first place wins the city prize, and Ant and Copple pick one global winner from the 30.
+The site for Supabase Builder Day: fourteen city hackathons on one day, 10 December 2026, each from its own Luma event's start time (18:00 local in most). Each city builds for 90 minutes and votes while it builds, with 30 more minutes of voting after building closes. The top 3 projects by votes in each city go to the final, so there are 42 finalists. Each city's first place wins the city prize, and Ant and Copple pick one global winner from the 42.
 
 - **Who votes:** anyone with the link, after confirming an email once.
 - **Judges:** each judge has 50 votes and may put several on one project. Their votes count in the same tally and are marked on the row ("12 from judges").
-- **Prizes:** a city prize for each city's first place (a MacBook Pro, placeholder) and a global prize for the pick (not named yet). They are kept in `lib/prizes.ts`.
+- **Prizes:** a MacBook Neo for each city's first place and $10,000 for the pick. They are kept in `lib/prizes.ts`.
 
-It is a Next.js app (App Router, TypeScript, Tailwind CSS 4). Data is sample data until the backend exists.
+It is a Next.js app (App Router, TypeScript, Tailwind CSS 4). With the Supabase variables set (`env.example`) it runs on the backend in `supabase/`; without them every page draws seeded sample data.
 
 ## Run it
 
@@ -130,10 +130,7 @@ Tailwind CSS 4, set up in CSS (`app/globals.css`, through `postcss.config.mjs`).
 
 ## Not real yet
 
-- **The cities.** The ten cities are placeholders. The date is decided: Dec 10, 2026.
-- **The prizes.** The city prize (a MacBook Pro) and the global prize are placeholders.
-- **The judges.** Judge votes are seeded sample data. Judges are added through an admin panel, which does not exist yet.
-- **The data.** Projects, votes and pictures are generated from a seed.
-- **The backend.** Sign-in, submit and votes are stored in the browser. `components/forms/store.ts` keeps that in one place so an API can replace it.
+- **Without the backend**, projects, votes, judge votes and pictures are generated from a seed. With it, hosts and judges are added at the desk (`/desk`).
+- **Venues.** The Luma events give only the city, so no venue is named yet.
 - **The Supabase mark** in the masthead is a redrawn stand-in. Replace it with the official asset.
 - **Past hackathons** list three events and no winners.

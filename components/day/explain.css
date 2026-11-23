@@ -5,7 +5,7 @@
 /* the footer's links land here: clear of the sticky header */
 .ex { scroll-margin-top: 24px; }
 .ex-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin: 0 0 20px; }
-.ex-h { margin: 0; font: 500 32px/1.05 var(--ex-sans); letter-spacing: -0.03em; color: var(--ex-ink); }
+.ex-h { margin: 0; font: 500 32px/1.05 var(--ex-sans); letter-spacing: -0.03em; color: var(--ex-ink); text-wrap: balance; }
 /* a quiet key at the heading's end (Play the day). Nothing on the page pauses the drawings with a key: Screen off stills
    them, and pressing a drawing holds it (.sc[data-hold] below) */
 .ex-key { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin: 0 -10px 0 0; padding: 0 10px; border: 0; background: none; color: var(--ex-muted); font: 500 12px/1 var(--ex-face); letter-spacing: 0.02em; cursor: pointer;
@@ -20,7 +20,10 @@
 .pg-hit { position: absolute; z-index: 1; border-radius: 50%; }
 .pg-hit:focus-visible { outline: 2px solid var(--ex-ink); outline-offset: 0; }
 .pg .sc-held { left: 0; bottom: 0; }
-.sc-held { position: absolute; left: 10px; bottom: 8px; z-index: 2; font: 500 11px/1 var(--ex-face); letter-spacing: 0.02em; color: var(--ex-muted); pointer-events: none; }
+.sc-held { position: absolute; left: 10px; bottom: 8px; z-index: 2; font: 500 12px/1 var(--ex-face); letter-spacing: 0.02em; color: var(--ex-muted); pointer-events: none; }
+/* the morning line keeps its caption bottom left, so the word goes bottom right, under the panel */
+.sc-held[data-side='top-left'] { bottom: auto; top: 8px; }
+.sc-held[data-side='top'] { left: auto; right: 10px; bottom: auto; top: 8px; }
 .ex-mons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px 20px; margin: 0; padding: 20px 0 0; list-style: none; border-top: 1px solid var(--ex-border); }
 .ex-mon { display: grid; align-content: start; gap: 12px; min-width: 0; }
 .ex-tube { display: block; aspect-ratio: 16 / 9; border: 1px solid var(--ex-rule); background: #121313; }
@@ -32,6 +35,8 @@
 /* the tubes (tube.tsx): a canvas on the tube's ground, scan lines and dark corners over it */
 .sc { position: relative; display: block; aspect-ratio: 16 / 9; border: 1px solid var(--ex-rule); background: #0e0f0f; overflow: hidden; }
 .sc-cv { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+/* the morning line stacked on a small tube: the globe over the panel, in its taller space (320 by 376) */
+.sc[data-tall] { aspect-ratio: 320 / 376; }
 .sc::after { content: ''; position: absolute; inset: 0; pointer-events: none;
   background: repeating-linear-gradient(to bottom, rgb(0 0 0 / var(--sc-scan, 0.2)) 0 1px, transparent 1px 3px), radial-gradient(120% 120% at 50% 50%, transparent 58%, rgb(0 0 0 / 0.45)); }
 /* the page's scan lines: the screen kit's pitch and strength, the dark line at the foot of each pitch as on the ground.
@@ -55,6 +60,8 @@
 .ex[data-tour] .ex-mon[data-on] .ex-lamp::after { transition: none; }
 .ex[data-layout="reel"] .ex-mon .ex-t { transition: color var(--dur-hover, 150ms) var(--ease-out, ease-out); }
 .ex[data-layout="reel"] .ex-mon:not([data-on]) .ex-t { color: #a3a39f; }
+/* a step that is not on: its sentence steps down with its title, so the title is never the dimmer of the two */
+.ex[data-layout="reel"] .ex-mon:not([data-on]) .ex-p { color: var(--ex-muted); }
 @media (prefers-reduced-motion: reduce) { .ex-lamp::after, .ex[data-layout="reel"] .ex-mon .ex-t { transition: none; } }
 
 /* prizes */
@@ -67,7 +74,7 @@
 .ex-big[data-tba] { font-size: clamp(44px, 5.4vw, 88px); }
 .ex-what { margin: 0; font: 500 32px/1.05 var(--ex-sans); letter-spacing: -0.03em; }
 .ex[data-compact] .ex-what { font-size: 22px; }
-.ex-codes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); max-width: 320px; margin: 4px 0 0; padding: 0; list-style: none; font: 500 12px/1 var(--ex-face); }
+.ex-codes { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); max-width: 420px; margin: 4px 0 0; padding: 0; list-style: none; font: 500 12px/1 var(--ex-face); }
 .ex-codes li { margin: 0 -1px -1px 0; padding: 7px 0; border: 1px solid var(--ex-border); text-align: center; }
 
 /* in the sheet (and on a phone): a monitor beside its words, one under another */
@@ -149,6 +156,7 @@
 .ex-stage { min-width: 0; }
 /* each step's heading is a button: the lamp on top, the name and the line; never moves when it lights */
 .ex-stepb { display: grid; gap: 12px; width: 100%; min-height: 44px; margin: 0; padding: 0 0 4px; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.ex-stepb:active .ex-t { opacity: 0.7; }
 .ex-stepb:focus-visible { outline: 2px solid var(--ex-ink); outline-offset: 4px; }
 @media (hover: hover) and (pointer: fine) { .ex[data-layout="reel"] .ex-mon:not([data-on]) .ex-stepb:hover .ex-t { color: var(--ex-ink); } }
 .ex[data-compact] .ex-stepb { gap: 8px; }
@@ -157,10 +165,13 @@
 .ex-range { display: block; width: 100%; height: 44px; margin: 0; background: none; cursor: pointer; -webkit-appearance: none; appearance: none; }
 .ex-range::-webkit-slider-runnable-track { height: 1px; background: var(--ex-border); }
 .ex-range::-moz-range-track { height: 1px; background: var(--ex-border); }
-.ex-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 3px; height: 18px; margin-top: -9px; border: 0; border-radius: 0; background: var(--ex-ink); }
-.ex-range::-moz-range-thumb { width: 3px; height: 18px; border: 0; border-radius: 0; background: var(--ex-ink); }
-.ex-range:focus-visible { outline: 2px solid var(--ex-ink); outline-offset: -2px; }
-.ex-ticks { position: relative; height: 16px; margin: -8px 0 0; padding: 0; list-style: none; font: 500 12px/16px var(--ex-face); letter-spacing: 0.02em; color: var(--ex-muted); font-variant-numeric: tabular-nums; }
+/* the thumb is 28px wide to take a finger (iOS moves a range only by its thumb); the 3px line is drawn in its middle */
+.ex-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 28px; height: 18px; margin-top: -9px; border: 0; border-radius: 0; background: linear-gradient(90deg, transparent 12.5px, var(--ex-ink) 12.5px, var(--ex-ink) 15.5px, transparent 15.5px); }
+.ex-range::-moz-range-thumb { width: 28px; height: 18px; border: 0; border-radius: 0; background: linear-gradient(90deg, transparent 12.5px, var(--ex-ink) 12.5px, var(--ex-ink) 15.5px, transparent 15.5px); }
+.ex-range:focus-visible { outline: none; }
+/* the ring goes round the bar and its step names, so it never runs through the names */
+.ex-bar:has(.ex-range:focus-visible) { outline: 2px solid var(--ex-ink); outline-offset: 2px; }
+.ex-ticks { position: relative; pointer-events: none; height: 16px; margin: -8px 0 0; padding: 0; list-style: none; font: 500 12px/16px var(--ex-face); letter-spacing: 0.02em; color: var(--ex-muted); font-variant-numeric: tabular-nums; }
 .ex-ticks li { position: absolute; top: 0; white-space: nowrap; }
 .ex-ticks li:nth-child(1) { left: 0; }
 .ex-ticks li:nth-child(2) { left: 33.333%; }

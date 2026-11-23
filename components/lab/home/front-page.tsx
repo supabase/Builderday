@@ -5,6 +5,7 @@ import { view } from '@/lib/home';
 import { useDay } from '@/components/home/day-context';
 import { Ruler } from '@/components/home/timetable';
 import { ActionLink, CityName, DateLine, Facts, HoverPreview, JoinLine, SheetMasthead, LeadPic, Live, LocalTime, MiniDay, PhoneNow, StripAxis, StripNow, TopKey, TopLines, Trunk, nowIndex, useHoverPreview, useLabHome, zoomView } from './parts';
+import { EVENT, CITY_WORD } from '@/lib/day-data';
 
 /* Front page: the first viewport is a front page, not a table. Left (7 columns): the name very large on two lines,
    the date, the facts and the one action. Right (5): the live sentence large, the wire, and a small day. The full
@@ -16,9 +17,9 @@ export function FrontPage() {
   return (
     <>
       <SheetMasthead quiet />
-      <section className="lf-hero relative grid grid-cols-[var(--c7)_var(--c5)] gap-x-(--g) px-(--m) pt-12 pb-10 phone:grid-cols-1 phone:gap-y-8 phone:pt-8" aria-label="Supabase Hackday">
+      <section className="lf-hero relative grid grid-cols-[var(--c7)_var(--c5)] gap-x-(--g) px-(--m) pt-12 pb-10 phone:grid-cols-1 phone:gap-y-8 phone:pt-8" aria-label={EVENT.name}>
         <div className="flex min-w-0 flex-col">
-          <h1 className="lf-title font-semibold">Supabase<br />Hackday</h1>
+          <h1 className="lf-title font-semibold">Supabase<br />Builder Day</h1>
           <DateLine cls="mt-6 text-xl text-ink phone:mt-4 phone:text-lg" />
           <Facts cls="mt-auto grid-cols-4 gap-x-(--g) pt-8 rule-b pb-6 phone:mt-6 phone:grid-cols-2 phone:gap-y-4 phone:pt-0 phone:pb-5" vCls="text-lg phone:text-md" />
           <ActionLink cls="mt-6 h-11 self-start px-5 text-md" />
@@ -28,7 +29,7 @@ export function FrontPage() {
           <MiniDay V={V} cls="mt-auto pt-8 phone:pt-6" />
         </div>
       </section>
-      <section id="cities" className="relative px-(--m) pt-6 pb-6" aria-label="The ten cities, east to west">
+      <section id="cities" className="relative px-(--m) pt-6 pb-6" aria-label={`The ${CITY_WORD} cities, east to west`}>
         <div ref={box} className="relative" {...handlers}>
           <div className="h-7 phone:hidden" />
           <StripAxis V={V} W={W} cls="hs-stripcol top-0 bottom-0" />

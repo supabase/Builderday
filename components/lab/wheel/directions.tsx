@@ -8,6 +8,7 @@ import { countdown, nearestCity, type OurWheel } from './our-facts';
 import type { Direction } from './direction-list';
 import { SheetWheel } from '@/components/preview/preview';
 import '@/components/preview/preview.css';
+import { CITY_WORD, CITY_WORD_CAP } from '@/lib/day-data';
 
 /* Round W2: the study as it is (with its own facts, the reference for the port), the study with our facts, and three
    ways to say what a preview page owes a stranger: the format and the prize. In every one of ours the wheel opens on
@@ -15,7 +16,7 @@ import '@/components/preview/preview.css';
 
 
 type P = { dir: Direction; cfg: WheelCfg; noGl: boolean; mark: MarkMode; engineRef: RefObject<WheelEngine | null>; ours: OurWheel; forced: number | null };
-const CAPTION = 'The ten cities, from the first to start to the last';
+const CAPTION = `The ${CITY_WORD} cities, from the first to start to the last`;
 
 /* the clock, in 30 second steps; the server has none, so the countdown cell appears after hydration */
 const tick = (f: () => void) => { const t = window.setInterval(f, 30000); return () => window.clearInterval(t); };
@@ -37,7 +38,7 @@ function Ours({ dir, cfg, noGl, mark, engineRef, ours, forced }: P) {
 
   if (dir === 'wheel') return (
     <Wheel {...common} className="wd-tagged">
-      <p className="wd-tagline">Ten cities. One day. Build for {ours.buildMin} minutes.</p>
+      <p className="wd-tagline">{CITY_WORD_CAP} cities. One day. Build for {ours.buildMin} minutes.</p>
     </Wheel>
   );
   if (dir === 'rail') return (
@@ -57,7 +58,7 @@ function Ours({ dir, cfg, noGl, mark, engineRef, ours, forced }: P) {
             <h2 id="wd-sheet-h">How it works</h2>
             <button type="button" className="wd-close" onClick={() => sheet.current?.close()}>Close</button>
           </div>
-          <p className="wd-lede">Ten cities, one day: {ours.date}. Each city starts at its own local time, builds for {ours.buildMin} minutes, and votes until {ours.voteAfter} minutes after.</p>
+          <p className="wd-lede">{CITY_WORD_CAP} cities, one day: {ours.date}. Each city starts at its own local time, builds for {ours.buildMin} minutes, and votes until {ours.voteAfter} minutes after.</p>
           <dl className="wd-grid">{ours.format.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
           <h3>Questions</h3>
           <dl className="wd-faq">{ours.how.map(([q, a]) => <div key={q}><dt>{q}</dt><dd>{a}</dd></div>)}</dl>

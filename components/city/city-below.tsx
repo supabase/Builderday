@@ -1,6 +1,6 @@
 /* The parts of a city page that do not follow the clock: how the city's session runs, and the footer. Drawn on the
    server from the schedule alone. */
-import { EVENT, sched } from '@/lib/day-data';
+import { EVENT, sched, FINALIST_COUNT } from '@/lib/day-data';
 import { cityIndex, type CityCfg } from '@/lib/city';
 import { hhmm, tz } from '@/lib/format';
 import { HowItWorksList, PageFooter } from '@/components/shared/page-parts';
@@ -11,7 +11,7 @@ export function CityHow({ c }: { c: CityCfg }) {
     <HowItWorksList id="how-h" title={'How it works in ' + nm} first="name" steps={[
       ['Build', 'Build from ' + local(x.start) + ' to ' + local(x.buildEnd) + ', ' + nm + ' time (' + hhmm(x.start) + ' to ' + hhmm(x.buildEnd) + ' UTC).'],
       ['Vote', 'Vote from ' + local(x.start) + ' to ' + local(x.end) + ', on any project as soon as it is in. Judges add their votes to the same count. The top ' + EVENT.finalists + ' go to the final, and 1st wins the city prize.'],
-      ['The final', EVENT.pickers + ' pick one of the 30 finalists at ' + local(S.pickAt) + '. The pick wins the global prize.'],
+      ['The final', EVENT.pickers + ' pick one of the ' + FINALIST_COUNT + ' finalists at ' + local(S.pickAt) + '. The pick wins the global prize.'],
     ]} />
   );
 }

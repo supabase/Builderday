@@ -24,6 +24,8 @@ import {
   type Facts, type Poly, type Pt, type X,
 } from './draw';
 import { DIRS, dayStep, type Dir } from './acts';
+import { lineAct, lineMo, lineScene, lineScore, viewH, isStack, VH_STACK, type LineMo, type Press } from './line';
+export { viewH, isStack, VH_STACK };
 
 export type { Facts } from './draw';
 export { VW, VH } from './draw';
@@ -48,10 +50,35 @@ export type Jump = 'move' | 'cut';
 export type Letters = 'mono' | 'stroke';
 export type Lines = 'page' | 'tube';
 export type Scene = 'build' | 'vote' | 'final' | 'cash' | 'neo' | 'reel' | 'day';
+/* the morning line (line.ts) beside today's four directions: how the globe turns (one speed, or the wheel's stepped
+   turn), what the panel shows, what leaves an afterglow, and how the small tube is laid out */
+export type DayDir = Dir | 'line';
+export type TurnMode = 'steady' | 'stepped';
+export type PanelMode = 'story' | 'list' | 'off';
+export type Afterglow = 'events' | 'off' | 'all';
+export type SmallLayout = 'side' | 'stacked';
 
+export type LineGrid = 'wire' | 'template';
+export type LineMarks = 'dots' | 'plus';
+export type LineBanks = 'one' | 'two';
 export type ScopeCfg = {
   seed: number; build: BuildMode; vote: VoteMode; final: FinalMode; cash: CashMode; neo: NeoMode; layout: ScopeLayout;
-  renderer: Renderer; accent: Accent; dir: Dir; prize: PrizeMode;
+  renderer: Renderer; accent: Accent; dir: DayDir; prize: PrizeMode;
+  /* the morning line: the modes, then the knobs. Globe size, tilt and where the 09:00 line sits (degrees from the
+     centre); typing rate (letters a second), lines in the card, rows in the ranking, vote beats and their spacing
+     (ms); spike height (of the radius), arc height, stagger within a city (ms), tail length (of the flight); the
+     fade-in and fade-out floors (ms); far-side brightness and the width of its ramp (degrees); the others' light at
+     the pick; the seam (ms); a click at the pick when sound is on */
+  turnMode: TurnMode; panel: PanelMode; afterglow: Afterglow; smallLayout: SmallLayout;
+  /* the text globe's signs: the grid as the wire (meridians every 30 degrees, five
+     parallels) or the text globe's template (limb, equator, two parallels, the middle column, dotted); the cities as
+     glowing dots or a + each (yours a green [+]); the Final's line-up in one column or, from nine cities, two banks */
+  lGrid: LineGrid; lMarks: LineMarks; lBanks: LineBanks;
+  /* the land as sparse dots turning with the globe (0: none), and their light */
+  lLand: number; lLandA: number;
+  gR: number; lTilt: number; lineAt: number; typeRate: number; cardLines: number; rankRows: number; beats: number; beatGap: number;
+  spikeH: number; arcH: number; flyStagger: number; tailLen: number; fadeIn: number; fadeOut: number; farLevel: number; rampW: number;
+  pickDim: number; seam: number; pickClick: number;
   /* smooth: draw on every display frame (the frame rate then only sets the afterglow's spacing and the beam's crackle) */
   loop: number; fps: number; smooth: number; hold: number; still: number;
   glow: number; lw: number; jitter: number; trail: number; decay: number; scan: number; blips: number; hover: number;
@@ -75,6 +102,10 @@ export type ScopeCfg = {
 export const SCOPE_DEF: ScopeCfg = {
   seed: 7, build: 'beam', vote: 'trace', final: 'thirty', cash: 'flap', neo: 'laptop', layout: 'reel',
   renderer: 'canvas', accent: 'green', dir: 'globe', prize: 'tubes',
+  turnMode: 'steady', panel: 'story', afterglow: 'events', smallLayout: 'side', lGrid: 'template', lMarks: 'plus', lBanks: 'two', lLand: 1, lLandA: 0.62,
+  gR: 64, lTilt: 20, lineAt: -30, typeRate: 18, cardLines: 4, rankRows: 5, beats: 6, beatGap: 900,
+  spikeH: 0.35, arcH: 24, flyStagger: 60, tailLen: 0.35, fadeIn: 120, fadeOut: 100, farLevel: 0.22, rampW: 15,
+  pickDim: 0.3, seam: 1200, pickClick: 0,
   loop: 9, fps: 24, smooth: 1, hold: 0.22, still: 0.9, glow: 6, lw: 1.3, jitter: 0.35, trail: 6, decay: 0.62, scan: 0.22, blips: 22, hover: 1,
   bw: 0.42, halo: 4.5, haloW: 0.16, dwell: 2.4, speed: 0.4, expo: 1.5, hot: 0.8, after: 4, fade: 0.5,
   budget: 3200, depth: 0.7, gap: 1.6, tilt: 30, turn: 1,
@@ -84,7 +115,8 @@ export const SCOPE_DEF: ScopeCfg = {
 };
 export const SCOPE_CHOICES: Record<string, string[]> = {
   build: ['beam', 'boot'], vote: ['trace', 'radar'], final: ['thirty', 'lissajous'], cash: ['flap', 'vector', 'nixie'], neo: ['laptop', 'ten', 'glass', 'drawn'], layout: ['reel', 'stacked', 'side'],
-  renderer: ['beam', 'canvas'], accent: ['green', 'orange'], dir: ['globe', 'rack', 'plans', 'board'],
+  renderer: ['beam', 'canvas'], accent: ['green', 'orange'], dir: ['line', 'globe', 'rack', 'plans', 'board'],
+  turnMode: ['steady', 'stepped'], lGrid: ['wire', 'template'], lMarks: ['dots', 'plus'], lBanks: ['one', 'two'], panel: ['story', 'list', 'off'], afterglow: ['events', 'off', 'all'], smallLayout: ['side', 'stacked'],
   prize: ['tubes', 'glass', 'flaps', 'nixie', 'docket'], story: ['acts', 'scenes'], jump: ['move', 'cut'],
   letters: ['mono', 'stroke'], lines: ['page', 'tube'],
 };
@@ -96,6 +128,9 @@ export const SCOPE_LABELS: Record<string, string> = {
   acts: 'One object (the direction)', scenes: 'Three scenes (today)', move: 'The picture moves there', cut: 'Cut',
   mono: "The site's mono", stroke: 'Stroke letters (first built)', page: "The page's scan lines", tube: "The tube's own (first built)",
   globe: 'One globe, three acts', rack: 'The rack', plans: 'The plans', board: 'The board, small',
+  wire: 'Wire (meridians every 30°)', template: 'The text globe’s template, dotted', dots: 'Glowing dots', plus: 'A + each, yours [+]', one: 'One column', two: 'Two banks from nine cities',
+  line: 'The morning line', steady: 'Steady (one speed)', stepped: 'Stepped (the wheel turns to each city)',
+  story: 'Story (card, ranking, line-up)', list: 'Only the line-up', off: 'Off', events: 'Flights and hits only', all: 'Everything (today)',
 };
 export const SCOPE_BOUNDS: Record<string, [number, number, number]> = {
   loop: [4, 20, 0.5], fps: [8, 60, 1], hold: [0, 0.5, 0.02], still: [0, 1, 0.01], glow: [0, 16, 0.5], lw: [0.75, 2.5, 0.05],
@@ -103,15 +138,19 @@ export const SCOPE_BOUNDS: Record<string, [number, number, number]> = {
   bw: [0.2, 1.4, 0.02], halo: [2, 10, 0.25], haloW: [0, 0.6, 0.01], dwell: [0, 6, 0.1], speed: [0, 1, 0.05], expo: [0.4, 4, 0.05], hot: [0, 2, 0.05],
   after: [0, 10, 1], fade: [0.2, 0.9, 0.02], budget: [600, 6000, 100], depth: [0, 1, 0.05], gap: [0, 4, 0.1], tilt: [0, 60, 1], turn: [0.2, 2, 0.05],
   gMirror: [0, 2, 0.05], gThrough: [0, 1.5, 0.05], gFringe: [0, 4, 0.1], gTurn: [0, 3, 0.05], gSize: [0.6, 1.3, 0.01], gBig: [0.35, 0.8, 0.01], gTouch: [0, 0.6, 0.01],
+  lLand: [0, 1, 1], lLandA: [0.15, 0.8, 0.01],
+  gR: [48, 72, 1], lTilt: [0, 30, 1], lineAt: [-60, 0, 1], typeRate: [10, 40, 1], cardLines: [2, 4, 1], rankRows: [4, 7, 1], beats: [3, 7, 1], beatGap: [750, 1400, 50],
+  spikeH: [0.1, 0.6, 0.01], arcH: [8, 40, 1], flyStagger: [60, 250, 10], tailLen: [0.15, 0.8, 0.01], fadeIn: [120, 300, 10], fadeOut: [100, 250, 10],
+  farLevel: [0.08, 0.5, 0.01], rampW: [8, 30, 1], pickDim: [0.15, 0.6, 0.01], seam: [800, 2000, 50],
   nLid: [0.5, 0.75, 0.01], nDeck: [0.03, 0.18, 0.01], nScreen: [0.2, 1.6, 0.05], nRim: [0, 1.5, 0.05], nStreak: [0, 1.5, 0.05], nWhite: [0, 1, 0.05], nGlobe: [0.2, 0.55, 0.01], nGx: [0.3, 0.7, 0.01], nGy: [0.35, 0.65, 0.01],
 };
-const INTS = ['seed', 'fps', 'trail', 'blips', 'after', 'budget', 'tilt'];
+const INTS = ['lLand', 'seed', 'fps', 'trail', 'blips', 'after', 'budget', 'tilt', 'gR', 'lTilt', 'lineAt', 'typeRate', 'cardLines', 'rankRows', 'beats', 'beatGap', 'arcH', 'flyStagger', 'fadeIn', 'fadeOut', 'rampW', 'seam'];
 export function clampScope(s: Partial<ScopeCfg>): ScopeCfg {
   const c = { ...SCOPE_DEF, ...s } as ScopeCfg & Record<string, unknown>, o = { ...c } as Record<string, unknown>;
   for (const [k, list] of Object.entries(SCOPE_CHOICES)) if (!list.includes(String(c[k]))) o[k] = SCOPE_DEF[k as keyof ScopeCfg];
   for (const [k, [a, b]] of Object.entries(SCOPE_BOUNDS)) { const v = Number(c[k]); o[k] = Number.isFinite(v) ? Math.min(b, Math.max(a, v)) : SCOPE_DEF[k as keyof ScopeCfg]; }
   for (const k of INTS) o[k] = Math.round(o[k] as number);
-  for (const k of ['hover', 'tour', 'tourPhone', 'bar', 'next', 'gRow', 'gOn', 'smooth']) o[k] = c[k] ? 1 : 0;
+  for (const k of ['hover', 'tour', 'tourPhone', 'bar', 'next', 'gRow', 'gOn', 'smooth', 'pickClick']) o[k] = c[k] ? 1 : 0;
   return o as ScopeCfg;
 }
 
@@ -371,14 +410,18 @@ const SCENES: Record<string, Record<string, (x: X) => void>> = {
 };
 export const reelStep = (ph: number) => Math.min(2, Math.floor(ph * 3));
 /* which step a scene is on at a phase (the reel and the directions play three; the rest have none) */
-export const stepOf = (scene: Scene, ph: number) => (scene === 'reel' ? reelStep(ph) : scene === 'day' ? dayStep(ph) : -1);
+export function stepOf(scene: Scene, ph: number, cfg?: ScopeCfg, f?: Facts, mo?: Partial<LineMo>) {
+  if (scene === 'day' && cfg?.dir === 'line' && f) { const S = lineScore(cfg, f, lineMo(mo)); return lineAct(S, ph * S.loop); }
+  return scene === 'reel' ? reelStep(ph) : scene === 'day' ? dayStep(ph) : -1;
+}
 /* how many loops a scene's phase spans */
 export const spanOf = (scene: Scene) => (scene === 'reel' || scene === 'day' ? 3 : 1);
 
-export function drawScene(pen: Pen, scene: Scene, ph: number, cfg: ScopeCfg, f: Facts, boost = 1, from?: number, small?: boolean) {
+export function drawScene(pen: Pen, scene: Scene, ph: number, cfg: ScopeCfg, f: Facts, boost = 1, from?: number, small?: boolean, press?: Press, mo?: Partial<LineMo>) {
   const frame = Math.floor(ph * cfg.loop * cfg.fps * spanOf(scene));
-  const x: X = { pen, cfg, f, boost, frame, ph, from, small };
-  if (scene === 'day') { const later: (() => void)[] = []; DIRS[cfg.dir]({ ...x, later }, ph * 3); for (const d of later) d(); return; }
+  const x: X = { pen, cfg, f, boost, frame, ph, from, small, press, mo };
+  if (scene === 'day' && cfg.dir === 'line') { lineScene(x, ph); return; }
+  if (scene === 'day') { const later: (() => void)[] = []; DIRS[cfg.dir as Dir]({ ...x, later }, ph * 3); for (const d of later) d(); return; }
   if (scene !== 'reel') { SCENES[scene][cfg[scene] as string](x); return; }
   const step = reelStep(ph), sub = ph * 3 - step, name = (['build', 'vote', 'final'] as const)[step];
   /* the switch: the picture collapses to a line and opens again on the next one */
@@ -391,27 +434,31 @@ export function drawScene(pen: Pen, scene: Scene, ph: number, cfg: ScopeCfg, f: 
 }
 
 /* the canvas renderer: one frame on a 2D canvas */
-export function renderCanvas(c: CanvasRenderingContext2D, scene: Scene, ph: number, cfg: ScopeCfg, f: Facts, fo: Fonts, k: number, boost = 1, from?: number, small?: boolean) {
-  drawScene(new CanvasPen(c, k, cfg.lw, cfg.glow, fo), scene, ph, cfg, f, boost, from, small);
+export function renderCanvas(c: CanvasRenderingContext2D, scene: Scene, ph: number, cfg: ScopeCfg, f: Facts, fo: Fonts, k: number, boost = 1, from?: number, small?: boolean, press?: Press, mo?: Partial<LineMo>) {
+  drawScene(new CanvasPen(c, k, cfg.lw, cfg.glow, fo), scene, ph, cfg, f, boost, from, small, press, mo);
 }
 
 /* The beam renderer's frame: this phase, plus the afterglow, worked out from earlier phases (one frame apart, each
    fainter by the fade), never kept from earlier frames, so a still at any phase is the same picture (rule 8).
    Returns the beam pieces, the fills and the beam length of the frame itself (for the budget meter). */
-export function beamFrame(scene: Scene, ph: number, cfg: ScopeCfg, f: Facts, boost = 1, from?: number, small?: boolean): { segs: Float32Array; tris: Float32Array; len: number; words: Word[] } {
-  const pen = new BeamPen({ dwell: cfg.dwell, speed: cfg.speed, gain: 1, view: [VW, VH], words: cfg.letters === 'mono' });
-  const dt = 1 / (cfg.fps * cfg.loop * spanOf(scene));
-  let len = 0;
-  for (let j = cfg.after; j >= 0; j--) {
+export function beamFrame(scene: Scene, ph: number, cfg: ScopeCfg, f: Facts, boost = 1, from?: number, small?: boolean, press?: Press, mo?: Partial<LineMo>): { segs: Float32Array; tris: Float32Array; len: number; time: number; words: Word[] } {
+  const pen = new BeamPen({ dwell: cfg.dwell, speed: cfg.speed, gain: 1, view: [VW, scene === 'day' ? viewH(cfg, small) : VH], words: cfg.letters === 'mono' });
+  /* the morning line: its afterglow (if on) is spaced a thirtieth of a second, whatever the fps knob says (E1), and
+     never reaches back across an act's start or a press */
+  const line = scene === 'day' && cfg.dir === 'line', S = line ? lineScore(cfg, f, lineMo(mo), small) : null;
+  const dt = S ? 1 / 30 / S.loop : 1 / (cfg.fps * cfg.loop * spanOf(scene));
+  const after = S ? (cfg.afterglow === 'off' || press ? 0 : cfg.after) : cfg.after;
+  let len = 0, time = 0;
+  for (let j = after; j >= 0; j--) {
     pen.gain = j ? Math.pow(cfg.fade, j) * 0.6 : 1;
-    pen.len = 0;
+    pen.len = 0; pen.time = 0;
     /* no afterglow from before the start: a still at the top of the day never shows the end of it behind */
     if (j && ph - j * dt < 0) continue;
     const pj = (((ph - j * dt) % 1) + 1) % 1;
     /* after a jump the act before was never on screen: no afterglow from it */
-    if (j && from !== undefined && Math.floor(pj * 3) !== Math.floor(ph * 3)) continue;
-    drawScene(pen, scene, pj, cfg, f, boost, from, small);
-    if (!j) len = pen.len;
+    if (j && from !== undefined && (S ? lineAct(S, pj * S.loop) !== lineAct(S, ph * S.loop) : Math.floor(pj * 3) !== Math.floor(ph * 3))) continue;
+    drawScene(pen, scene, pj, cfg, f, boost, from, small, press, mo);
+    if (!j) { len = pen.len; time = pen.time; }
   }
-  return { segs: new Float32Array(pen.segs), tris: new Float32Array(pen.tris), len, words: pen.words };
+  return { segs: new Float32Array(pen.segs), tris: new Float32Array(pen.tris), len, time, words: pen.words };
 }

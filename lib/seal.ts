@@ -37,7 +37,7 @@ export const BOUNDS: Record<'seed' | 'weight' | Knob, [number, number, number]> 
   lobes: [8, 28, 1], rings: [1, 4, 1], amp: [15, 85, 1], inner: [16, 60, 1], drift: [0, 100, 1], density: [6, 28, 1],
   interlace: [1, 4, 1], harmonic: [0, 60, 1], loop: [0, 100, 1], gap: [0, 30, 1], rails: [0, 3, 1],
 };
-export const SEAL_CITIES = ['sydney', 'tokyo', 'singapore', 'bengaluru', 'berlin', 'lagos', 'london', 'sao-paulo', 'new-york', 'san-francisco'];
+export const SEAL_CITIES = ['seoul', 'singapore', 'peshawar', 'nouakchott', 'london', 'rosario', 'santiago', 'manta', 'new-york', 'toronto', 'san-salvador', 'austin', 'mexico-city', 'san-francisco'];
 const TAU = Math.PI * 2;
 
 export function mulberry32(a: number): () => number { return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }

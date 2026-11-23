@@ -1,7 +1,7 @@
 'use client';
 import type { CSSProperties } from 'react';
 import clsx from 'clsx';
-import { EVENT } from '@/lib/day-data';
+import { EVENT, CITY_WORD } from '@/lib/day-data';
 import { clamp, hhmm, r2, tz } from '@/lib/format';
 import { cityHref, dayOf, localSpan, showNow, slotText, view, type HomeCfg, type HomeCity, type HomeWorld, type View } from '@/lib/home';
 import { Picture } from '@/components/pictures/picture';
@@ -12,7 +12,7 @@ import { useDay, type Ages } from './day-context';
 export function Timetable() {
   const { cfg: c, W, ages } = useDay(), V = view(c, W);
   return (
-    <section className="tt relative px-(--m) pb-18 phone:pb-16" aria-label="The ten cities, east to west">
+    <section className="tt relative px-(--m) pb-18 phone:pb-16" aria-label={`The ${CITY_WORD} cities, east to west`}>
       <Axis V={V} W={W} cls="tt-axis ml-[calc(var(--nameW)+var(--g))] w-(--stripW)" />
       <ol className="rows phone:relative">{W.cs.map((x) => <Row key={'r' + x.i} x={x} V={V} ages={ages} />)}</ol>
       <PhoneNow W={W} />

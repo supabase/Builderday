@@ -1,0 +1,7 @@
+/* The ending lab: the ending at full width on the page's ground, room on the right for the panel. */
+.el-lab { min-height: 100svh; background: #000; color: var(--c-ink); padding-right: calc(300px + var(--s-6)); display: grid; align-content: end; }
+html.lab-closed .el-lab { padding-right: 0; }
+.el-title { margin: 0; padding: var(--s-4); font: var(--w-medium) var(--t-sm)/1.4 var(--font-sans); color: var(--c-ink-2); }
+.lab .el-step { display: grid; grid-template-columns: 28px 1fr 28px; gap: var(--s-2); align-items: center; min-height: 28px; margin-bottom: var(--s-2); }
+.lab .el-step span { text-align: center; font: var(--w-medium) var(--t-xs)/1.2 var(--font-sans); }
+@media (max-width: 640px) { .el-lab { padding-right: 0; } }

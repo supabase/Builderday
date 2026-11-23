@@ -1,0 +1,16 @@
+{
+  "end": "flat",
+  "open": "print",
+  "mark": "small",
+  "signoff": "line",
+  "light": "none",
+  "rows": 16,
+  "north": 66,
+  "south": -50,
+  "cell": 64,
+  "reg": 2,
+  "tag": 1,
+  "rate": 600,
+  "seed": 7,
+  "imprint": 1
+}

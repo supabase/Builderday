@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
 import clsx from 'clsx';
-import { EVENT } from '@/lib/day-data';
+import { EVENT, CITY_WORD_CAP, FINALIST_COUNT } from '@/lib/day-data';
 import { dur, fmtN, hhmm, ord, plural, r2, tz } from '@/lib/format';
 import { action, cityHref, localSpan, showNow, type HomeCity, type HomeWorld, type View } from '@/lib/home';
 import { sentence, wire, wireTime } from '@/lib/wire';
@@ -109,7 +109,7 @@ const ANCHORS: [string, string][] = [['#cities', 'Cities'], ['#final', 'The fina
 export function useAction(): { t: string; href: string } {
   const { cfg, W, carry } = useDay();
   if (W.picked) return { t: 'See the pick', href: '#final' };
-  if (W.allDone || W.archived) return { t: 'See the 30 finalists', href: '#final' };
+  if (W.allDone || W.archived) return { t: `See the ${FINALIST_COUNT} finalists`, href: '#final' };
   return action(W, cfg, (x) => cityHref(x, cfg, W, carry));
 }
 export function ActionLink({ cls, line }: { cls?: string; line?: boolean }) {
@@ -119,8 +119,8 @@ export function ActionLink({ cls, line }: { cls?: string; line?: boolean }) {
 export function SheetMasthead({ quiet, cls }: { quiet?: boolean; cls?: string }) {
   return (
     <header className={clsx('relative z-6 flex h-13 items-center gap-x-(--g) px-(--m) rule-b phone:h-14', cls)}>
-      <a className="inline-flex min-h-11 items-center gap-2 text-lg tracking-snug whitespace-nowrap" href="#top" aria-label="Supabase Hackday, top of the page">
-        <SupabaseMark /><span className="font-semibold">supabase <b className="font-regular text-ink-2">hackday</b></span>
+      <a className="inline-flex min-h-11 items-center gap-2 text-lg tracking-snug whitespace-nowrap" href="#top" aria-label={EVENT.name + ', top of the page'}>
+        <SupabaseMark /><span className="font-semibold">supabase <b className="font-regular text-ink-2">builder day</b></span>
       </a>
       <nav className="ml-auto flex items-center phone:hidden" aria-label="On this page">
         {ANCHORS.map((a) => <a key={a[0]} className="inline-flex min-h-11 items-center px-3 text-sm text-ink-2 hover:text-ink" href={a[0]}>{a[1]}</a>)}
@@ -183,7 +183,7 @@ export function Facts({ cls, vCls }: { cls?: string; vCls?: string }) {
   );
 }
 export function DateLine({ cls }: { cls?: string }) {
-  return <p className={clsx('tabular-nums', cls)}>{EVENT.date}. Ten cities, each at its own local time.</p>;
+  return <p className={clsx('tabular-nums', cls)}>{EVENT.date}. {CITY_WORD_CAP} cities, each at its own local time.</p>;
 }
 
 /* ---------------- a city's top 3 ---------------- */
@@ -272,7 +272,7 @@ export function Trunk({ pickTop, cls }: { pickTop?: string; cls?: string }) {
 }
 export function JoinLine({ cls }: { cls?: string }) {
   const { W } = useDay(), { round } = useLook(), f = W.final;
-  const lbl = W.picked ? EVENT.pickers + ' picked ' + f.p.name + ', ' + ord(f.place) + ' in ' + f.city.name + '.' : EVENT.pickers + ' pick one of the 30 at ' + hhmm(W.S.pickAt) + ' UTC.';
+  const lbl = W.picked ? EVENT.pickers + ' picked ' + f.p.name + ', ' + ord(f.place) + ' in ' + f.city.name + '.' : EVENT.pickers + ' pick one of the ' + FINALIST_COUNT + ' at ' + hhmm(W.S.pickAt) + ' UTC.';
   return (
     <p className={clsx('flex items-center justify-end gap-3', cls)} id={round === 'final' ? undefined : 'final'}>
       <span className={clsx('min-w-0 truncate text-sm', W.picked ? 'text-ink' : 'text-ink-2')}>{lbl}{round === 'final' ? null : <> <span className="text-ink-2">{globalPrize(W.picked)}</span></>}</span>

@@ -22,15 +22,19 @@ import { LabPanel, togglePanel, useLabSave, type Group } from './lab-kit';
 import { DayScreen, LiveSegment, dayOf, useLabClock } from '@/components/day/shared';
 import '@/components/board/board.css';
 import './day/day-lab.css';
+import { EVENT } from '@/lib/day-data';
+import { AIR_BOUNDS, AIR_CHOICES, AIR_DEF, clampAir, MARK, MARK_WORD, type AirParts, type MarkState } from '@/components/air/devices';
+import { Bar, Count, Delta, StateCell, Wire } from '@/components/air/parts';
+import '@/components/air/air.css';
 
-/* The parts lab (D1 of the day plan): every new part of the day pages alone, fed by the model at a moment of the day,
+/* The parts lab: every new part of the day pages alone, fed by the model at a moment of the day,
    with every value on a knob. Save writes saved/parts.config.json, which the day labs read.
    The lab clock runs live from the moment (speed: seconds a second), so flips and flashes happen as they would on the
    day. Keys: \ panel, S save. */
 
-type LabState = PartsCfg & { t: number; live: number; speed: number; worst: number; closedown: number };
+type LabState = PartsCfg & AirParts & { t: number; live: number; speed: number; worst: number; closedown: number };
 const LAB_DEF = { t: 0.5, live: 1, speed: 1, worst: 1, closedown: 0 };
-const LAB_BOUNDS = { ...PARTS_BOUNDS, t: [0, 1, 0.001] as [number, number, number], speed: [1, 120, 1] as [number, number, number] };
+const LAB_BOUNDS = { ...PARTS_BOUNDS, ...AIR_BOUNDS, t: [0, 1, 0.001] as [number, number, number], speed: [1, 120, 1] as [number, number, number] };
 const GROUPS: Group[] = [
   { name: 'Time', knobs: [{ k: 't', kind: 'range', label: 'Time' }, { k: 'live', kind: 'toggle', label: 'Clock runs' }, { k: 'speed', kind: 'range', label: 'Seconds a second' }, { k: 'worst', kind: 'toggle', label: 'Worst content' }] },
   { name: 'Grid and face', knobs: [{ k: 'grid', kind: 'range', label: 'Grid unit, px' }, { k: 'face', kind: 'select', label: 'Labels and numbers' }] },
@@ -39,13 +43,16 @@ const GROUPS: Group[] = [
   { name: 'Change', knobs: [{ k: 'mark', kind: 'select', label: 'Change mark' }, { k: 'lit', kind: 'select', label: 'Lit with' }, { k: 'hold', kind: 'range', label: 'Hold, ms' }, { k: 'fade', kind: 'range', label: 'Fade, ms' }] },
   { name: 'Segment', knobs: [{ k: 'segH', kind: 'range', label: 'Digit height, px' }, { k: 'segGap', kind: 'range', label: 'Gap, px' }, { k: 'segSecs', kind: 'toggle', label: 'Seconds' }] },
   { name: 'Test cards', knobs: [{ k: 'cardBars', kind: 'range', label: 'Bars' }, { k: 'cardPalette', kind: 'select', label: 'Palette' }, { k: 'closedown', kind: 'toggle', label: 'Show closedown' }] },
+  { name: 'The day on air', knobs: [{ k: 'bar', kind: 'select', label: 'Vote bar' }, { k: 'barCells', kind: 'range', label: 'Bar cells' }, { k: 'barScale', kind: 'range', label: 'Votes a cell (0: leader fills)' }, { k: 'wireRate', kind: 'range', label: 'Wire, characters a second' }, { k: 'wireHold', kind: 'range', label: 'Wire hold, s' }, { k: 'wireAt', kind: 'select', label: 'Wire, where (home and city)' }, { k: 'wireCh', kind: 'range', label: 'Wire in the header, widest line (ch)' }, { k: 'trail', kind: 'range', label: 'Trail after a move, ticks' }, { k: 'printRate', kind: 'range', label: 'Print, characters a second' }, { k: 'lineHour', kind: 'range', label: 'Start line, local hour' }, { k: 'lineChar', kind: 'select', label: 'Start line character' }, { k: 'lineInk', kind: 'range', label: 'Start line ink' }, { k: 'markDim', kind: 'range', label: 'Mark ink, not live' }] },
   { name: 'Bug, sound, keys', knobs: [{ k: 'bugCorner', kind: 'select', label: 'Bug corner' }, { k: 'bugSize', kind: 'range', label: 'Bug size, px' }, { k: 'sound', kind: 'select', label: 'Sound' }, { k: 'fastext', kind: 'toggle', label: 'Fastext row (day labs)' }] },
 ];
-const LABELS: Record<string, string> = { wheel: "The wheel's mono", geist: 'Geist Mono', pixel: 'Departure Mono (pixel)', flipper: 'Flipper', crawl: 'Crawl', rail: 'Static rail', char: 'Characters', word: 'Whole words', flash: 'Flash', delta: 'Delta', both: 'Both', ink: 'Ink', blue: 'Blue light', broadcast: 'Broadcast', mono: 'Greys', tl: 'Top left', tr: 'Top right', bl: 'Bottom left', br: 'Bottom right', off: 'Off', steps: 'Steps only' };
+/* the live-device knobs out of the lab's flat state */
+const airOf = (c: Record<string, unknown>): Partial<AirParts> => Object.fromEntries(Object.keys(AIR_DEF).map((k) => [k, c[k]])) as Partial<AirParts>;
+const LABELS: Record<string, string> = { hatch: 'Hatch ::|', blocks: 'Blocks', none: 'None', wheel: "The wheel's mono", geist: 'Geist Mono', pixel: 'Departure Mono (pixel)', flipper: 'Flipper', crawl: 'Crawl', rail: 'Static rail', char: 'Characters', word: 'Whole words', flash: 'Flash', delta: 'Delta', both: 'Both', ink: 'Ink', blue: 'Blue light', broadcast: 'Broadcast', mono: 'Greys', tl: 'Top left', tr: 'Top right', bl: 'Bottom left', br: 'Bottom right', off: 'Off', steps: 'Steps only' };
 
-export function PartsLab({ saved, q }: { saved: Partial<PartsCfg>; q: Record<string, string | undefined> }) {
+export function PartsLab({ saved, q }: { saved: Partial<PartsCfg> & { air?: Partial<AirParts> }; q: Record<string, string | undefined> }) {
   const [cfg, setCfg] = useState<LabState>(() => {
-    const c = { ...clampParts(saved), ...LAB_DEF } as LabState;
+    const c = { ...clampParts(saved), ...clampAir(saved.air), ...LAB_DEF } as LabState;
     if (q.t) c.t = Math.min(1, Math.max(0, +q.t));
     if (q.moment) { const m = homeMoments({ ...HOME_DEF, ...dayOf(1) } as HomeCfg).find((x) => x[0] === q.moment); if (m) c.t = m[2]; }
     if (q.still === '1') c.live = 0;
@@ -53,12 +60,12 @@ export function PartsLab({ saved, q }: { saved: Partial<PartsCfg>; q: Record<str
     return c;
   });
   const bare = q.bare !== undefined;
-  const set = useCallback((k: string, v: unknown) => setCfg((c) => { const n = { ...c, [k]: v }; return { ...n, ...clampParts(n) } as LabState; }), []);
+  const set = useCallback((k: string, v: unknown) => setCfg((c) => { const n = { ...c, [k]: v }; return { ...n, ...clampParts(n), ...clampAir(airOf(n)) } as LabState; }), []);
   const day = dayOf(cfg.worst), S = sched(day);
   const m0 = nowOf(cfg.t, S), clock = useLabClock(m0, !!cfg.live, cfg.speed), minute = useMinute(clock, m0);
   const W = homeAt(day, minute);
   const { save, msg, rail } = useLabSave('parts', 'lab-parts-saved');
-  const doSave = useCallback(() => { const o = clampParts(cfg); return save({ ...o }); }, [cfg, save]);
+  const doSave = useCallback(() => { const o = clampParts(cfg); return save({ ...o, air: clampAir(airOf(cfg)) }); }, [cfg, save]);
   useEffect(() => { if (bare) document.documentElement.classList.add('lab-closed', 'no-lab'); }, [bare]);
   useEffect(() => {
     const on = (e: KeyboardEvent) => { const t = e.target as HTMLElement | null; if (e.metaKey || e.ctrlKey || e.altKey || (t && /^(INPUT|TEXTAREA|SELECT|BUTTON|A)$/.test(t.tagName))) return; if (e.key === '\\') togglePanel(); else if (e.key === 's' || e.key === 'S') doSave(); };
@@ -77,7 +84,7 @@ export function PartsLab({ saved, q }: { saved: Partial<PartsCfg>; q: Record<str
     <>
       <DayScreen />
       <main className="bd pl" style={partsVars(cfg) as CSSProperties} data-face={cfg.face}>
-        <HeaderRow title="Supabase Hackday" state={dayWord(W, day)} clock={clock} first={m0} zone="UTC" homeHref="/lab/day-home" />
+        <HeaderRow title={EVENT.name} state={dayWord(W, day)} clock={clock} first={m0} zone="UTC" homeHref="/lab/day-home" />
         <Announce items={items} mode={cfg.announce} dwell={cfg.dwell} crawl={cfg.crawl} flap={flap} startPaused={!cfg.live} />
 
         <section className="pl-sec" aria-labelledby="pl-an">
@@ -95,6 +102,19 @@ export function PartsLab({ saved, q }: { saved: Partial<PartsCfg>; q: Record<str
               <tr key={i}><td className="bd-k">{ord(i + 1)}</td><td title={o ? o.p.name : undefined}><FlapText text={o ? o.p.name : '–'} opts={flap} className="fp-clip" /></td><td><Flash value={o ? o.v : 0} mark={cfg.mark} delta={countDelta}>{o ? fmtN(o.v) : '–'}</Flash></td><td className="pl-mute">{o ? '@' + o.p.handle : ''}</td></tr>
             ); })}</tbody>
           </table>
+        </section>
+
+        <section className="pl-sec" aria-labelledby="pl-air">
+          <h2 id="pl-air" className="pl-h">The day on air</h2>
+          <p className="pl-note">The live devices of the home and the city pages, at the knobs: the vote bar at the leader and at a third of it, the change glyph, the placeholder while votes are hidden, the six state marks, and the wire.</p>
+          <div className="pl-air">
+            {[[cfg.barScale > 0 ? cfg.barScale * cfg.barCells : 120, 96], [40, 52], [0, 0]].map(([v, b], i) => (
+              <p key={i} className="pl-air-row"><Bar v={v} scale={cfg.barScale > 0 ? cfg.barScale : Math.max(1, Math.ceil(120 / cfg.barCells))} cells={cfg.barCells} mode={cfg.bar} /> <Count v={v} /> <Delta now={v} before={b} /></p>
+            ))}
+            <p className="pl-air-row"><Bar v={40} scale={Math.max(1, Math.ceil(120 / cfg.barCells))} cells={cfg.barCells} mode={cfg.bar} dim /> <Count v={null} hidden /> <Delta now={0} before={null} hidden /> <span className="bd-k">hidden</span></p>
+            <p className="pl-air-row">{(Object.keys(MARK) as MarkState[]).map((k) => <span key={k} className="pl-inline"><StateCell s={k} word={MARK_WORD[k]} /></span>)}</p>
+            <Wire items={wireItems(W, 6)} rate={cfg.wireRate} hold={cfg.wireHold} label="The wire" empty="Nothing on the wire yet." />
+          </div>
         </section>
 
         <section className="pl-sec pl-two" aria-labelledby="pl-sg">
@@ -128,7 +148,7 @@ export function PartsLab({ saved, q }: { saved: Partial<PartsCfg>; q: Record<str
           <div>
             <h2 id="pl-bp" className="pl-h">The boarding pass</h2>
             <p className="pl-note">{lead ? berlin.city.name + '’s leader, as its share card.' : 'The leader’s share card.'} Every field is the project&rsquo;s own.</p>
-            {lead ? <BoardingPass d={{ project: lead.p.name, pitch: lead.p.pitch, city: berlin.city.name, code: CODE[berlin.city.id], builder: '@' + lead.p.handle, entered: hhmm(lead.arrive + berlin.off) + ' ' + tz(berlin.off), place: ord(lead.rank), votes: fmtN(lead.v), link: 'hackday' + projectPath(berlin.city.id, slugOf(lead.p)), date: '10 Dec 2026' }} />
+            {lead ? <BoardingPass d={{ project: lead.p.name, pitch: lead.p.pitch, city: berlin.city.name, code: CODE[berlin.city.id], builder: '@' + lead.p.handle, entered: hhmm(lead.arrive + berlin.off) + ' ' + tz(berlin.off), place: ord(lead.rank), votes: fmtN(lead.v), link: projectPath(berlin.city.id, slugOf(lead.p)), date: '10 Dec 2026' }} />
               : <p className="pl-note">No city has an entry at this moment. Move the time on.</p>}
           </div>
           <div>
@@ -155,10 +175,10 @@ export function PartsLab({ saved, q }: { saved: Partial<PartsCfg>; q: Record<str
         </section>
       </main>
       {bare ? null : (
-        <LabPanel title="Parts lab" cfg={{ ...cfg, seed: 'from day' }} bounds={LAB_BOUNDS} choices={PARTS_CHOICES} groups={GROUPS} set={set} moments={ms} momentIdx={cur} out={out}
+        <LabPanel title="Parts lab" cfg={{ ...cfg, seed: 'from day' }} bounds={LAB_BOUNDS} choices={{ ...PARTS_CHOICES, ...AIR_CHOICES }} groups={GROUPS} set={set} moments={ms} momentIdx={cur} out={out}
           optionLabel={(_k, v) => LABELS[v] || v} meter={{ text: 'Board tick ' + cfg.tick + ' s · flash ' + cfg.hold + ' + ' + cfg.fade + ' ms', bad: false }} msg={msg} rail={rail}
-          railLabel={(s) => String(s.announce) + ', ' + String(s.face) + ', ' + String(s.mark)} apply={(s) => setCfg((c) => ({ ...c, ...clampParts(s) }))}
-          buttons={[['Defaults', () => setCfg((c) => ({ ...c, ...PARTS_DEF }))], ['Save', doSave, true]]} />
+          railLabel={(s) => String(s.announce) + ', ' + String(s.face) + ', ' + String(s.mark)} apply={(s) => setCfg((c) => ({ ...c, ...clampParts(s), ...clampAir({ ...airOf(c), ...((s as { air?: Partial<AirParts> }).air ?? {}) }) }))}
+          buttons={[['Defaults', () => setCfg((c) => ({ ...c, ...PARTS_DEF, ...AIR_DEF }))], ['Save', doSave, true]]} />
       )}
     </>
   );

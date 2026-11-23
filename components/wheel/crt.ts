@@ -26,6 +26,9 @@ export function glassGlsl(c: WheelCfg) {
   /* the globe leans back by gTilt (radians) so a southern city can face the viewer; 0 everywhere but the kit's half
      globes, so the wheel and the day globe draw as before */
   float gTilt = 0.;
+  /* how much of the names the hub's glass shows at its rim: 1, except on a page where the globe leaves its names
+     (the wheel's flow option fades them as the globe docks) */
+  float gMirror = 1.;
   float room(vec3 d) {
     float spot = pow(max(dot(d, normalize(vec3(.25, -.55, .8))), 0.), 220.);
     float soft = pow(max(dot(d, normalize(vec3(-.45, .7, .55))), 0.), 14.);
@@ -93,7 +96,7 @@ export function glassGlsl(c: WheelCfg) {
       vec2 at = uHub + toward * reach;
       vec2 apart = toward * reach * ${f(c.mirrorSplit, 3)};
       vec3 names = vec3(picture(at + apart).r, picture(at).g, picture(at - apart).b);
-      color += names * ${f(c.mirrorStrength, 3)} * smoothstep(1., .985, far);
+      color += names * ${f(c.mirrorStrength, 3)} * gMirror * smoothstep(1., .985, far);
     }
 
     float cover = smoothstep(1., 1. - 2. / radius, far);
@@ -105,17 +108,23 @@ export function glassGlsl(c: WheelCfg) {
 
 function fragment(c: WheelCfg) {
   const taps = Math.round(c.edgeTaps), paper = [c.paper, c.paper + 1, c.paper + 1].map((p) => f(p / 255, 3)).join(', ');
+  /* the text globe is part of the picture, so it takes the names' smear (as strong as its own knob says) and fades at
+     its top and bottom a little later than they do; the glass ball is drawn over the picture and needs neither */
+  const ascii = c.globe === 'ascii';
+  /* the rings are not spokes: the two ends of the wheel are not bent */
+  const rings = c.globe === 'rings';
   return `
   precision highp float;
   uniform sampler2D uPicture, uLand;
   uniform vec2 uResolution, uHub;
-  uniform vec3 uSmall;
-  uniform float uRadius, uRatio, uYaw, uGlow;
+  uniform vec3 uSmall, uGlobe, uDock;
+  uniform float uRadius, uRatio, uYaw, uGlow, uScroll, uMirror, uDockGlow;
   uniform vec2 uCity;
   varying vec2 vUv;
 
   float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-  vec4 picture(vec2 px) { vec2 uv = px / uResolution; return uv == clamp(uv, 0., 1.) ? texture2D(uPicture, uv) : vec4(0.); }
+  /* uScroll: how far the page has scrolled the picture up (device px; 0 when the wheel is the whole screen) */
+  vec4 picture(vec2 px) { vec2 uv = (px - vec2(0., uScroll)) / uResolution; return uv == clamp(uv, 0., 1.) ? texture2D(uPicture, uv) : vec4(0.); }
 
   vec4 fringed(vec2 px) {
     vec2 aside = vec2(${f(c.fringe, 2)} * uRatio, 0.);
@@ -127,10 +136,13 @@ function fragment(c: WheelCfg) {
     vec2 mirror = vec2(-1., 1.);
     vec2 spoke = (px - uHub) * mirror;
     float angle = atan(spoke.y, spoke.x);
-    float strength = pow(smoothstep(${f(c.edgeFrom)}, ${f(c.edgeTo)}, abs(angle)), 2.)
-      * smoothstep(1.2, 1.5, length(spoke) / uRadius)
-      * (1. - smoothstep(3.4, 4., length(spoke) / uRadius));
-    if (strength <= 0. || abs(angle) > 2.5) return fringed(px);
+    float far = length(spoke) / uRadius;
+    float onGlobe = ${ascii ? '1. - smoothstep(1.1, 1.2, far)' : '0.'};
+    float fade = 1. - onGlobe * smoothstep(${f(c.fadeFrom + 0.3)}, ${f(c.fadeTo + 0.3)}, abs(angle)) * ${f(c.globeEdge)};
+    float strength = ${rings ? '0. *' : ''} pow(smoothstep(${f(c.edgeFrom)}, ${f(c.edgeTo)}, abs(angle)), 2.)
+      * ${ascii ? `mix(smoothstep(1.2, 1.5, far), ${f(c.globeEdge)}, onGlobe)` : 'smoothstep(1.2, 1.5, far)'}
+      * (1. - smoothstep(3.4, 4., far));
+    if (strength <= 0. || abs(angle) > 2.5) return fringed(px) * fade;
     vec4 sum = vec4(0.);
     for (int i = 0; i < ${taps}; i++) {
       float back = strength * ${f(c.edgeReach)} * (.35 + .65 * (float(i) + .5) / ${taps}.) * sign(angle);
@@ -142,7 +154,7 @@ function fragment(c: WheelCfg) {
       vec4 blue = picture(uHub + mirror * vec2(inward.x * co.b + inward.y * si.b, inward.y * co.b - inward.x * si.b));
       sum += vec4(red.r, green.g, blue.b, (red.a + green.a + blue.a) / 3.);
     }
-    return sum / ${taps}.;
+    return sum / ${taps}. * fade;
   }
 
 ${glassGlsl(c)}
@@ -151,11 +163,16 @@ ${glassGlsl(c)}
     gYaw = uYaw; gCity = uCity; gGlow = uGlow;
     vec4 ink = wheel(px);
     vec3 color = vec3(${paper}) * (1. - ink.a) + ink.rgb;
-    vec4 glass = globe(px, uHub, uRadius, true);
+    gMirror = uMirror;
+    vec4 glass = ${c.globe === 'glass' ? 'globe(px, uGlobe.xy, uGlobe.z, true)' : 'vec4(0.)'};
     color = color * (1. - glass.a) + glass.rgb;
+    gMirror = 1.;
     vec4 small = globe(px, uSmall.xy, uSmall.z, false);
     color = color * (1. - small.a) + small.rgb;
-    color += (hash(floor(px / (uRatio * 1.5))) - .5) * ${f(c.grain)} * (1. - glass.a) * (1. - small.a);
+    /* a third globe, only on a page where the wheel leaves its globe behind: the header's small one */
+    vec4 dock = vec4(0.);
+    if (uDock.z > 0.) { gGlow = uDockGlow; dock = globe(px, uDock.xy, uDock.z, false); color = color * (1. - dock.a) + dock.rgb; }
+    color += (hash(floor(px / (uRatio * 1.5))) - .5) * ${f(c.grain)} * (1. - glass.a) * (1. - small.a) * (1. - dock.a);
     color *= 1. - ${f(c.vignette, 3)} * pow(length(vUv - .5) * 1.25, 3.);
     gl_FragColor = vec4(color, 1.);
   }
@@ -166,13 +183,20 @@ export type CrtFrame = {
   picture: HTMLCanvasElement | null; /* null: the picture did not change since the last frame */
   hub: { x: number; y: number }; radius: number; small: { x: number; y: number; radius: number };
   ratio: number; yaw: number; city: [number, number]; glow: number;
+  /* a wheel in a page's flow (all optional; left out, the frame draws as the wheel alone): how far the page has
+     scrolled (device px), where the hub's globe is drawn when it is not on the hub, how much of the names its rim
+     shows, and a third globe with its own light */
+  scroll?: number; globe?: { x: number; y: number; radius: number }; mirror?: number; dock?: { x: number; y: number; radius: number; glow: number };
 };
 export type Crt = { draw: (d: CrtFrame) => void; setLand: (img: TexImageSource) => void; rebuild: (c: WheelCfg) => void; lost: () => boolean; dispose: () => void };
 
 /* null where WebGL is not available, or where the program does not compile */
-export function createCrt(canvas: HTMLCanvasElement, cfg: WheelCfg): Crt | null {
-  const gl = canvas.getContext('webgl', { alpha: false, antialias: false });
-  if (!gl) return null;
+/* onRestored: after the GPU drops the context (a phone backgrounding the tab, GPU pressure) and gives it back, the
+   program, the triangle and the textures are made again, the land uploaded again, and the caller asked for a new frame */
+export function createCrt(canvas: HTMLCanvasElement, cfg: WheelCfg, onRestored?: () => void): Crt | null {
+  const maybe = canvas.getContext('webgl', { alpha: false, antialias: false });
+  if (!maybe) return null;
+  const gl: WebGLRenderingContext = maybe;
 
   let program: WebGLProgram | null = null;
   let u: Record<string, WebGLUniformLocation | null> = {};
@@ -189,11 +213,14 @@ export function createCrt(canvas: HTMLCanvasElement, cfg: WheelCfg): Crt | null 
     if (program) gl.deleteProgram(program);
     program = p; gl.useProgram(p);
     const at = (n: string) => gl.getUniformLocation(p, n);
-    u = { resolution: at('uResolution'), hub: at('uHub'), small: at('uSmall'), radius: at('uRadius'), ratio: at('uRatio'), yaw: at('uYaw'), city: at('uCity'), glow: at('uGlow') };
+    u = { resolution: at('uResolution'), hub: at('uHub'), small: at('uSmall'), radius: at('uRadius'), ratio: at('uRatio'), yaw: at('uYaw'), city: at('uCity'), glow: at('uGlow'),
+      scroll: at('uScroll'), globe: at('uGlobe'), mirror: at('uMirror'), dock: at('uDock'), dockGlow: at('uDockGlow') };
     gl.uniform1i(at('uPicture'), 0); gl.uniform1i(at('uLand'), 1);
     return true;
   };
-  if (!build(cfg)) return null;
+  let cur = cfg, landImg: TexImageSource | null = null;
+  const setup = () => {
+  if (!build(cur)) return false;
 
   /* one triangle bigger than the screen covers it with no seam */
   gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
@@ -213,6 +240,12 @@ export function createCrt(canvas: HTMLCanvasElement, cfg: WheelCfg): Crt | null 
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
   gl.activeTexture(gl.TEXTURE0); tex(gl.CLAMP_TO_EDGE);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 0]));
+  if (landImg) setLand(landImg);
+  return true;
+  };
+  if (!setup()) return null;
+  canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); program = null; });
+  canvas.addEventListener('webglcontextrestored', () => { if (setup()) onRestored?.(); });
 
   const draw = (d: CrtFrame) => {
     if (gl.isContextLost()) return;
@@ -224,12 +257,16 @@ export function createCrt(canvas: HTMLCanvasElement, cfg: WheelCfg): Crt | null 
     gl.uniform3f(u.small, d.small.x, canvas.height - d.small.y, d.small.radius);
     gl.uniform1f(u.ratio, d.ratio); gl.uniform1f(u.yaw, d.yaw);
     gl.uniform2f(u.city, d.city[0], d.city[1]); gl.uniform1f(u.glow, d.glow);
+    const g = d.globe ?? { x: d.hub.x, y: d.hub.y, radius: d.radius };
+    gl.uniform1f(u.scroll, d.scroll ?? 0); gl.uniform3f(u.globe, g.x, canvas.height - g.y, g.radius); gl.uniform1f(u.mirror, d.mirror ?? 1);
+    gl.uniform3f(u.dock, d.dock?.x ?? 0, canvas.height - (d.dock?.y ?? 0), d.dock?.radius ?? 0); gl.uniform1f(u.dockGlow, d.dock?.glow ?? 0);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   };
-  const setLand = (img: TexImageSource) => {
+  function setLand(img: TexImageSource) {
+    landImg = img; if (gl.isContextLost()) return;
     gl.activeTexture(gl.TEXTURE1); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img); gl.activeTexture(gl.TEXTURE0);
-  };
-  const rebuild = (c: WheelCfg) => { build(c); };
+  }
+  const rebuild = (c: WheelCfg) => { cur = c; if (!gl.isContextLost()) build(c); };
   const dispose = () => { if (program) gl.deleteProgram(program); program = null; };
   return { draw, setLand, rebuild, lost: () => gl.isContextLost(), dispose };
 }

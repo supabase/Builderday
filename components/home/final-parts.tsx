@@ -1,7 +1,7 @@
 'use client';
 import { Fragment } from 'react';
 import clsx from 'clsx';
-import { EVENT, type Top } from '@/lib/day-data';
+import { EVENT, type Top, CITY_WORD } from '@/lib/day-data';
 import { dur, fmtN, hhmm, ord } from '@/lib/format';
 import { cityHref, localSpan, type HomeCity, type HomeWorld } from '@/lib/home';
 import { PRIZES, globalPrize } from '@/lib/prizes';
@@ -113,7 +113,7 @@ export function CitiesFooter() {
         ))}
       </p>
       <p className="flex flex-wrap justify-between gap-x-6 gap-y-2 text-xs text-ink-2">
-        <span>{EVENT.name} · {EVENT.date} · ten cities, each at its own local time</span>
+        <span>{EVENT.name} · {EVENT.date} · {CITY_WORD} cities, each at its own local time</span>
         <span className="flex gap-4"><a className="-my-3 inline-flex min-h-11 items-center hover:text-ink" href="https://supabase.com">supabase.com</a><a className="-my-3 inline-flex min-h-11 items-center hover:text-ink" href="https://supabase.com/docs">Docs</a></span>
       </p>
     </footer>

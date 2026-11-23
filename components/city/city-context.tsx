@@ -176,7 +176,7 @@ export function CityProvider({ cfg: cfgIn, clock, links, live = true, frame = 's
 
   /* the tab's title follows the city and the open project */
   const openName = openId != null ? rowById(W, openId)?.p.name : undefined;
-  useEffect(() => { const t = (openName ? openName + ' · ' : '') + W.city.name + ' · Supabase Hackday'; if (document.title !== t) document.title = t; }, [openName, W.city.name]);
+  useEffect(() => { const t = (openName ? openName + ' · ' : '') + W.city.name + ' · ' + EVENT.name; if (document.title !== t) document.title = t; }, [openName, W.city.name]);
 
   /* ---------------- voting ---------------- */
   /* a vote counts once the person has confirmed an email (the forms). Without forms on the page, it counts locally. */

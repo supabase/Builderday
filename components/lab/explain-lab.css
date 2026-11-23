@@ -74,3 +74,16 @@ html .xl.xl-only.xl-only-sheet { max-width: 480px; padding: 24px 40px; backgroun
 .xl-cmp-sheets .xl-sheet > .xl-cap { min-height: 2.6em; }
 .xl-cmp-page + .xl-cmp-page { margin-top: 56px; padding-top: 32px; border-top: 1px solid #2b2c2c; }
 @media (max-width: 1040px) { .xl-cmp-sheets { grid-template-columns: minmax(0, 480px); } }
+
+/* X0: reading the morning line's motion */
+.xl-bench { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 16px; }
+.xl-speeds { display: inline-flex; gap: 4px; }
+.xl-k { min-height: 32px; padding: 0 10px; border: 1px solid var(--line, #2b2c2c); border-radius: 4px; background: none; color: inherit; font: inherit; font-size: 13px; cursor: pointer; }
+.xl-k[aria-checked='true'] { background: var(--ink, #f4f4f2); color: var(--ground, #0e0f0f); }
+.xl-meter { font-size: 13px; font-variant-numeric: tabular-nums; opacity: 0.85; }
+.xl-meter[data-bad] { color: #ff7a1a; }
+.xl-strip { position: relative; height: 12px; margin: 8px 0 0; }
+.xl-beat { position: absolute; top: 3px; width: 1px; height: 6px; background: currentColor; opacity: 0.45; }
+.xl-act { top: 0; height: 12px; opacity: 0.9; }
+.xl-head-w { position: absolute; inset: 0; pointer-events: none; }
+.xl-head { position: absolute; top: 0; left: 0; width: 100%; height: 12px; border-left: 1px solid #3ecf8e; will-change: transform; }

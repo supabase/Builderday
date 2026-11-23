@@ -3,7 +3,7 @@ import type { PartsCfg } from '@/components/board/config';
 import { DayHome, type DayHomeCfg } from '@/components/day/day-home';
 import { KitFrame } from './day/kit-frame';
 
-/* D2 of the day plan: the home on the day, as the real home draws it (components/day/day-home.tsx), starting at a
+/* The home on the day, as the real home draws it (components/day/day-home.tsx), starting at a
    moment with the worst content on, plus the baseline: today's home on the screen kit, framed. Save writes
    saved/day-home.config.json, which the real home reads. */
 

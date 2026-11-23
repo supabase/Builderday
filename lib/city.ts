@@ -6,7 +6,7 @@
    moves under the pointer or focus; one winner, one cut line; nothing listed twice; vote where you look, no toast; no
    ranking while building; vote traces are step lines; every vote lands as a tick at the now line; the rest of the
    day is always one click away; the winner's mark is the city's seal. */
-import { CITIES, CITY_IDS, EVENT, TA, all, arriveAt, cityState, judgeOf, minOfVote, mulberry32, sched, seedFor, shuffle, slug, tOf, votesAtMin, type CitySched, type CityState, type Entry, type Sched, type SeedCity, type SeedDay } from './day-data';
+import { CITIES, CITY_IDS, EVENT, FINALIST_COUNT, TA, all, arriveAt, cityState, countMin, frozenOrder, hiddenAt, hideMin, judgeOf, minOfVote, mulberry32, publicMin, sched, seedFor, shuffle, slug, tOf, votesAtMin, type CitySched, type CityState, type Entry, type Sched, type SeedCity, type SeedDay } from './day-data';
 import type { Project } from './data';
 import { NB, clamp, dur as durAny, fmtN, hhmm, ord, pluralN as plural, r2, tz } from './format';
 
@@ -28,7 +28,7 @@ export type CityCfg = {
   [k: string]: unknown;
 };
 export const DEF: CityCfg = {
-  seed: 17, city: 'berlin', mode: 'tower', t: -1,
+  seed: 17, city: 'london', mode: 'tower', t: -1,
   schedule: 'sun', startHour: 9, buildMin: 90, voteAfter: 30, pickAfter: 60,
   ground: 'night', top: 10, row: 56, nameSize: 32, disp: 128, pic: 36,
   strip: 'both', trace: 1.5, cut: 'full', ledger: 'ledger', peek: 1, table: 44, seal: 1,
@@ -43,8 +43,8 @@ export const BOUNDS: Record<string, [number, number, number]> = {
 };
 export const CHOICES: Record<string, string[]> = { mode: ['tower'], city: CITY_IDS, ground: ['night', 'paper', 'mint'], schedule: ['sun', 'same'], strip: ['both', 'arrivals', 'traces'], cut: ['full', 'short', 'off'], ledger: ['ledger', 'off'], sort: ['ranked', 'shuffled', 'newest'] };
 /* the keys the day's config decides, so both pages draw the same day */
-export const DAY_KEYS = ['seed', 'schedule', 'startHour', 'buildMin', 'voteAfter', 'pickAfter'];
-export const SCHED_KEYS = ['schedule', 'startHour', 'buildMin', 'voteAfter', 'pickAfter'];
+export const DAY_KEYS = ['seed', 'schedule', 'startHour', 'buildMin', 'voteAfter', 'pickAfter', 'hideAt'];
+export const SCHED_KEYS = ['schedule', 'startHour', 'buildMin', 'voteAfter', 'pickAfter', 'hideAt'];
 
 export type Extra = { def?: Record<string, unknown>; bounds?: Record<string, [number, number, number]>; choices?: Record<string, string[]> };
 /* clamps every knob into its bounds; extra: the tuning page's own bounds and choices on top */
@@ -89,13 +89,25 @@ export function homeT(now: number, S: Sched): number { return now > S.winEnd ? 1
 /* ---------------- the world ---------------- */
 export type Votes = Readonly<Record<string, 1>>;
 /* v: votes now, yours included; mine: yours (one as a visitor, any number as a judge); j: how many are judges' (a
-   judge's own included) */
-export type Row = { r: Entry; p: Project; k: number; a: number; arrive: number; v: number; mine: number; rank: number; j: number };
+   judge's own included).
+   While the city's counts are hidden (W.hidden): v and j are the counts as they stood at the freeze (no later vote, not
+   even yours, moves them), rank is the frozen order, and votes and judges are null; mine still says which are yours.
+   Otherwise votes is v and judges is j. A page prints votes and judges; v stays for the bars and traces. late: came in
+   after the freeze (it sits at the bottom, in the order it came). j and judges are in counted votes (a judge's vote at
+   EVENT.judgeWeight). tie: once voting has closed, in a tie on votes that touches the top EVENT.finalists, 'open' until
+   the host has settled it at the desk, then 'settled' (the order is the host's); null otherwise */
+export type Row = { r: Entry; p: Project; k: number; a: number; arrive: number; v: number; mine: number; rank: number; j: number; votes: number | null; judges: number | null; late: boolean; tie: 'open' | 'settled' | null };
 export type CityWorld = {
   c: CityCfg; S: Sched; x: CitySched; Wn: Win; i: number; city: CitySched['city']; off: number; sd: SeedCity; SD: SeedDay; now: number;
   st: CityState; state: CityState['state']; f: number; votesOn: boolean; voting: boolean;
   rows: Row[]; arrived: Row[]; ranked: Row[]; lead: Row | null; second: Row | undefined; total: number; topV: number; scaleV: number;
   picked: boolean; isPick: boolean; pickCity: typeof CITIES[number]; pickWin: Project; you: Row | null; last: boolean; inDay: boolean; day: CityState[];
+  /* hidden: the counts and order are frozen, from hideAt (a minute, on the same scale as x.start; null: this city never
+     hides) until voting closes at x.end, when everything is real again. total is the total at the freeze while hidden */
+  hidden: boolean; hideAt: number | null;
+  /* publicAt: the minute anyone may vote, and the judges (same scale as x.start); before it only builders on the city's
+     list. publicOpen: voting is on and that minute has come. judgeWeight: what one judge's vote counts */
+  publicAt: number; publicOpen: boolean; judgeWeight: number;
 };
 /* voted: this visitor's own votes, by project id. judged: a judge's own votes (several may go on one project); they
    move the order like anyone's. Both show while voting is open; once it closes, the day's data is the count both
@@ -105,12 +117,18 @@ export function world(c: CityCfg, voted: Votes, judged?: Readonly<Record<string,
   const st = cityState(x, sd, now), city = x.city, off = city.offset;
   /* voting opens with building: votes show from the first entry; you can vote while building or voting is on */
   const votesOn = st.state !== 'next', voting = st.state === 'build' || st.state === 'vote', f = st.state === 'vote' ? st.f! : st.state === 'done' ? 1 : 0;
+  const hidden = hiddenAt(x, now), cm = countMin(x, now);
   const rows: Row[] = entries.map((r) => {
-    const v = votesOn ? votesAtMin(r, x, now) : 0, jm = voting && judged ? judged[r.p.id] || 0 : 0, mine = (voting && voted[r.p.id] ? 1 : 0) + jm;
-    return { r, p: r.p, k: r.k, a: r.a, arrive: arriveAt(r, x), v: v + mine, mine, rank: 0, j: judgeOf(r, v) + jm };
+    const late = hidden && arriveAt(r, x) > cm;
+    const v = votesOn && !late ? votesAtMin(r, x, cm) : 0, jm = voting && judged ? judged[r.p.id] || 0 : 0, mine = (voting && voted[r.p.id] ? 1 : 0) + jm;
+    /* your own presses on the count: a visitor's one vote, a judge's votes at their weight */
+    const vv = hidden ? v : v + (mine - jm) + jm * EVENT.judgeWeight, jj = hidden ? judgeOf(r, v) : judgeOf(r, v) + jm * EVENT.judgeWeight;
+    return { r, p: r.p, k: r.k, a: r.a, arrive: arriveAt(r, x), v: vv, mine, rank: 0, j: jj, votes: hidden ? null : vv, judges: hidden ? null : jj, late, tie: null as Row['tie'] };
   });
   const arrived = st.state === 'next' ? [] : st.state === 'build' ? rows.filter((o) => o.a < st.n!) : rows;
-  const ranked = votesOn ? arrived.slice().sort((a, b) => b.v - a.v || a.k - b.k) : arrived.slice().sort((a, b) => b.a - a.a);
+  let ranked: Row[];
+  if (hidden) { const byId = new Map(rows.map((o) => [o.p.id, o])); ranked = frozenOrder(sd, x, now).map((t) => byId.get(t.p.id)!).filter((o) => arrived.indexOf(o) >= 0); }
+  else ranked = votesOn ? arrived.slice().sort((a, b) => b.v - a.v || a.k - b.k) : arrived.slice().sort((a, b) => b.a - a.a);
   ranked.forEach((o, j) => { o.rank = j + 1; });
   const lead = votesOn && ranked.length ? ranked[0] : null, second = ranked[1];
   const total = arrived.reduce((a, o) => a + o.v, 0);
@@ -125,12 +143,14 @@ export function world(c: CityCfg, voted: Votes, judged?: Readonly<Record<string,
     last: st.state === 'vote' && st.left! <= Math.max(3, Math.round(c.voteAfter * 0.1)) + 0.01,
     inDay: now >= S.winStart && now <= S.winEnd,
     day: S.cs.map((y, j) => cityState(y, SD.cities[j], now)),
+    hidden, hideAt: hideMin(x),
+    publicAt: publicMin(x), publicOpen: voting && now >= publicMin(x), judgeWeight: EVENT.judgeWeight,
   };
 }
 /* the last few votes before now, from the shared vote curves (each entry's n-th vote has a minute) */
 export type VoteEvent = { o: Row; m: number };
 export function latest(W: CityWorld, n: number): VoteEvent[] {
-  if (!W.voting) return [];
+  if (!W.voting || W.hidden) return [];
   const x = W.x, ev: VoteEvent[] = [];
   W.arrived.forEach((o) => {
     const v = o.v - o.mine;
@@ -138,18 +158,21 @@ export function latest(W: CityWorld, n: number): VoteEvent[] {
   });
   return ev.sort((a, b) => b.m - a.m).slice(0, n);
 }
+/* the votes in the last ten minutes; none while the counts are hidden (lastTenOrNull says hidden as null) */
+export function lastTenOrNull(W: CityWorld): number | null { return W.hidden ? null : lastTen(W); }
 export function lastTen(W: CityWorld): number {
-  if (!W.voting) return 0;
+  if (!W.voting || W.hidden) return 0;
   return W.arrived.reduce((a, o) => a + (o.v - o.mine) - votesAtMin(o.r, W.x, W.now - 10), 0);
 }
 export function rowById(W: CityWorld, id: number): Row | undefined { return W.rows.find((r) => r.p.id === id); }
-export function slugOf(p: Project): string { return slug(p.name); }
+export function slugOf(p: Project): string { return p.slug || slug(p.name); }
 
 /* ---------------- copy ---------------- */
 export function local(W: CityWorld, m: number): string { return hhmm(m + W.off); }
 export function status(W: CityWorld): string {
   const s = W.st, nm = W.city.name;
   if (s.state === 'next') return nm + ' starts at ' + local(W, W.x.start) + (s.wait! >= 1440 ? ' on ' + EVENT.date : '') + '. That is in ' + dur(s.wait!) + '.';
+  if (W.hidden) return 'Votes are hidden from ' + local(W, W.hideAt!) + '. All counts appear at ' + local(W, W.x.end) + '.' + (s.state === 'build' ? ' Entries close in ' + dur(s.left!) + '.' : '');
   if (s.state === 'build') return nm + ' is building and voting is open. Entries close in ' + dur(s.left!) + '.';
   if (s.state === 'vote') return W.lead ? 'Voting closes in ' + dur(s.left!) + '.' : 'No entries came in. Entries closed at ' + local(W, W.x.buildEnd) + '.';
   if (!W.lead) return nm + ' had no entries.';
@@ -164,17 +187,17 @@ export function action(W: CityWorld, L: Links): Action {
   if (s === 'next') return { t: 'Remind me', act: 'remind' };
   if (s === 'build') return { t: 'Submit your project', act: 'submit' };
   if (s === 'vote') return W.lead ? { t: 'Vote', href: '#sheet' } : { t: 'See the other cities', href: homeHref(W, '', L) };
-  return W.picked ? { t: 'See the pick', href: homeHref(W, '#final', L) } : { t: 'See the 30 finalists', href: homeHref(W, '#final', L) };
+  return W.picked ? { t: 'See the pick', href: homeHref(W, '#final', L) } : { t: `See the ${FINALIST_COUNT} finalists`, href: homeHref(W, '#final', L) };
 }
 export function gapText(W: CityWorld, o: Row): string {
-  if (!W.votesOn || !W.lead) return '';
+  if (!W.votesOn || !W.lead || W.hidden) return '';
   if (o === W.lead) return !W.second ? 'The only project' : o.v === W.second.v ? 'Level with 2nd' : fmtN(o.v - W.second.v) + ' ahead of 2nd';
   return o.v === W.lead.v ? 'Level with 1st' : fmtN(W.lead.v - o.v) + ' behind 1st';
 }
 /* the gap that matters with a final: to the cut under 3rd. Inside the top 3: how far clear of 4th; below it: how far
    behind 3rd. Ties go to the earlier entry, so level is said as level. */
 export function gapCut(W: CityWorld, o: Row): string {
-  if (!W.votesOn || !W.lead) return '';
+  if (!W.votesOn || !W.lead || W.hidden) return '';
   const n = EVENT.finalists, third = W.ranked[n - 1], fourth = W.ranked[n];
   if (o.rank <= n) return !fourth ? (W.ranked.length <= n ? 'In the top ' + n : '') : o.v === fourth.v ? 'Level with ' + ord(n + 1) : fmtN(o.v - fourth.v) + ' clear of ' + ord(n + 1);
   return !third ? '' : o.v === third.v ? 'Level with ' + ord(n) : fmtN(third.v - o.v) + ' behind ' + ord(n);
@@ -189,6 +212,7 @@ export function cutText(W: CityWorld, c: CityCfg): string {
 export function slotText(W: CityWorld, o: Row | null | undefined): { k: string; a: string; b: string } {
   if (!o) return { k: '', a: '', b: '' };
   const first = o === W.lead, done = W.state === 'done';
+  if (W.hidden) return { k: o.late ? 'New' : first ? 'Leading at ' + local(W, W.hideAt!) : ord(o.rank), a: 'Votes hidden', b: '' };
   return { k: first ? (done ? (W.picked && W.isPick ? 'Picked' : 'Winner') : 'Leading') : ord(o.rank), a: plural(o.v, 'vote'), b: gapText(W, o) };
 }
 export function sheetLabel(W: CityWorld, c: CityCfg): string { return W.votesOn ? 'The top ' + c.top + ' in ' + W.city.name + ', by votes' : W.state === 'build' ? 'Entries in ' + W.city.name + ', newest first' : W.city.name + ' has no entries yet'; }
@@ -203,6 +227,7 @@ export function footText(W: CityWorld, c: CityCfg, shownIds: number[]): { you: s
   if (c.you >= 0) {
     if (W.state === 'next') ys = 'Entries open at ' + local(W, W.x.start) + '.';
     else if (!y || (W.state === 'build' && y.a >= W.st.n!)) ys = 'Not in yet.';
+    else if (W.hidden) ys = y.p.name + ' is in. Votes are hidden until ' + local(W, W.x.end) + '.';
     else if (shownIds.indexOf(y.p.id) >= 0) ys = y.p.name + ' is ' + ord(y.rank) + ', in the ' + (c.top === 10 ? 'ten' : 'top ' + c.top) + ' above.';
     else ys = y.p.name + ' is ' + ord(y.rank) + ' with ' + plural(y.v, 'vote') + ', ' + gapText(W, y) + '.';
   }
@@ -219,7 +244,7 @@ export function facts(W: CityWorld): [string, string][] {
   else if (s.state === 'vote') { k1 = 'Voting closes in'; v1 = dur(s.left!, true); }
   else { k1 = 'Voting closed at'; v1 = local(W, W.x.end); }
   const n = W.state === 'next' ? 0 : W.state === 'build' ? s.n! : W.sd.entries;
-  return [[k1, v1], ['Local time, ' + tz(W.off), local(W, W.now)], ['Projects', fmtN(n)], ['Votes', W.votesOn ? fmtN(W.total) : '–']];
+  return [[k1, v1], ['Local time, ' + tz(W.off), local(W, W.now)], ['Projects', fmtN(n)], ['Votes', W.hidden ? 'Hidden' : W.votesOn ? fmtN(W.total) : '–']];
 }
 
 /* ---------------- links between the pages (they carry the preview parameters) ---------------- */
@@ -289,8 +314,8 @@ export function ticks(W: CityWorld, V: View): Tick[] {
 /* one entry's line on the strip: the arrival mark, then the vote trace as steps from its arrival to now */
 export function trace(W: CityWorld, V: View, o: Row, c: CityCfg, big?: boolean): { d: string | null; arr: number | null } | null {
   const x = W.x, show = c.strip, base = 92, top = big ? 10 : 14;
-  const ax = V.x(o.arrive) * 10, end = Math.min(W.now, x.end), endX = V.x(end) * 10, bx = V.x(x.buildEnd) * 10;
-  if (W.state === 'next' || o.arrive > W.now) return null;
+  const ax = V.x(o.arrive) * 10, end = Math.min(W.now, x.end, W.hidden ? W.hideAt! : Infinity), endX = V.x(end) * 10, bx = V.x(x.buildEnd) * 10;
+  if (W.state === 'next' || o.arrive > W.now || o.arrive > end) return null;
   let d = 'M' + r2(ax) + ' ' + base;
   if (W.votesOn && show !== 'arrivals') {
     const stepM = Math.max(2, Math.round((x.end - x.start) / 40)); let prevY = base, v = 0;
@@ -301,7 +326,7 @@ export function trace(W: CityWorld, V: View, o: Row, c: CityCfg, big?: boolean):
       const nx = Math.min(m + stepM, end); d += 'H' + r2(V.x(nx) * 10);
       if (nx >= end) break;
     }
-    if (o.mine) d += 'V' + r2(base - o.v / W.scaleV * (base - top));
+    if (o.mine && !W.hidden) d += 'V' + r2(base - o.v / W.scaleV * (base - top));
   } else d += 'H' + r2(Math.min(endX, bx));
   if (show === 'traces' && !W.votesOn) return null;
   return { d, arr: show !== 'traces' ? r2(ax / 10) : null };
@@ -326,7 +351,7 @@ export function miniDay(W: CityWorld) {
 export function restOfDay(W: CityWorld) {
   const S = W.S, span = S.winEnd - S.winStart, X = (m: number) => (m - S.winStart) / span * 100, nx = X(Math.min(W.now, S.winEnd));
   const rows = W.day.filter((_, j) => j !== W.i).map((y) => {
-    const t: [string, string] = y.state === 'next' ? ['Starts in', dur(y.wait!, true)] : !y.lead ? ['Closed', 'No entries'] : y.state === 'build' || y.state === 'vote' ? ['Leading', y.lead.p.name] : ['1st', y.lead.p.name];
+    const t: [string, string] = y.state === 'next' ? ['Starts in', dur(y.wait!, true)] : !y.lead ? ['Closed', 'No entries'] : y.state === 'build' || y.state === 'vote' ? [y.hidden ? 'Leading at ' + (y.hideAt! - y.start) + ' min' : 'Leading', y.lead.p.name] : ['1st', y.lead.p.name];
     const l = X(y.start), w = X(y.end) - l, { bf, fill } = barFill(y);
     return { y, t, l: r2(l), w: r2(w), bf: r2(bf), fill: r2(fill), loc: hhmm(y.start + y.city.offset) + '–' + hhmm(y.end + y.city.offset) + ' ' + tz(y.city.offset) };
   });

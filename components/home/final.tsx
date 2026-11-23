@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useLayoutEffect, useRef, type CSSProperties, type RefObject } from 'react';
 import clsx from 'clsx';
-import { EVENT } from '@/lib/day-data';
+import { EVENT, CITY_WORD_CAP, FINALIST_COUNT } from '@/lib/day-data';
 import { dur, hhmm } from '@/lib/format';
 import { cityPrize } from '@/lib/prizes';
 import { LABEL } from '@/components/shared/page-parts';
@@ -29,12 +29,12 @@ export function Diagram({ finRh, curve }: { finRh: number; curve: number }) {
   return (
     <section ref={sec} className="ld relative mx-(--m) pt-8 pb-12 rule-t" id="final" aria-labelledby="ld-h" style={{ '--frh': finRh + 'px', '--bh': bh + 'px', '--dh': H + 'px' } as CSSProperties}>
       <div className="ld-cols items-end pb-6">
-        <h2 className="ld-ab text-d48 leading-none font-semibold tracking-d48 phone:text-h1" id="ld-h">Thirty become one</h2>
+        <h2 className="ld-ab text-d48 leading-none font-semibold tracking-d48 phone:text-h1" id="ld-h">{FINALIST_COUNT} become one</h2>
         <p className="ld-cd min-h-[2lh] text-h2/[1.2] tracking-snug text-ink phone:min-h-0 phone:text-xl/[1.3]">{finalLine(W)}</p>
       </div>
       {/* three captions, on the drawing's own columns: the cities, the final, the pick */}
       <div className="ld-cols ld-caps items-start pb-5" id="prizes">
-        <p className="ld-ab grid max-w-[48ch] gap-y-1 text-sm text-ink-2"><span className={LABEL}>Ten cities</span>Each builds for {c.buildMin} minutes from {hhmm(c.startHour * 60)} local. Voting is open the whole time and {dur(c.voteAfter)} after.</p>
+        <p className="ld-ab grid max-w-[48ch] gap-y-1 text-sm text-ink-2"><span className={LABEL}>{CITY_WORD_CAP} cities</span>Each builds for {c.buildMin} minutes from {hhmm(c.startHour * 60)} local. Voting is open the whole time and {dur(c.voteAfter)} after.</p>
         <p className="ld-c grid gap-y-1 text-sm text-ink-2"><span className={LABEL}>Top 3 go to the final</span><span><i className="ld-sq" aria-hidden="true" /> {cityPrize(undefined, W.allDone)}</span></p>
         <p className="ld-d grid gap-y-1 text-sm text-ink-2"><span className={LABEL}>One pick</span>{W.picked ? <>Votes decided the finalists. {EVENT.pickers} picked the winner from them.</> : <>Votes decide the finalists. {EVENT.pickers} pick the winner from them.</>}</p>
       </div>

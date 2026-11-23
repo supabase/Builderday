@@ -12,9 +12,9 @@ const SAMPLE = { repo: 'github.com/ada/quiet-beacon', city: 'Berlin', time: '10:
 
 export function SubmitLab({ only }: { only?: string }) {
   const states = [
-    { k: 'closed', cap: 'The server is not open yet (today, on every page)', el: <GetReady id="s-closed" city="Berlin" cityId="berlin" live={false} /> },
-    { k: 'open', cap: 'Open, before the day (stand-in address)', el: <GetReady id="s-open" city="Berlin" cityId="berlin" live url={PLACEHOLDER_URL} /> },
-    { k: 'building', cap: 'Building: submit now (stand-in address)', el: <GetReady id="s-building" state="building" city="Berlin" cityId="berlin" live url={PLACEHOLDER_URL} onBrowser={() => {}} /> },
+    { k: 'closed', cap: 'The server is not open yet (today, on every page)', el: <GetReady id="s-closed" city="London" cityId="london" live={false} /> },
+    { k: 'open', cap: 'Open, before the day (stand-in address)', el: <GetReady id="s-open" city="London" cityId="london" live url={PLACEHOLDER_URL} /> },
+    { k: 'building', cap: 'Building: submit now (stand-in address)', el: <GetReady id="s-building" state="building" city="London" cityId="london" live url={PLACEHOLDER_URL} onBrowser={() => {}} /> },
     { k: 'sheet', cap: 'In the preview’s sheet, 400 wide (server not open)', el: <div className="xl-sheet sl-narrow"><GetReady id="s-sheet" compact level={3} live={false} /></div> },
   ];
   const door = (
@@ -29,7 +29,7 @@ export function SubmitLab({ only }: { only?: string }) {
   }
   return (
     <div className="xl sl">
-      <header className="xl-h"><h1>Submit</h1><p>Get ready and the two ways in: from your editor through the Hackday server, or in the browser. Both run the same checks.</p></header>
+      <header className="xl-h"><h1>Submit</h1><p>Get ready and the two ways in: from your editor through the Builder Day server, or in the browser. Both run the same checks.</p></header>
       <section className="xl-sec" aria-labelledby="sl-a">
         <h2 id="sl-a">Get ready, in each state</h2>
         <ul className="sl-states">{states.map((s) => <li key={s.k}><p className="xl-cap">{s.cap}</p>{s.el}</li>)}</ul>

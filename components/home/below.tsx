@@ -2,7 +2,7 @@
    Server components. */
 import type { ReactNode } from 'react';
 import clsx from 'clsx';
-import { EVENT, pastEvents } from '@/lib/day-data';
+import { EVENT, pastEvents, CITIES } from '@/lib/day-data';
 import { FAQ } from '@/lib/data';
 import { NB, dur, hhmm } from '@/lib/format';
 import type { HomeCfg } from '@/lib/home';
@@ -14,7 +14,7 @@ export function HowItWorks({ c }: { c: Pick<HomeCfg, 'buildMin' | 'startHour' | 
     <HowItWorksList id="how-h" title="How it works" first="c2" steps={[
       ['Build', 'Each city builds for ' + dur(c.buildMin) + ', starting ' + hhmm(c.startHour * 60) + ' local' + (c.schedule === 'same' ? ' UTC' : '') + '.'],
       ['Vote', 'Voting opens when building starts' + (c.voteAfter ? ' and closes ' + dur(c.voteAfter) + ' after it ends' : ' and closes when it ends') + '. The project with the most votes wins its city.'],
-      ['Pick', EVENT.pickers + ' pick one of the ten city winners.'],
+      ['Pick', EVENT.pickers + ' pick one of the ' + CITIES.length + ' city winners.'],
     ]} />
   );
 }

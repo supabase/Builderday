@@ -7,6 +7,7 @@ import { useDay } from '@/components/home/day-context';
 import { MH_ACT, MH_ACT_LINE } from '@/components/home/home-masthead';
 import { Ruler } from '@/components/home/timetable';
 import { CityName, DateLine, Facts, HoverPreview, JoinLine, JudgeMark, SheetMasthead, LeadPic, Live, LocalTime, PhoneNow, StripAxis, StripNow, TopKey, TopLines, Trunk, liveOf, nowIndex, pickedPlace, stateLine, useHoverPreview, useLabHome, zoomView } from './parts';
+import { EVENT, CITY_WORD } from '@/lib/day-data';
 
 /* Focus: the cities that matter now open up; the rest stay compact. An open row is tall: the name, its state and its
    own action; the bar with the three contenders under it; a big picture of first place. A compact row is one line.
@@ -48,9 +49,9 @@ export function Focus() {
   return (
     <>
       <SheetMasthead />
-      <section className="hs-cols relative items-end px-(--m) pt-8 pb-6 phone:pt-5" aria-label="Supabase Hackday">
+      <section className="hs-cols relative items-end px-(--m) pt-8 pb-6 phone:pt-5" aria-label={EVENT.name}>
         <div className="hs-c12 min-w-0">
-          <h1 className="lo-title font-semibold whitespace-nowrap">Supabase Hackday</h1>
+          <h1 className="lo-title font-semibold whitespace-nowrap">{EVENT.name}</h1>
           <Live sCls="mt-3 text-xl/[1.3] tracking-snug" lCls="mt-2 max-w-(--c7) phone:hidden" n={2} />
         </div>
         <div className="hs-c3 min-w-0">
@@ -58,7 +59,7 @@ export function Focus() {
           <Facts cls="grid-cols-2 gap-x-(--g) gap-y-3" vCls="text-sm" />
         </div>
       </section>
-      <section id="cities" className="relative px-(--m) pb-6" aria-label="The ten cities, east to west">
+      <section id="cities" className="relative px-(--m) pb-6" aria-label={`The ${CITY_WORD} cities, east to west`}>
         <div ref={box} className="relative" {...handlers}>
           <div className="h-7 phone:hidden" />
           <StripAxis V={V} W={W} cls="hs-stripcol top-0 bottom-0" />

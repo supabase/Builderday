@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { WHEEL_BOUNDS, WHEEL_CHOICES, WHEEL_DEF, clampWheel, type WheelCfg } from '@/components/wheel/config';
 import type { WheelEngine } from '@/components/wheel/engine';
 import { LabPanel, LayoutPicker, togglePanel, useLabSave } from './lab-kit';
-import { WHEEL_GROUPS as GROUPS, WHEEL_INT as INT, WHEEL_LABELS as LABELS } from '@/components/wheel/knobs';
+import { WHEEL_GROUPS as GROUPS, WHEEL_INT as INT, wheelLabel } from '@/components/wheel/knobs';
 import type { OurWheel } from './wheel/our-facts';
 import { Directions } from './wheel/directions';
 import { DIRECTIONS, type Direction } from './wheel/direction-list';
@@ -49,7 +49,7 @@ export function WheelLab({ saved, forced, noGl: noGl0, bare, dir: dir0, ours }: 
     <>
       <Directions key={dir + (noGl ? '-2d' : '')} dir={dir} cfg={cfg} noGl={noGl} mark={cfg.mark} engineRef={eng} ours={ours} forced={forced} />
       <LabPanel title="Wheel lab" cfg={{ ...cfg, seed: 'none' }} bounds={WHEEL_BOUNDS} choices={WHEEL_CHOICES} groups={GROUPS} set={set} moments={[]} momentIdx={-1}
-        out={out} optionLabel={(_k, v) => LABELS[v] || v} meter={{ text: meter, bad: false }}
+        out={out} optionLabel={wheelLabel} meter={{ text: meter, bad: false }}
         msg={msg} rail={rail} railLabel={label} apply={(s) => setCfg(clampWheel(s))}
         buttons={[['Save', doSave, true], ['Study values', () => setCfg({ ...WHEEL_DEF })]]}>
         <fieldset><legend>Check</legend>

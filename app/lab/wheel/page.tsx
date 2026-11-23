@@ -10,5 +10,5 @@ export const metadata: Metadata = { title: 'Wheel lab', description: 'Tuning pag
 /* ?dir= picks the direction, ?city= the first city (a number), ?gl=0 turns WebGL off, ?bare hides the lab chrome */
 export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const q = await searchParams, dir = q.dir && isDirection(q.dir) ? q.dir : 'study';
-  return <WheelLab saved={clampWheel(saved)} forced={q.city !== undefined && q.city !== '' ? Math.max(0, Math.min(9, Math.round(Number(q.city)) || 0)) : null} noGl={q.gl === '0'} bare={q.bare !== undefined} dir={dir} ours={ourWheel()} />;
+  return <WheelLab saved={clampWheel(saved)} forced={q.city !== undefined && q.city !== '' ? Math.max(0, Math.min(ourWheel().cities.length - 1, Math.round(Number(q.city)) || 0)) : null} noGl={q.gl === '0'} bare={q.bare !== undefined} dir={dir} ours={ourWheel()} />;
 }

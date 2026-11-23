@@ -1,6 +1,6 @@
 'use client';
 import clsx from 'clsx';
-import { EVENT } from '@/lib/day-data';
+import { EVENT, CITIES } from '@/lib/day-data';
 import { NB, hhmm, plural } from '@/lib/format';
 import { Picture } from '@/components/pictures/picture';
 import { MergedSeal } from '@/components/seal/seal-config';
@@ -20,7 +20,7 @@ export function Pick() {
           {W.picked ? p.name : W.allDone ? 'Ten winners. One pick.' : W.done.length + ' of 10 winners in'}
         </p>
         <p className="mt-3 text-lg text-ink">
-          {W.picked ? pc.name + '’s winner, @' + p.handle + '. ' + plural(pc.win.v, 'vote') + ' of ' + pc.entries + NB + 'entries.' : EVENT.pickers + ' pick one of the ten city winners at ' + hhmm(W.S.pickAt) + ' UTC.'}
+          {W.picked ? pc.name + '’s winner, @' + p.handle + '. ' + plural(pc.win.v, 'vote') + ' of ' + pc.entries + NB + 'entries.' : EVENT.pickers + ' pick one of the ' + CITIES.length + ' city winners at ' + hhmm(W.S.pickAt) + ' UTC.'}
         </p>
         <p className="mt-2 min-h-[3em] max-w-[48ch] text-md text-pretty text-ink-2 phone:min-h-[4.5em]">{W.picked ? p.pitch : 'The pick is announced here.'}</p>
       </div>

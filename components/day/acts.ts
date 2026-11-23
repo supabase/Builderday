@@ -40,7 +40,7 @@ function topAt(c: CityFact, m: number, n = 3): { i: number; v: number }[] {
   return c.seven.map((r, i) => ({ i, v: votesOf(r, c, m) })).sort((p, q) => q.v - p.v || c.seven[p.i].af - c.seven[q.i].af).slice(0, n);
 }
 const citiesOf = (x: X) => x.f.cities ?? [];
-const focusOf = (x: X) => { const cs = citiesOf(x); const i = cs.findIndex((c) => c.id === 'berlin'); return cs[i < 0 ? 0 : i]; };
+const focusOf = (x: X) => { const cs = citiesOf(x); const i = cs.findIndex((c) => c.id === 'london'); return cs[i < 0 ? 0 : i]; };
 
 /* ---------- depth: far lines dimmer, and broken where a near line crosses them (rule 5) ---------- */
 function crossT(a: Pt, b: Pt, c: Pt, d: Pt): number {
@@ -130,7 +130,7 @@ function globePose(x: X, a: number, u: number): Pose {
   const cs = citiesOf(x), pc = cs[Math.floor(pickCell(x) / x.f.top)] ?? cs[0];
   return { lon: (pc?.lon ?? 0) + 30 + 18 * u, lat: 10 };
 }
-function poseAt(x: X, t: number): Pose {
+export function poseAt(x: X, t: number): Pose {
   const { a, u } = split(t), here = globePose(x, a, u);
   if (u >= MOVE) return here;
   const prev = x.from !== undefined ? poseAt({ ...x, from: undefined }, x.from) : globePose(x, (a + 2) % 3, 1), k = u / MOVE;

@@ -3,6 +3,7 @@
 
 import type { Align, Pen, Poly, Pt } from './pen';
 import type { ScopeCfg } from './scope';
+import type { LineMo, Press } from './line';
 import { plen } from './pen';
 
 export type { Pt, Poly } from './pen';
@@ -17,6 +18,12 @@ export type CityFact = { id: string; code: string; lat: number; lon: number; off
 export type Facts = {
   buildMin: number; voteAfter: number; startHour: number; codes: string[]; top: number; finalists?: number; pick?: number; empty?: number[];
   cities?: CityFact[]; pickAt?: number; seedPick?: number;
+  /* city: the page's own city (a city page), so the drawing follows a project there; prize: the pick's prize as words */
+  city?: string; prize?: string;
+  /* who picks the one from the finalists, in the event's own words */
+  pickers?: string;
+  /* what first place in each city wins, as words ("a MacBook Neo") */
+  cityPrize?: string;
 };
 export const finN = (f: Facts) => f.finalists ?? f.codes.length * f.top;
 export const VW = 320, VH = 180;
@@ -27,7 +34,8 @@ export const INK = '#f4f4f2', BLUE = '#4d6bff', ORANGE = '#ff7a1a', GREEN = '#3e
 /* from: when a step was jumped to, the moment of the day the jump left (t, 0 to 3); the act's opening move starts
    there instead of at the end of the act before it */
 /* small: the tube is drawn small (under 480px wide: the sheet, a phone), so its words are fewer and larger */
-export type X = { pen: Pen; cfg: ScopeCfg; f: Facts; boost: number; frame: number; ph: number; later?: (() => void)[]; from?: number; small?: boolean };
+/* press: a press on a step in the line direction (line.ts), in flight; mo: the site's motion values it plays to */
+export type X = { pen: Pen; cfg: ScopeCfg; f: Facts; boost: number; frame: number; ph: number; later?: (() => void)[]; from?: number; small?: boolean; press?: Press; mo?: Partial<LineMo> };
 
 /* the accent: green by our rule (now, the leader, the cut, the pick, you); the lab can still show the old orange */
 export const acc = (x: X) => (x.cfg.accent === 'orange' ? ORANGE : GREEN);

@@ -15,7 +15,7 @@ export const BELOW = 'relative mx-(--m) rule-t';
 export function MastheadMark({ href, label }: { href: string; label: string }) {
   return (
     <a className="mh-mark inline-flex min-h-11 items-center gap-2 whitespace-nowrap text-lg tracking-snug" href={href} aria-label={label}>
-      <SupabaseMark /><span className="font-semibold">supabase <b className="font-regular text-ink-2 phone:hidden">hackday</b></span>
+      <SupabaseMark /><span className="font-semibold">supabase <b className="font-regular text-ink-2 phone:hidden">builder day</b></span>
     </a>
   );
 }

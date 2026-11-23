@@ -26,7 +26,7 @@ export function CityMasthead() {
   const onVote = (e: MouseEvent) => { e.preventDefault(); const f = mainRef.current?.querySelector<HTMLElement>('.cl-sheet a[data-row]'); if (f) { f.focus(); curRef.current = 0; } };
   return (
     <header className={clsx(MH, MH_BAND, 'cl-mh')}>
-      <MastheadMark href={homeHref(W, '', L)} label="Supabase Hackday, the whole day" />
+      <MastheadMark href={homeHref(W, '', L)} label={EVENT.name + ', the whole day'} />
       <nav className="mini grid h-11 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 tablet:grid-cols-[minmax(0,1fr)]" data-style={c.mini || undefined} aria-label="The whole day">
         <a className="mini-home grid h-11 content-center tablet:hidden" href={homeHref(W, '', L)}><span className="type-label text-ink-2">The day</span><span className="mini-v text-xs leading-[1.3] whitespace-nowrap text-ink tabular-nums">{EVENT.date}</span></a>
         <span className="mini-plot relative h-10">

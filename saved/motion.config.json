@@ -19,5 +19,12 @@
   "durJump": 700,
   "slow": 1,
   "durDot": 360,
-  "durTurn": 420
+  "durTurn": 420,
+  "tourTurn": 9000,
+  "tourHold": 3500,
+  "pickHold": 1800,
+  "durFlight": 1100,
+  "durCross": 400,
+  "durAirReveal": 1600,
+  "durAirPrint": 600
 }

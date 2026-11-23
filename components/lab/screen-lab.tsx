@@ -43,7 +43,7 @@ export function ScreenLab({ saved, page: page0, bare }: { saved: ScreenCfg; page
     const h1 = doc.querySelector('h1'); if (!h1) return;
     if (!g) { g = doc.createElement('span'); g.id = 'sk-lens'; g.setAttribute('data-globe', ''); g.setAttribute('aria-hidden', 'true'); doc.body.appendChild(g); }
     const r = h1.getBoundingClientRect(), win = doc.defaultView!, s = Math.min(64, Math.max(40, r.height));
-    const [lat, lon] = PLACE[doc.location.pathname.split('/')[2] ?? 'berlin'] ?? PLACE.berlin;
+    const [lat, lon] = PLACE[doc.location.pathname.split('/')[2] ?? 'london'] ?? PLACE.london;
     g.dataset.lat = String(lat); g.dataset.lon = String(lon);
     Object.assign(g.style, { position: 'absolute', left: r.right + win.scrollX + 20 + 'px', top: r.top + win.scrollY + r.height / 2 - s / 2 + 'px', width: s + 'px', height: s + 'px', pointerEvents: 'none' });
     if (!globes.current) globes.current = mountGlobes(doc);

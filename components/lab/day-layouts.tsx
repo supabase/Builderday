@@ -3,10 +3,12 @@ import type { CSSProperties } from 'react';
 import { clamp, hhmm, r2, tz } from '@/lib/format';
 import { cityHref, localSpan, slotText, view, type HomeCfg, type HomeCity, type HomeWorld } from '@/lib/home';
 import { useDay } from '@/components/home/day-context';
+import { CODE } from '@/lib/places';
 import { HomeMasthead } from '@/components/home/home-masthead';
 import { Axis, Join, NameLink, PhoneNow, Ruler, Slot, Trunk } from '@/components/home/timetable';
 import { Picture } from '@/components/pictures/picture';
 import { CitySeal, MergedSeal } from '@/components/seal/seal-config';
+import { CITY_WORD } from '@/lib/day-data';
 
 /* The home's layouts that were not chosen, kept on the tuning page to compare: Index (the timetable's rows as a
    ruled index), Wall (ten panels and a draw), Dial (the day as a 24-hour ring). They share the home's model. */
@@ -27,7 +29,7 @@ function Index({ compact }: { compact?: boolean }) {
   return (
     <>
       {compact ? null : <HomeMasthead cls="mh-poster" />}
-      <section className={'ix' + (compact ? ' ix-compact' : '')} aria-label="The ten cities, east to west">
+      <section className={'ix' + (compact ? ' ix-compact' : '')} aria-label={`The ${CITY_WORD} cities, east to west`}>
         <Axis V={V} W={W} cls="ix-axis" />
         <ol className="rows">
           {W.cs.map((x) => (
@@ -49,7 +51,7 @@ function Wall() {
   return (
     <>
       <HomeMasthead cls="mh-band" />
-      <section className="wl" aria-label="The ten cities, east to west">
+      <section className="wl" aria-label={`The ${CITY_WORD} cities, east to west`}>
         <ol className="wl-grid">
           {W.cs.map((x) => {
             const loc = W.now + x.city.offset, lm = ((loc % 1440) + 1440) % 1440, rise = x.city.rise, set = x.city.set, s = Math.max(1, c.soft / 2);
@@ -78,7 +80,6 @@ function Wall() {
   );
 }
 
-const CODE: Record<string, string> = { sydney: 'SYD', tokyo: 'TYO', singapore: 'SIN', bengaluru: 'BLR', berlin: 'BER', lagos: 'LOS', london: 'LON', 'sao-paulo': 'SAO', 'new-york': 'NYC', 'san-francisco': 'SFO' };
 function Dial() {
   const { cfg: c, W } = useDay(), S = W.S, A = (m: number) => (m / 1440) * 360 - 90;
   const Pt = (r: number, m: number): [number, number] => { const a = A(m) * Math.PI / 180; return [r2(Math.cos(a) * r), r2(Math.sin(a) * r)]; };

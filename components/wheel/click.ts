@@ -61,11 +61,13 @@ function note(ctx: AudioContext, { type, from, to = from, delay = 0, duration, g
   osc.connect(soft).connect(amp).connect(ctx.destination); osc.start(at); osc.stop(at + duration + 0.02);
 }
 
-/* open goes up, nearing capacity is one note, and the waiting list goes down, lower and duller */
-export type WheelStatus = 'open' | 'nearing' | 'full';
+/* open goes up, nearing capacity is one note, the waiting list goes down, lower and duller, and not open yet is one
+   short quiet note */
+export type WheelStatus = 'open' | 'nearing' | 'full' | 'soon';
 const NOTES: Record<WheelStatus, Note[]> = {
   open: [{ type: 'triangle', from: 880, duration: 0.09, gain: 0.3 }, { type: 'triangle', from: 1320, delay: 0.08, duration: 0.16, gain: 0.3 }],
   nearing: [{ type: 'triangle', from: 990, to: 960, duration: 0.2, gain: 0.3 }],
+  soon: [{ type: 'triangle', from: 660, duration: 0.12, gain: 0.18 }],
   full: [{ type: 'square', from: 330, duration: 0.1, gain: 0.12 }, { type: 'square', from: 247, to: 233, delay: 0.1, duration: 0.2, gain: 0.12 }],
 };
 export function settle(status: WheelStatus) {

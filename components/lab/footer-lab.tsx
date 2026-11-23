@@ -32,7 +32,7 @@ export function FooterLab({ saved, home, city, parts, q, nowMs }: {
   const [cfg, setCfg] = useState<FootCfg>(() => clampFoot({ ...saved, ...(q.dir && FOOT_CHOICES.dir.includes(q.dir) ? { dir: q.dir as FootCfg['dir'] } : {}) }));
   const [view, setView] = useState<View>(() => {
     const m = q.moment ? SHORT[q.moment] ?? q.moment : 'mid';
-    return { page: q.page === 'city' || q.page === 'sheet' ? q.page : 'home', city: CITIES.some((c) => c.id === q.city) ? q.city! : 'berlin', moment: MOMENTS.includes(m) ? m : 'mid' };
+    return { page: q.page === 'city' || q.page === 'sheet' ? q.page : 'home', city: CITIES.some((c) => c.id === q.city) ? q.city! : 'london', moment: MOMENTS.includes(m) ? m : 'mid' };
   });
   const set = useCallback((k: string, v: unknown) => {
     if (k === 'page' || k === 'city' || k === 'moment') setView((w) => ({ ...w, [k]: String(v) }));

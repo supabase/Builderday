@@ -1,0 +1,23 @@
+/* the pick's prize with the text globe: the amount and the globe on one canvas, a globe of dots per city under it */
+.pt { display: grid; gap: 14px; min-width: 0; }
+.pt-stage { position: relative; width: 100%; aspect-ratio: 3 / 1; }
+.pt-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.pt-row { display: flex; flex-wrap: wrap; gap: 10px 12px; margin: 0; padding: 0; list-style: none; }
+.pt-row li { display: grid; justify-items: center; gap: 4px; font: 500 11px/1 var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.04em; color: var(--ex-muted, rgb(232 232 230 / 0.62)); }
+.pt-dot { display: block; width: 36px; height: 36px; }
+@media (max-width: 640px) { .pt-dot { width: 32px; height: 32px; } }
+/* the lens on a narrow column: the globe hangs below the amount, so the stage is taller (prize-text.tsx reads the
+   same 560 px) */
+.pt { container-type: inline-size; }
+@container (max-width: 559px) { .pt[data-prize='lens'] .pt-stage { aspect-ratio: 5 / 3; } .pt[data-prize='lens'][data-phone='none'] .pt-stage { aspect-ratio: 4 / 1; }
+  .pt[data-prize='lens'][data-phone='lens'] .pt-stage { aspect-ratio: 3 / 1; } }
+/* the lens kept on a phone: under 330 px (PRIZE_LENS_MIN) the globe goes and the amount stands alone */
+@container (max-width: 329px) { .pt[data-prize='lens'][data-phone='lens'] .pt-stage { aspect-ratio: 4 / 1; } }
+
+/* the one moment (the preview page): waiting off screen the small globes and their codes are not there; in view the
+   globes light left to right and the codes are written, each a cut a step apart (fold config: --pf-prize-g, -c) */
+.pt[data-pt='wait'] .pt-row li > * { opacity: 0; }
+.pt[data-pt='in'] .pt-dot { animation: pt-cut 0s linear calc(var(--i, 0) * var(--pf-prize-g, 40ms)) backwards; }
+.pt[data-pt='in'] .pt-row li > span:last-child { animation: pt-cut 0s linear calc(var(--pf-prize-ms, 600ms) * 0.4 + var(--i, 0) * var(--pf-prize-c, 25ms)) backwards; }
+@keyframes pt-cut { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .pt[data-pt] .pt-row li > * { opacity: 1; animation: none; } }

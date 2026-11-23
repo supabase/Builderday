@@ -1,0 +1,22 @@
+{
+  "dir": "tube",
+  "lines": 0.26,
+  "pitch": 3,
+  "fringe": 1.6,
+  "grain": 0.035,
+  "safe": 0.05,
+  "ink2": 0.76,
+  "beam": 1.7,
+  "bright": 1,
+  "enterMs": 420,
+  "drawMs": 640,
+  "foldMs": 1100,
+  "lineMs": 1400,
+  "glideMs": 700,
+  "spinMs": 15000,
+  "tick": 10,
+  "talkMin": 2,
+  "arrivals": 5,
+  "rows": 10,
+  "sound": 0
+}

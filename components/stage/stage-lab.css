@@ -1,0 +1,16 @@
+/* the stage lab: the wall and the phone side by side on the site's ground, the knob panel on the right */
+.sl { min-height: 100vh; padding: 24px 20px 64px; background: #0d0e0e; color: #e8e8e6; font-family: var(--font-geist), sans-serif; }
+html:not(.lab-closed) .sl { padding-right: calc(300px + 36px); }
+.sl-h { max-width: 1100px; margin-bottom: 20px; display: grid; gap: 6px; }
+.sl-h h1 { margin: 0; font-size: 20px; font-weight: 500; }
+.sl-h p { margin: 0; color: #a3a39f; font-size: 14px; line-height: 1.45; }
+.sl-note code { font-family: var(--font-geist-mono), monospace; font-size: 13px; color: #e8e8e6; }
+.sl-room { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 24px; }
+.sl-wall { flex: 1 1 560px; min-width: 0; border: 1px solid #2a2b2b; }
+.sl-phone { flex: none; width: 390px; height: 844px; max-width: 100%; border: 1px solid #2a2b2b; }
+/* one side alone: the wall letterboxed in the window (as on a venue screen), or the remote filling a phone */
+:root:has(.sl-only) { scrollbar-gutter: auto; overflow: hidden; }
+.sl-only { position: fixed; inset: 0; display: grid; place-items: center; background: #000; }
+.sl-only > .sw { width: min(100%, calc(100dvh * 16 / 9)); }
+.sl-only-rm { display: block; }
+.sl-only-rm > .rm { height: 100dvh; }

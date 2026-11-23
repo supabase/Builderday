@@ -1,0 +1,87 @@
+/* The remote, in the site's own look: the wheel's black, white type, square keys with hairline edges, green only for
+   the main action (Start building, the first Spin) and for "Screen connected". Everything a thumb presses is 52px or
+   taller, inputs and labels 16px or larger, the keys never move under a press (they darken). The remote fills its
+   frame: the whole screen on a phone, a 390 by 844 frame in the lab. Prefix rm-. */
+
+.rm {
+  --rg: #0c0d0d; --ri: #f4f4f2; --ri2: #b3b3ae; --rl: #3a3b3b; --rk: #161717; --rp: #3a3b3b; --rgreen: #3ecf8e;
+  position: relative; display: flex; flex-direction: column; gap: 8px; height: 100%; min-height: 0; overflow: hidden;
+  padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+  background: var(--rg); color: var(--ri); font: 500 16px/1.3 var(--font-sans); -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation; user-select: none; -webkit-user-select: none;
+}
+.rm * { box-sizing: border-box; }
+.rm p, .rm h1, .rm ol { margin: 0; padding: 0; }
+.rm ol { list-style: none; }
+.rm-main { display: contents; }
+.rm-num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+.rm-status { display: flex; align-items: center; gap: 8px; min-height: 24px; color: var(--ri2); font-size: 15px; }
+.rm-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ri2); flex: none; }
+.rm[data-screens] .rm-dot { background: var(--rgreen); }
+/* no wall is showing the scene: said in the ink, with a hollow mark, so it is not missed */
+.rm[data-alone] .rm-status { color: var(--ri); }
+.rm[data-alone] .rm-dot { background: transparent; border: 1.5px solid var(--ri); }
+.rm[data-link="reconnecting"] .rm-status, .rm[data-link="connecting"] .rm-status, .rm[data-link="off"] .rm-status { color: var(--ri); }
+.rm[data-link="reconnecting"] .rm-dot, .rm[data-link="connecting"] .rm-dot, .rm[data-link="off"] .rm-dot { background: transparent; border: 1.5px solid var(--ri); }
+
+.rm-top { display: grid; gap: 4px; padding-bottom: 8px; border-bottom: 1px solid var(--rl); }
+.rm-city { display: flex; justify-content: space-between; gap: 12px; color: var(--ri2); }
+.rm-scene { font-size: 26px; line-height: 1.12; letter-spacing: -0.015em; font-weight: 500; text-wrap: balance; }
+.rm-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--ri2); font-size: 15px; }
+.rm-flag { color: var(--ri); }
+.rm-next { color: var(--ri2); }
+.rm-next b { color: var(--ri); font-weight: 500; }
+.rm-notes { flex: 0 1 auto; min-height: 4.2em; overflow: auto; color: var(--ri2); font-size: 16px; line-height: 1.4; overscroll-behavior: contain; }
+
+/* keys: square, a hairline edge, darker when pressed; the edge brightens on focus from a keyboard */
+/* the reset has no weight, so each key's own size and colour win */
+.rm :where(button) { font: inherit; color: inherit; cursor: pointer; border-radius: 0; touch-action: manipulation; }
+.rm-k, .rm-back, .rm-nextk, .rm-list li button {
+  border: 1px solid var(--rl); background: var(--rk); color: var(--ri);
+  transition: background-color var(--dur-press) var(--ease-out), border-color var(--dur-press) var(--ease-out);
+}
+.rm-k { min-height: 52px; padding: 6px 10px; font-size: 16px; line-height: 1.15; text-align: center; }
+.rm-k[aria-pressed="true"] { background: var(--ri); color: var(--rg); border-color: var(--ri); }
+.rm-k[data-pri] { border-color: var(--rgreen); color: var(--rgreen); }
+.rm :is(.rm-k, .rm-back, .rm-nextk, .rm-list li button):active:not(:disabled) { background: var(--rp); }
+.rm .rm-k[aria-pressed="true"]:active:not(:disabled) { background: #d8d8d4; }
+.rm button:focus-visible { outline: 2px solid var(--ri); outline-offset: -4px; }
+.rm .rm-k[aria-pressed="true"]:focus-visible { outline-color: var(--rg); }
+.rm button:disabled { color: #6f706d; border-color: #2a2b2b; cursor: default; }
+.rm-ctl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; flex: none; }
+.rm-util { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; flex: none; }
+.rm-why { min-height: 0; color: var(--ri); font-size: 15px; flex: none; }
+.rm-why, .rm-why:empty { min-height: 1.3em; }
+
+/* Back above, smaller; Next is the lower part of the screen */
+.rm-back { flex: none; min-height: 60px; font-size: 18px; }
+.rm-nextk { flex: 1 1 0; min-height: 96px; margin-top: 16px; display: grid; align-content: center; justify-items: center; gap: 6px; padding: 12px; border-color: var(--ri); }
+.rm-nextk-l { font-size: 40px; letter-spacing: -0.02em; line-height: 1; }
+.rm-nextk-w { font-size: 16px; color: var(--ri2); text-align: center; text-wrap: balance; max-width: 30ch; }
+.rm-nextk:disabled .rm-nextk-w { color: inherit; }
+
+/* the one question: Start building, Close voting. It covers the keys, so nothing else can be pressed by mistake. */
+.rm-ask { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; gap: 8px; padding: inherit; background: var(--rg); }
+.rm-ask-q { flex: 1 1 auto; display: flex; align-items: center; font-size: 24px; line-height: 1.25; letter-spacing: -0.01em; text-wrap: pretty; }
+.rm-ask-go { min-height: 72px; border-color: var(--rgreen); color: var(--rgreen); font-size: 22px; }
+.rm-ask-no { margin-top: 24px; }
+
+/* the list of scenes, to jump */
+.rm-list { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; gap: 8px; padding: inherit; background: var(--rg); }
+.rm-list ol { flex: 1 1 auto; min-height: 0; overflow: auto; display: grid; align-content: start; gap: 4px; overscroll-behavior: contain; }
+.rm-list li button { width: 100%; min-height: 52px; display: flex; align-items: center; gap: 14px; padding: 0 14px; text-align: left; font-size: 17px; }
+.rm-list li button .rm-num { min-width: 2ch; text-align: right; color: var(--ri2); }
+.rm-list li button[aria-current] { border-color: var(--ri); }
+
+/* a short screen (a small phone with the browser's bars showing): Next and Back give up height, the notes go first */
+@media (max-height: 600px) {
+  .rm { gap: 4px; }
+  .rm-notes { min-height: 0; }
+  .rm-scene { font-size: 22px; }
+  .rm-back { min-height: 52px; }
+  .rm-nextk { min-height: 80px; margin-top: 8px; }
+  .rm-nextk-l { font-size: 32px; }
+}
+
+@media (prefers-reduced-motion: reduce) { .rm button { transition: none; } }

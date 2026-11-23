@@ -64,9 +64,12 @@ export function renderNeo(p: CanvasRenderingContext2D, w: number, h: number, c: 
   };
 
   if (c.mode === 'stack') {
-    /* ten closed laptops on a shelf, the first city on top. The pitch never lets two labels touch */
-    const labW = c.label * 3.2, W = Math.max(40, Math.min(w * c.width, w - labW - 28)), th = W * c.thick, D = W * c.depth * 0.5;
-    const pitch = Math.max(th + th * c.gap, c.label + 3), total = pitch * 9 + th + D, y0 = Math.max(4, (h - total) / 2) + D;
+    /* a closed laptop a city on a shelf, the first city on top. The pitch never lets two labels touch; with many cities in
+       a short canvas the labels are set smaller (not under 7 px) so the stack fits */
+    const n = Math.max(1, codes.length), lab0 = c.label * 3.2, W0 = Math.max(40, Math.min(w * c.width, w - lab0 - 28));
+    const lab = Math.min(c.label, Math.max(7, (h - 8 - W0 * c.thick - W0 * c.depth * 0.5) / Math.max(1, n - 1) - 3));
+    const labW = lab * 3.2, W = Math.max(40, Math.min(w * c.width, w - labW - 28)), th = W * c.thick, D = W * c.depth * 0.5;
+    const pitch = Math.min(Math.max(th + th * c.gap, lab + 3), Math.max(lab + 3, (h - 8 - th - D) / Math.max(1, n - 1))), total = pitch * (n - 1) + th + D, y0 = Math.max(4, (h - total) / 2) + D;
     const offs = codes.map(() => (r() - 0.5) * 2 * c.jitter * W * 0.03), reach = Math.max(0, ...offs), cx = (w - labW - 14 - reach) / 2, inset = W * c.persp;
     /* the codes stand just right of the stack, in one column */
     const lx = cx + W / 2 + reach + 14;
@@ -82,7 +85,7 @@ export function renderNeo(p: CanvasRenderingContext2D, w: number, h: number, c: 
       p.beginPath(); p.ellipse(x, yf, W * 0.045, th * 0.32, 0, 0, Math.PI); p.fill();
       rim(l, yf + 0.5, rt, yf + 0.5, i ? 0.6 : 0.95);
       rim(l + 0.5, yf, l + 0.5, yf + th, 0.4);
-      const code = codes[i]; label(code, lx, yf + th / 2, won.has(code) ? GREEN : i ? GREY : INK);
+      const code = codes[i]; label(code, lx, yf + th / 2, won.has(code) ? GREEN : i ? GREY : INK, 'left', lab);
     }
     return;
   }

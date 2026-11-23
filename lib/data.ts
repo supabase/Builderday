@@ -19,6 +19,8 @@ export type Project = {
   gen?: boolean;
   /* a real screenshot URL, once there is one */
   image?: string;
+  /* a live entry's stored slug: unique in its city, so two entries with the same name keep their own addresses */
+  slug?: string;
 };
 
 export type PastEvent = { name: string; date: string; format: string; submissions: number };

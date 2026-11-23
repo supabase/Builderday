@@ -8,16 +8,17 @@ import { LabPanel, togglePanel, useLabSave } from '@/components/admin/kit';
 import { HowItWorks, PrizeBlock } from '@/components/day/explain';
 import { GetReady } from '@/components/day/get-ready';
 import { lumaHref } from '@/lib/luma';
-import { countdown, nearestCity, type OurFact, type OurWheel } from './facts';
+import { countdown, nearestCity, type Here, type OurFact, type OurWheel } from './facts';
 import './preview.css';
 import '@/components/day/explain.css';
+import { CITY_WORD, CITY_WORD_CAP } from '@/lib/day-data';
 
 /* The preview home (/preview), until the day: the city wheel with our facts, opening on the visitor's nearest city by
    time zone, each city's cell with its countdown and a link to register on Luma; "How it works" opens the sheet with
    the day, the tubes and the prizes. The look is saved/wheel.config.json (tuned at /lab/wheel); ?admin shows the
    wheel's knobs, and Save writes the file on the dev server (copies it anywhere else). */
 
-export const CAPTION = 'The ten cities, from the first to start to the last';
+export const CAPTION = `The ${CITY_WORD} cities, from the first to start to the last`;
 
 /* the clock, in 30 second steps; the server has none, so the countdown cell appears after hydration */
 const tick = (f: () => void) => { const t = window.setInterval(f, 30000); return () => window.clearInterval(t); };
@@ -26,9 +27,9 @@ const never = () => () => {};
 const useVisitorOffset = () => useSyncExternalStore(never, () => -new Date().getTimezoneOffset(), () => null);
 
 /* our cities with their countdowns, and the one to open on */
-export function useOurCities(ours: OurWheel, forced: number | null): { cities: (OurFact & { soon?: string })[]; start: number } {
+export function useOurCities(ours: OurWheel, forced: number | null, here: Here | null = null): { cities: (OurFact & { soon?: string })[]; start: number } {
   const now = useNow(), off = useVisitorOffset();
-  const start = forced ?? (off === null ? 0 : nearestCity(ours.cities, off));
+  const start = forced ?? (off === null ? 0 : nearestCity(ours.cities, off, here));
   const cities = useMemo(() => ours.cities.map((c) => ({ ...c, soon: now ? countdown(c, now) : undefined })), [ours, now]);
   return { cities, start };
 }
@@ -47,7 +48,7 @@ export function SheetWheel({ cfg, noGl, mark, engineRef, ours, forced }: SheetPr
   const f = { buildMin: ours.buildMin, voteAfter: ours.voteAfter, startHour: ours.startHour, date: ours.date };
   return (
     <Wheel cities={reg} cfg={cfg} noGl={noGl} mark={mark} engineRef={engineRef} start={start} date={ours.date} caption={CAPTION}>
-      <button type="button" className="wd-how" onClick={() => sheet.current?.showModal()}>How it works</button>
+      <button type="button" className="wd-how" onClick={() => { sheet.current?.showModal(); document.getElementById('wd-how-h')?.scrollIntoView({ block: 'start' }); }}>How it works</button>
       {/* in the wheel, so it has the wheel's faces; the wheel ignores input from inside it */}
       <dialog ref={sheet} className="wd-sheet wd-sheet2" aria-labelledby="wd-sheet-h" data-wheel-skip onClick={(e) => { if (e.target === e.currentTarget) e.currentTarget.close(); }}>
         <div className="wd-sheet-in">
@@ -55,7 +56,7 @@ export function SheetWheel({ cfg, noGl, mark, engineRef, ours, forced }: SheetPr
             <h2 id="wd-sheet-h">The day</h2>
             <button type="button" className="wd-close" onClick={() => sheet.current?.close()}>Close</button>
           </div>
-          <p className="wd-lede">Ten cities, one day: {ours.date}. Each city starts at its own local time, builds for {ours.buildMin} minutes, and votes until {ours.voteAfter} minutes after.</p>
+          <p className="wd-lede">{CITY_WORD_CAP} cities, one day: {ours.date}. Each city starts at its own local time, builds for {ours.buildMin} minutes, and votes until {ours.voteAfter} minutes after.</p>
           <p className="wd-reg"><a className="ex-reg" href={lumaHref()}>Register on Luma<span aria-hidden="true">→</span></a></p>
           <GetReady compact id="wd-ready" level={3} register={false} />
           <HowItWorks f={f} compact id="wd-how" level={3} />
@@ -80,7 +81,7 @@ export function Preview({ saved, ours, q }: { saved: WheelCfg; ours: OurWheel; q
     document.addEventListener('keydown', on); return () => document.removeEventListener('keydown', on);
   }, [admin, doSave]);
   const out = (k: string) => { const v = cfg[k as keyof WheelCfg]; return typeof v === 'number' ? (WHEEL_INT.has(k) ? String(v) : String(+v.toFixed(3))) : String(v); };
-  const forced = q.city !== undefined && q.city !== '' ? Math.max(0, Math.min(9, Math.round(Number(q.city)) || 0)) : null;
+  const forced = q.city !== undefined && q.city !== '' ? Math.max(0, Math.min(ours.cities.length - 1, Math.round(Number(q.city)) || 0)) : null;
   return (
     <>
       <SheetWheel cfg={cfg} noGl={q.gl === '0'} mark={cfg.mark} engineRef={eng} ours={ours} forced={forced} />

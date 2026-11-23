@@ -59,7 +59,7 @@ function ShareBody({ p, linkRef }: { p: ShareProject; linkRef: React.RefObject<H
   /* the card as a PNG, which every network takes: the SVG drawn onto a canvas at twice its size */
   const download = () => {
     if (!cardURL) return;
-    const name = 'supabase-hackday-' + (p.slug || slugOf(p.name)), img = new Image();
+    const name = 'supabase-builder-day-' + (p.slug || slugOf(p.name)), img = new Image();
     const save = (href: string, ext: string) => { const a = document.createElement('a'); a.href = href; a.download = name + ext; document.body.appendChild(a); a.click(); a.remove(); };
     img.onload = () => {
       const c = document.createElement('canvas'); c.width = 2400; c.height = 1260; const x = c.getContext('2d');

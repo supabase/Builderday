@@ -1,17 +1,21 @@
 'use client';
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { CITIES, EPOCH, sched, tOf } from '@/lib/day-data';
-import { projectPath, slugOf, type CityWorld, type Row, type Votes } from '@/lib/city';
+import { slugOf, type CityWorld, type Row, type Votes } from '@/lib/city';
 import { realMinute } from '@/lib/clock';
 import { hhmm } from '@/lib/format';
 import { clampParts, partsVars, type PartsCfg } from '@/components/board/config';
 import { HeaderRow } from '@/components/board/header-row';
+import { AccountCell } from '@/components/account/account';
 import { Announce } from '@/components/board/announce';
-import { ScreenKey, SoundKey, step } from '@/components/board/prefs';
+import { SoundKey, step } from '@/components/board/prefs';
 import { useTick } from '@/components/board/clock';
 import { cityAt, cityWord, homeAt, wireItems, CODE } from '@/components/board/day-model';
 import { useForms } from '@/components/forms/forms-provider';
 import { store, useVotes } from '@/components/forms/store';
+import { YouLine } from '@/components/forms/you-line';
+import { liveCityWorld, liveHome, useSnapshots } from '@/lib/source';
+import type { CitySnap, DaySnap } from '@/lib/event/snapshot';
 import { LabPanel, LayoutPicker, togglePanel, useLabSave, type Group } from '@/components/admin/kit';
 import { measure, type Contrast } from '@/components/admin/contrast';
 import screenCfg from '@/saved/screen.config.json';
@@ -33,6 +37,15 @@ import './rank-pictures.css';
 import './rank-view.css';
 import './explain.css';
 import '@/components/forms/forms.css';
+import { AirCity, AIR_CITY_CHOICES, AIR_CITY_DEF, type AirCityCfg } from '@/components/air/city';
+import { clampAir, type AirParts } from '@/components/air/devices';
+import { clampWheel } from '@/components/wheel/config';
+import { routes, projectSlugIn } from '@/lib/routes';
+import wheelSaved from '@/saved/wheel.config.json';
+import partsSaved from '@/saved/parts.config.json';
+
+const WHEEL = clampWheel(wheelSaved);
+const AIR = clampAir((partsSaved as { air?: Partial<AirParts> }).air);
 
 /* A city's page on the day: the header row, the wire, the opening, the ranking beside the pylon, how it works and the
    prizes, and a project as a sheet over the page. One component for the real page (/city/<id>, and
@@ -44,14 +57,15 @@ import '@/components/forms/forms.css';
    Every number is the city's world at the board's minute, from the same day the home draws. Your votes count at once;
    the order waits for the board's tick. The look comes from saved/day-city.config.json and saved/parts.config.json. */
 
-export type CityDir = 'base' | 'board' | 'scope' | 'wall';
-export type DayCityCfg = { dir: CityDir; pylon: number; spark: number; rows: number; how: number } & PicCfg;
+export type CityDir = 'base' | 'mix' | 'facing' | 'board' | 'scope' | 'wall';
+export type DayCityCfg = { dir: CityDir; pylon: number; spark: number; rows: number; how: number } & PicCfg & Partial<Omit<AirCityCfg, 'first' | 'rank'>>;
 type State = DayCityCfg & { city: string; t: number; live: number; speed: number; worst: number };
-const DIRS_ALL: [string, string][] = [['base', 'Baseline'], ['board', 'Board and pylon'], ['scope', 'Scope'], ['wall', 'Wall']];
-const MOMENTS: [string, string][] = [['before', 'Before'], ['build', 'Building'], ['vote', 'Last votes'], ['last', 'Last minutes'], ['closed', 'Closed'], ['picked', 'Picked']];
+const DIRS_ALL: [string, string][] = [['base', 'Baseline'], ['mix', 'Board, pylon and facing'], ['facing', 'Facing'], ['board', 'Board and pylon'], ['scope', 'Scope'], ['wall', 'Wall']];
+const MOMENTS: [string, string][] = [['before', 'Before'], ['build', 'Building'], ['hidden', 'Votes hidden'], ['vote', 'Last votes'], ['last', 'Last minutes'], ['reveal', 'Reveal'], ['closed', 'Closed'], ['picked', 'Picked']];
 const momentsOf = (city: string, worst: number): [string, string, number][] => {
   const d = dayOf(worst), S = sched(d), x = S.cs[CITIES.findIndex((c) => c.id === city)];
-  const at: Record<string, number> = { before: x.start - 30, build: x.start + d.buildMin * 0.45, vote: x.buildEnd + d.voteAfter * 0.4, last: x.end - 2, closed: x.end + Math.max(10, (S.pickAt - x.end) / 3), picked: S.pickAt + 10 };
+  /* hidden: past minute 70; reveal: five seconds before voting closes, so a running clock plays the reveal */
+  const at: Record<string, number> = { before: x.start - 30, build: x.start + d.buildMin * 0.45, hidden: x.start + Math.min(d.buildMin - 5, 80), vote: x.buildEnd + d.voteAfter * 0.4, last: x.end - 2, reveal: x.end - 5 / 60, closed: x.end + Math.max(10, (S.pickAt - x.end) / 3), picked: S.pickAt + 10 };
   return MOMENTS.map(([id, label]) => [id, label, at[id]]);
 };
 const rowBySlug = (W: CityWorld, slug: string | null | undefined): Row | null => (slug ? W.rows.find((r) => slugOf(r.p) === slug) ?? null : null);
@@ -59,24 +73,29 @@ const at = (min: number) => new Date(EPOCH + min * 60000);
 
 /* page: the real page, with the server's time and the city; slug: the project open in the address; base: the lab's
    baseline at a t on its own scale */
-export function DayCity({ saved, parts, q, page, base, foot }: {
+export function DayCity({ saved, parts, q, page, base, foot, live }: {
   saved: Partial<DayCityCfg>; parts: Partial<PartsCfg>; q: Record<string, string | undefined>;
+  /* the real page with a backend: the first snapshots, read by the server, so the page arrives with real numbers;
+     the page then reads them again every few seconds (lib/source.ts). Absent: the seeded day, as in the labs. */
+  live?: { day: DaySnap | null; city: CitySnap | null };
   page?: { nowMs: number; city: string; slug?: string }; base?: (city: string, t: number, worst: number) => ReactNode;
   /* the footer's look: saved/footer.config.json, or the footer lab's knobs */
   foot?: Partial<FootCfg>;
 }) {
   const P = clampParts(parts), real = !!page, admin = !real || q.admin !== undefined;
   const DIRS = real ? DIRS_ALL.slice(1) : DIRS_ALL;
-  const CHOICES: Record<string, string[]> = { dir: DIRS.map(([d]) => d), city: CITIES.map((c) => c.id), pics: PIC_MODES.map(([m]) => m) };
-  const LABELS: Record<string, string> = { ...Object.fromEntries(DIRS_ALL), ...Object.fromEntries(CITIES.map((c) => [c.id, c.name])), ...Object.fromEntries(PIC_MODES) };
+  const CHOICES: Record<string, string[]> = { dir: DIRS.map(([d]) => d), city: CITIES.map((c) => c.id), pics: PIC_MODES.map(([m]) => m), ...AIR_CITY_CHOICES };
+  const LABELS: Record<string, string> = { ...Object.fromEntries(DIRS_ALL), ...Object.fromEntries(CITIES.map((c) => [c.id, c.name])), ...Object.fromEntries(PIC_MODES), hatch: 'Hatch', blocks: 'Block eighths', none: 'None', header: 'In the header', pylon: 'The pylon', equator: 'The equator', rule: 'A rule', decay: 'Decays', on: 'On', off: 'Off', dock: 'Docked', row: 'In its row' };
   const GROUPS: Group[] = [
     { name: real ? 'Time' : 'Time and place', knobs: [...(real ? [] : [{ k: 'city', kind: 'select' as const, label: 'City' }]), { k: 't', kind: 'range', label: 'Time' }, { k: 'live', kind: 'toggle', label: 'Clock runs' }, { k: 'speed', kind: 'range', label: 'Seconds a second' }, { k: 'worst', kind: 'toggle', label: 'Worst content' }] },
-    { name: 'Direction', knobs: [{ k: 'dir', kind: 'select', label: 'Direction' }, { k: 'pylon', kind: 'toggle', label: 'Pylon' }, { k: 'spark', kind: 'toggle', label: 'A spark per board row' }, { k: 'rows', kind: 'range', label: 'Rows before “Show all”' }, { k: 'how', kind: 'toggle', label: 'How it works and the prize block' }] },
+    { name: 'On air (Facing)', knobs: [{ k: 'bars', kind: 'select', label: 'Vote bars' }, { k: 'top', kind: 'select', label: 'Top three' }, { k: 'cut', kind: 'select', label: 'The cut' }, { k: 'trail', kind: 'select', label: 'Trail after a move' }, { k: 'gauge', kind: 'select', label: 'Votes to the final, on 4th' }, { k: 'you', kind: 'select', label: 'Your own row' }, { k: 'rowsFirst', kind: 'range', label: 'Rows before “Print all”' }] },
+    { name: 'Direction', knobs: [{ k: 'dir', kind: 'select', label: 'First screen' }, { k: 'pylon', kind: 'toggle', label: 'Pylon' }, { k: 'spark', kind: 'toggle', label: 'A spark per board row' }, { k: 'rows', kind: 'range', label: 'Rows before “Show all”' }, { k: 'how', kind: 'toggle', label: 'How it works and the prize block' }] },
     { name: 'Pictures', knobs: [{ k: 'pics', kind: 'select', label: 'Pictures' }, { k: 'thumbW', kind: 'range', label: 'Picture width (rows, strip)' }, { k: 'picRows', kind: 'range', label: 'Rows with a picture' }, { k: 'cols', kind: 'range', label: 'Monitors across (multiviewer)' }, { k: 'tally', kind: 'toggle', label: 'Tally lamps' }, { k: 'dim', kind: 'range', label: 'Picture brightness at rest' }] },
   ];
   const [cfg, setCfg] = useState<State>(() => {
-    const c: State = { dir: 'board', pylon: 1, spark: 0, rows: 30, how: 1, ...PIC_DEF, ...saved, ...clampPics(saved), city: page?.city ?? 'berlin', t: 0, live: 1, speed: 1, worst: real ? 0 : 1 };
-    if (!CHOICES.dir.includes(c.dir)) c.dir = 'board';
+    const c: State = { dir: 'mix', pylon: 1, spark: 0, rows: 30, how: 1, ...PIC_DEF, ...AIR_CITY_DEF, ...saved, ...clampPics(saved), city: page?.city ?? 'london', t: 0, live: 1, speed: 1, worst: real ? 0 : 1 };
+    if (!CHOICES.dir.includes(c.dir)) c.dir = 'mix';
+    for (const k of Object.keys(AIR_CITY_CHOICES)) if (q[k] && AIR_CITY_CHOICES[k].includes(q[k]!)) (c as Record<string, unknown>)[k] = q[k];
     if (q.pics && CHOICES.pics.includes(q.pics)) c.pics = q.pics as PicMode;
     if (q.dir && CHOICES.dir.includes(q.dir)) c.dir = q.dir as CityDir;
     if (!real && q.city && CHOICES.city.includes(q.city)) c.city = q.city;
@@ -90,7 +109,8 @@ export function DayCity({ saved, parts, q, page, base, foot }: {
     return c;
   });
   const bare = real ? !admin : q.bare !== undefined || q.panel === '0';
-  const set = (k: string, v: unknown) => setCfg((c) => ({ ...c, [k]: k === 'rows' || k === 'thumbW' || k === 'picRows' || k === 'cols' ? Math.round(Number(v)) : v }));
+  const set = (k: string, v: unknown) => setCfg((c) => ({ ...c, [k]: k === 'rows' || k === 'thumbW' || k === 'picRows' || k === 'cols' || k === 'rowsFirst' ? Math.round(Number(v)) : v }));
+  const [replay, setReplay] = useState(0);
   const day = dayOf(cfg.worst), S = sched(day), i = CITIES.findIndex((c) => c.id === cfg.city);
   const ms = momentsOf(cfg.city, cfg.worst);
   const clock = useLabClock(cfg.t, !!cfg.live, cfg.speed), bm = useTick(clock, cfg.t, P.tick), moved = useRealClock(clock, real, q);
@@ -101,13 +121,20 @@ export function DayCity({ saved, parts, q, page, base, foot }: {
   const forms = useForms(), voteKey = cfg.city + ':' + day.seed, stored = useVotes(voteKey), [local, setLocal] = useState<Votes>({});
   const voted = real ? stored : local;
   const [more, setMore] = useState(false), [reminded, setReminded] = useState(false);
-  const W = cityAt(day, cfg.city, bm, voted), W10 = cityAt(day, cfg.city, bm - 10, voted), H = homeAt(day, bm), hx = H.cs[i], word = cityWord(hx, H, day);
+  /* live: the snapshots; your own press shows at once and until the next snapshot counts it (adj) */
+  const snaps = useSnapshots(!!live, cfg.city), dSnap = snaps.day || live?.day || null, cSnap = snaps.city || live?.city || null;
+  const [presses, setPresses] = useState<Record<string, [number, number]>>({});
+  const adj: Record<string, number> = {};
+  if (cSnap) Object.entries(presses).forEach(([id, [d, t]]) => { if (t > cSnap.at) adj[id] = d; });
+  const homeOf = (m: number) => { const H0 = homeAt(day, m); return live && dSnap ? liveHome(H0, dSnap, m) : H0; };
+  const worldOf = (m: number, v: Votes, H0: ReturnType<typeof homeAt>) => { const W0 = cityAt(day, cfg.city, m, v); return live && cSnap && dSnap ? liveCityWorld(W0, cSnap, H0, m, v, undefined, adj) : W0; };
+  const H = homeOf(bm), W = worldOf(bm, voted, H), W10 = worldOf(bm - 10, voted, homeOf(bm - 10)), hx = H.cs[i], word = cityWord(hx, H, day);
   const vote = (id: number) => {
     if (!W.voting) return;
     if (!real) { setLocal((v) => { const n = { ...v } as Record<string, 1>; if (n[id]) delete n[id]; else n[id] = 1; return n; }); step(P.sound === 'steps'); return; }
     const mine = store.votes(voteKey);
-    if (mine[id]) { const n = { ...mine }; delete n[id]; store.setVotes(voteKey, n); step(P.sound === 'steps'); return; }
-    (forms ? forms.ensureVoter() : Promise.resolve(true)).then((ok) => { if (ok) { store.setVotes(voteKey, { ...store.votes(voteKey), [id]: 1 }); step(P.sound === 'steps'); } });
+    if (mine[id]) { const n = { ...mine }; delete n[id]; setPresses((o) => ({ ...o, [id]: [-1, Date.now()] })); store.setVotes(voteKey, n); step(P.sound === 'steps'); return; }
+    (forms ? forms.ensureVoter() : Promise.resolve(true)).then((ok) => { if (ok) { setPresses((o) => ({ ...o, [id]: [1, Date.now()] })); store.setVotes(voteKey, { ...store.votes(voteKey), [id]: 1 }); step(P.sound === 'steps'); } });
   };
   const remind = () => {
     if (!real || !forms) { setReminded((r) => !r); return; }
@@ -116,23 +143,23 @@ export function DayCity({ saved, parts, q, page, base, foot }: {
   const submit = real && forms ? () => { forms.submit({ city: W.city.id, cityName: W.city.name, deadline: at(W.x.buildEnd), off: W.off }); } : undefined;
 
   /* the open project: on the real page its address is /city/<id>/p/<slug>; opening pushes it, Back and Close close it */
-  const [open, setOpen] = useState<Row | null>(() => (page?.slug ? rowBySlug(cityAt(dayOf(cfg.worst), cfg.city, cfg.t, {}), page.slug) : null));
+  const [open, setOpen] = useState<Row | null>(() => (page?.slug ? rowBySlug(worldOf(cfg.t, {}, homeOf(cfg.t)), page.slug) : null));
   const openRef = useRef(open), pushed = useRef(false), Wref = useRef(W);
   useEffect(() => { openRef.current = open; Wref.current = W; });
   const show = useCallback((r: Row) => {
     setOpen(r);
-    if (real) { window.history.pushState({ hackdayP: 1 }, '', projectPath(Wref.current.city.id, slugOf(r.p)) + window.location.search); pushed.current = true; }
+    if (real) { window.history.pushState({ hackdayP: 1 }, '', routes.project(Wref.current.city.id, slugOf(r.p)) + window.location.search); pushed.current = true; }
   }, [real]);
   const close = useCallback(() => {
     if (!openRef.current) return;
     setOpen(null);
     if (!real) return;
     if (pushed.current) { pushed.current = false; window.history.back(); }
-    else window.history.replaceState(null, '', '/city/' + Wref.current.city.id + window.location.search);
+    else window.history.replaceState(null, '', routes.city(Wref.current.city.id) + window.location.search);
   }, [real]);
   useEffect(() => {
     if (!real) return;
-    const on = () => { const m = window.location.pathname.match(/^\/city\/[^/]+\/p\/([^/]+)/); pushed.current = false; setOpen(m ? rowBySlug(Wref.current, decodeURIComponent(m[1])) : null); };
+    const on = () => { const slug = projectSlugIn(window.location.pathname); pushed.current = false; setOpen(slug ? rowBySlug(Wref.current, slug) : null); };
     window.addEventListener('popstate', on);
     return () => window.removeEventListener('popstate', on);
   }, [real]);
@@ -140,7 +167,7 @@ export function DayCity({ saved, parts, q, page, base, foot }: {
   /* the one Ant and Copple picked, when it is from this city */
   const pk = H.picked && H.final.city.i === i ? { id: H.final.p.id, name: H.final.p.name, place: H.final.place } : null;
   const { save, msg, rail } = useLabSave('day-city', 'lab-day-city-saved');
-  const doSave = useCallback(() => save({ dir: cfg.dir, pylon: cfg.pylon, spark: cfg.spark, rows: cfg.rows, how: cfg.how ? 1 : 0, ...clampPics(cfg) }), [cfg, save]);
+  const doSave = useCallback(() => save({ dir: cfg.dir, pylon: cfg.pylon, spark: cfg.spark, rows: cfg.rows, how: cfg.how ? 1 : 0, ...clampPics(cfg), bars: cfg.bars, top: cfg.top, cut: cfg.cut, trail: cfg.trail, gauge: cfg.gauge, you: cfg.you, rowsFirst: cfg.rowsFirst }), [cfg, save]);
   const [res, setRes] = useState<Contrast | null>(null);
 
   useEffect(() => { if (bare && !real) document.documentElement.classList.add('lab-closed', 'no-lab'); }, [bare, real]);
@@ -162,20 +189,26 @@ export function DayCity({ saved, parts, q, page, base, foot }: {
   const look: CLook = { mark: P.mark, cardBars: P.cardBars, cardPalette: P.cardPalette, cards: P.cards, segSecs: P.segSecs, bugCorner: P.bugCorner, flap };
   let cur = -1; ms.forEach((m, k) => { if (Math.abs(cfg.t - m[2]) < 0.6) cur = k; });
   const out = (k: string) => k === 't' ? hhmm(cfg.t) + ' UTC · ' + hhmm(cfg.t + W.off) + ' local' : k === 'speed' ? cfg.speed + '×' : k === 'thumbW' ? cfg.thumbW + ' px' : k === 'picRows' ? (cfg.picRows >= 60 ? 'all' : String(cfg.picRows)) : k === 'dim' ? Math.round(cfg.dim * 100) + '%' : String((cfg as Record<string, unknown>)[k]);
-  const bounds = { t: [Math.min(S.cs[i].start - 90, Math.floor(cfg.t)), Math.max(S.pickAt + 60, Math.ceil(cfg.t)), 1] as [number, number, number], speed: [1, 120, 1] as [number, number, number], rows: [10, 60, 5] as [number, number, number], ...PIC_BOUNDS };
+  const bounds = { t: [Math.min(S.cs[i].start - 90, Math.floor(cfg.t)), Math.max(S.pickAt + 60, Math.ceil(cfg.t)), 1] as [number, number, number], speed: [1, 120, 1] as [number, number, number], rows: [10, 60, 5] as [number, number, number], rowsFirst: [5, 40, 1] as [number, number, number], ...PIC_BOUNDS };
   const meter = cfg.dir === 'base' ? { text: 'Baseline: today’s Tower on the kit, framed.', bad: false }
     : res ? { text: `Small text: ${res.n} pieces, lowest ${res.min.toFixed(1)}:1, ${res.under} under 7:1 with the lines on${res.under ? ': ' + res.worst.filter((w) => w.ratio < 7).slice(0, 4).map((w) => '“' + w.text.slice(0, 24) + '” ' + w.ratio.toFixed(1)).join(', ') : ''}.`, bad: res.under > 0 } : { text: 'Measuring…', bad: false };
   const pylon = cfg.pylon && cfg.dir !== 'wall' ? <Pylon W={W} W10={W10} hot={hot} setHot={setHot} swatch={view === 'time'} /> : null;
   const rankProps = { W, look, vote, open: show, spark: !!cfg.spark, rows: cfg.rows, more, setMore, pick: pk?.id, pics: clampPics(cfg), view, setView, hot, setHot };
-  const labButtons: [string, () => void, boolean?][] = [['Tokyo: long name', () => setCfg((c) => ({ ...c, city: 'tokyo', worst: 1 }))], ['Lagos: 182', () => setCfg((c) => ({ ...c, city: 'lagos', worst: 1 }))], ['Singapore: none', () => setCfg((c) => ({ ...c, city: 'singapore', worst: 1 }))], ['Save', doSave, true]];
+  const labButtons: [string, () => void, boolean?][] = [['Replay the reveal', () => setReplay((n) => n + 1)], ['San Salvador: long name', () => setCfg((c) => ({ ...c, city: 'san-salvador', worst: 1 }))], ['Rosario: 182', () => setCfg((c) => ({ ...c, city: 'rosario', worst: 1 }))], ['Singapore: none', () => setCfg((c) => ({ ...c, city: 'singapore', worst: 1 }))], ['Save', doSave, true]];
 
   return (
     <>
-      {cfg.dir === 'base' && base ? base(cfg.city, tOf(cfg.t, S), cfg.worst) : (
+      {cfg.dir === 'facing' || cfg.dir === 'mix' ? (
+        <AirCity W={W} W10={W10} H={H} day={day} clock={clock} first={cfg.t} bm={bm} real={real} vote={vote} show={show} open={open} close={close} remind={remind} reminded={reminded} submit={submit}
+          pick={pk} elsewhere={H.picked && !pk ? { name: H.final.p.name, city: H.final.city.name } : null} homeHref={real ? routes.home() + carry(bm) : routes.labHome() + '?m=' + bm.toFixed(2)} href={href}
+          wheel={WHEEL} air={AIR} wire={wireItems(H, 12, i, W.off)} live={!!cfg.live} replay={replay}
+          cfg={{ ...AIR_CITY_DEF, first: cfg.dir === 'mix' ? 'mix' : 'facing', rank: 'print', bars: cfg.bars ?? AIR_CITY_DEF.bars, top: cfg.top ?? AIR_CITY_DEF.top, cut: cfg.cut ?? AIR_CITY_DEF.cut, trail: cfg.trail ?? AIR_CITY_DEF.trail, gauge: cfg.gauge ?? AIR_CITY_DEF.gauge, you: cfg.you ?? AIR_CITY_DEF.you, rowsFirst: cfg.rowsFirst ?? AIR_CITY_DEF.rowsFirst }} />
+      ) : cfg.dir === 'base' && base ? base(cfg.city, tOf(cfg.t, S), cfg.worst) : (
         <>
           <DayScreen />
           <main className="bd dl dc" style={partsVars(P) as CSSProperties} data-face={P.face} data-dir={cfg.dir} data-view={view}>
-            <HeaderRow title={W.city.name} state={word} clock={clock} first={cfg.t} offset={W.off} zone={'Local · ' + CODE[cfg.city]} homeHref={real ? '/' + carry(bm) : '/lab/day-home?m=' + bm.toFixed(2)} right={<span className="hr-keys">{P.sound === 'steps' ? <SoundKey /> : null}<ScreenKey /></span>} />
+            <HeaderRow title={W.city.name} state={word} clock={clock} first={cfg.t} offset={W.off} zone={'Local · ' + CODE[cfg.city]} homeHref={real ? '/' + carry(bm) : '/lab/day-home?m=' + bm.toFixed(2)} right={<><AccountCell here={W.city.id} /><span className="hr-keys">{P.sound === 'steps' ? <SoundKey /> : null}</span></>} />
+            {real ? <YouLine city={W.city.id} cityName={W.city.name} date="10 December" start={hhmm(W.x.start + W.off)} state={W.state} /> : null}
             <Announce items={wireItems(H, 12, i, W.off)} mode={P.announce} dwell={P.dwell} crawl={P.crawl} flap={flap} startPaused={!cfg.live} label={'Announcements in ' + W.city.name} empty={'Nothing yet. ' + W.city.name + ' opens at ' + hhmm(W.x.start + W.off) + ' local.'} />
             <CityHero W={W} hx={hx} mon={cfg.dir !== 'wall'} clock={clock} first={cfg.t} look={look} onRemind={remind} reminded={reminded} onSubmit={submit} pick={pk} elsewhere={H.picked && !pk ? { name: H.final.p.name, city: H.final.city.name } : null} />
             {cfg.dir === 'wall' ? (
@@ -187,7 +220,7 @@ export function DayCity({ saved, parts, q, page, base, foot }: {
             {/* before its doors open, a city page says how to get ready; once building, the submit sheet holds both ways in */}
             {cfg.how || W.state === 'next' ? <div className="dl-ex">
               {W.state === 'next' ? <GetReady id="dc-ready" city={W.city.name} cityId={W.city.id} /> : null}
-              {cfg.how ? <><HowItWorks f={day} id="dc-how" day={dayFinalOf(H)} /><PrizeBlock id="dc-prize" day={dayFinalOf(H)} winner={H.picked ? H.final.p.name + ', ' + H.final.city.name : null} /></> : null}
+              {cfg.how ? <><HowItWorks f={day} id="dc-how" day={{ ...dayFinalOf(H), city: W.city.id }} /><PrizeBlock id="dc-prize" day={dayFinalOf(H)} winner={H.picked ? H.final.p.name + ', ' + H.final.city.name : null} /></> : null}
             </div> : null}
             <ProjectSheet o={open} W={W} look={look} vote={vote} close={close} />
           </main>

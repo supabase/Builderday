@@ -1,4 +1,5 @@
 /* forms.ts: what the sheets check and write, as pure functions. The checks, the share text and the share card. */
+import { EVENT } from '@/lib/day-data';
 
 export const MAX_PIC = 5 * 1024 * 1024;
 export const PIC_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -28,7 +29,7 @@ export const CHECKS: Record<FieldName, (v: string | boolean) => string> = {
   repo: (v) => !String(v).trim() ? 'Add the link to the GitHub repo.' : githubOK(String(v)) ? '' : 'Use the GitHub link to the repo, like https://github.com/you/project.',
   demo: (v) => !String(v).trim() || urlOK(String(v)) ? '' : 'Check the demo link. Use a full address, like https://demo.example.com.',
   video: (v) => !String(v).trim() || urlOK(String(v)) ? '' : 'Check the video link. Use a full address, like https://youtu.be/abc123.',
-  rules: (v) => v ? '' : 'Check the box to confirm you built this during the hackathon.',
+  rules: (v) => v ? '' : 'Check the box to confirm you built this during Builder Day.',
 };
 export function pictureError(f: { type: string; size: number }): string {
   return PIC_TYPES.indexOf(f.type) < 0 ? 'Use a JPEG, PNG or WebP picture.' : f.size > MAX_PIC ? 'That picture is ' + (f.size / 1048576).toFixed(1) + ' MB. Use one under 5 MB.' : '';
@@ -46,8 +47,8 @@ export function projectURL(p: ShareProject): string {
 }
 export function shareText(p: ShareProject, myHandle: string | null): string {
   const me = myHandle && p.handle === myHandle, where = p.cityName || cityLabel(p.city);
-  if (p.rank) return p.name + ' is ' + ordinal(p.rank) + ' in ' + where + ' at Supabase Hackday' + (p.votes != null ? ', with ' + votesText(p.votes) : '') + '.';
-  return me ? 'I built ' + p.name + ' at Supabase Hackday in ' + where + '.' : p.name + ', built at Supabase Hackday in ' + where + '.';
+  if (p.rank) return p.name + ' is ' + ordinal(p.rank) + ' in ' + where + ' at ' + EVENT.name + (p.votes != null ? ', with ' + votesText(p.votes) : '') + '.';
+  return me ? 'I built ' + p.name + ' at ' + EVENT.name + ' in ' + where + '.' : p.name + ', built at ' + EVENT.name + ' in ' + where + '.';
 }
 export function cardAlt(p: ShareProject): string { return 'Share card: ' + p.name + ', ' + (p.cityName || cityLabel(p.city)) + (p.rank ? ', ' + ordinal(p.rank) : '') + (p.votes != null ? ', ' + votesText(p.votes) : '') + '.'; }
 
@@ -72,14 +73,14 @@ export function cardSVG(p: ShareProject, C: CardColours, seal: string): string {
   const sans = "font-family=\"Geist, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif\"";
   const o: string[] = [];
   o.push('<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">');
-  o.push('<title>' + esc(name) + ' · Supabase Hackday ' + esc(where) + '</title>');
+  o.push('<title>' + esc(name) + ' · ' + EVENT.name + ' ' + esc(where) + '</title>');
   o.push('<rect width="' + W + '" height="' + H + '" fill="' + C.ground + '"/>');
   /* the drawing's grid: columns every 100, a frame, a title-block rule */
   const g: string[] = []; for (let gx = M + 100; gx < W - M; gx += 100) g.push('M' + gx + ' ' + M + 'V' + (H - M));
   o.push('<path d="' + g.join('') + '" stroke="' + C.line + '" stroke-width="1" fill="none"/>');
   o.push('<rect x="' + M + '.5" y="' + M + '.5" width="' + (W - 2 * M - 1) + '" height="' + (H - 2 * M - 1) + '" stroke="' + C.ink2 + '" stroke-opacity="0.5" stroke-width="1" fill="none"/>');
   o.push('<path d="M' + M + ' ' + (H - M - 72) + 'H' + (W - M) + '" stroke="' + C.ink2 + '" stroke-opacity="0.5" stroke-width="1"/>');
-  o.push('<text x="' + (M + 24) + '" y="' + (M + 40) + '" fill="' + C.ink2 + '" ' + mono + ' font-size="15">SUPABASE HACKDAY · ' + esc(where.toUpperCase()) + '</text>');
+  o.push('<text x="' + (M + 24) + '" y="' + (M + 40) + '" fill="' + C.ink2 + '" ' + mono + ' font-size="15">' + esc(EVENT.name.toUpperCase()) + ' · ' + esc(where.toUpperCase()) + '</text>');
   const top = M + 40 + 40 + size * 0.9;
   lines.forEach((l, i) => { o.push('<text x="' + (M + 20) + '" y="' + Math.round(top + i * size * 1.02) + '" fill="' + C.ink + '" ' + sans + ' font-weight="400" font-size="' + size + '" letter-spacing="' + (-size * 0.03).toFixed(1) + '">' + esc(l) + '</text>'); });
   if (p.pitch) { const pl = wrap(p.pitch, 26, 700, 2), py = Math.round(top + (lines.length - 1) * size * 1.02 + 56); pl.forEach((l, i) => { o.push('<text x="' + (M + 24) + '" y="' + (py + i * 36) + '" fill="' + C.ink2 + '" ' + sans + ' font-size="26">' + esc(l) + '</text>'); }); }

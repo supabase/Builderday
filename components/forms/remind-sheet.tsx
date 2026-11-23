@@ -27,7 +27,12 @@ function RemindBody({ o, emRef, onSaved }: { o: RemindOpts; emRef: React.RefObje
     e.preventDefault(); if (busyRef.current) return; if (!checkEmail()) { emRef.current?.focus(); return; }
     busyRef.current = true; setBusy(true);
     const addr = value.trim();
-    store.remind(addr, o.city).then(() => { busyRef.current = false; onSaved(); emit(); if (!openRef.current) return; setDoneAddr(addr); });
+    /* a refused or failed request keeps the form, with the reason, instead of saying it worked */
+    store.remind(addr, o.city).then((ok) => {
+      busyRef.current = false;
+      if (!ok) { if (!openRef.current) return; setBusy(false); setErr('We could not save your reminder. Check your connection and try again.'); emRef.current?.focus(); return; }
+      onSaved(); emit(); if (!openRef.current) return; setDoneAddr(addr);
+    });
   };
   if (doneAddr) return (
     <>

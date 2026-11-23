@@ -41,7 +41,7 @@
 @keyframes hs-new { from { background-color: var(--c-tint-2); } to { background-color: transparent; } }
 
 /* the title band */
-.hs-title { font-size: min(var(--t-d48), calc(var(--nameC) / 9));   /* "Supabase Hackday" in Geist 600 measures 8.7em */ line-height: 1; letter-spacing: var(--track-d48); }
+.hs-title { font-size: min(var(--t-d48), calc(var(--nameC) / 11));   /* "Supabase Builder Day" in Geist 600 measures about 10.9em */ line-height: 1; letter-spacing: var(--track-d48); }
 
 /* ---------------- tablet ---------------- */
 @container day (min-width: 720px) and (max-width: 1199px) {

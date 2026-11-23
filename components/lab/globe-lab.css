@@ -1,0 +1,30 @@
+/* The globe lab: the large globe on the page's ground, the sizes under it. Room on the right for the panel. */
+.gl-lab { min-height: 100svh; background: #000; color: var(--c-ink); padding: var(--s-4); padding-right: calc(300px + var(--s-6)); display: grid; gap: var(--s-4); align-content: start; }
+html.lab-closed .gl-lab { padding-right: var(--s-4); }
+.gl-title { margin: 0; font: var(--w-medium) var(--t-label)/1 var(--font-mono); letter-spacing: var(--t-label-track); text-transform: uppercase; color: var(--c-ink-2); }
+.gl-stage { margin: 0; display: grid; gap: var(--s-2); }
+.gl-big { display: block; width: 100%; height: min(62svh, 620px); touch-action: pan-y; cursor: crosshair; }
+.gl-read { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-4); font: var(--w-medium) var(--t-label)/1.4 var(--font-mono); letter-spacing: var(--t-label-track); text-transform: uppercase; color: var(--c-ink-2); font-variant-numeric: tabular-nums; }
+.gl-row { display: flex; flex-wrap: wrap; gap: var(--s-5); align-items: end; }
+.gl-size { margin: 0; display: grid; gap: var(--s-2); }
+.gl-size figcaption { font: var(--w-medium) var(--t-label)/1 var(--font-mono); letter-spacing: var(--t-label-track); text-transform: uppercase; color: var(--c-ink-2); }
+.gl-pair { display: flex; gap: var(--s-3); }
+.gl-pair canvas { display: block; }
+.gl-x1 { image-rendering: pixelated; }
+.gl-s-large canvas { width: 560px; height: 260px; }
+.gl-s-mid canvas { width: 390px; height: 180px; }
+.gl-s-small canvas { width: 64px; height: 64px; }
+.gl-cell { display: flex; align-items: center; gap: var(--s-2); height: 64px; padding: 0 var(--s-3); box-shadow: inset 0 0 0 1px var(--c-line); font: var(--w-medium) var(--t-sm)/1 var(--font-sans); }
+.gl-cell canvas { width: 40px; height: 40px; display: block; }
+.lab .gl-step { display: grid; grid-template-columns: 28px 1fr 28px; gap: var(--s-2); align-items: center; min-height: 28px; margin-bottom: var(--s-2); }
+.lab .gl-step span { text-align: center; font: var(--w-medium) var(--t-xs)/1.2 var(--font-sans); }
+@media (max-width: 640px) {
+  .gl-lab { padding: var(--s-3); }
+  .gl-big { height: 52svh; }
+  .gl-s-large canvas { width: 100%; height: auto; aspect-ratio: 560 / 260; }
+  .gl-pair { flex-direction: column; }
+}
+
+/* the prize, at the width of the preview's prize column or a phone's */
+.gl-prize { display: grid; gap: var(--s-3); max-width: 830px; margin-top: var(--s-6); }
+.gl-prize[data-w='phone'] { max-width: 350px; }

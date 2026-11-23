@@ -11,7 +11,7 @@
 .ft[data-fastext] { padding-bottom: calc(var(--bd-u) * 13); }
 
 /* ---------- the cities: the index ---------- */
-.ft-cities ol { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: 0; padding: 0 1px 1px 0; list-style: none; }
+.ft-cities ol { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); margin: 0; padding: 0 1px 1px 0; list-style: none; }
 /* the rule is on the cell (li), which overlaps its neighbours by 1px, so inner and outer rules are one line */
 .ft-c { margin: 0 -1px -1px 0; border: 1px solid var(--bd-border); }
 .ft-c a { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: 'code name' 'meta meta'; align-items: center; gap: 8px 10px; min-height: var(--ft-cell); height: 100%; padding: 10px 12px; text-decoration: none;
@@ -64,9 +64,10 @@ html[data-globes] .fx { z-index: 61; }
 /* ---------- the board: sections, Supabase, switches ---------- */
 .ft-board { display: flex; flex-wrap: wrap; align-items: flex-start; gap: calc(var(--bd-u) * 2) calc(var(--bd-u) * 3); }
 .ft-cells { display: grid; grid-template-columns: repeat(4, auto); padding: 0 1px 1px 0; }
-.ft-cells a { display: flex; align-items: center; min-height: var(--ft-cell); margin: 0 -1px -1px 0; padding: 0 14px; border: 1px solid var(--bd-border); font: 500 var(--bd-num)/1 var(--bd-face); text-decoration: none; white-space: nowrap;
+.ft-cells button { appearance: none; background: none; color: inherit; cursor: pointer; text-align: left; }
+.ft-cells a, .ft-cells button { display: flex; align-items: center; min-height: var(--ft-cell); margin: 0 -1px -1px 0; padding: 0 14px; border: 1px solid var(--bd-border); font: 500 var(--bd-num)/1 var(--bd-face); text-decoration: none; white-space: nowrap;
   transition: background-color var(--dur-hover, 150ms) var(--ease-out, ease-out), color var(--dur-hover, 150ms) var(--ease-out, ease-out); }
-@media (hover: hover) and (pointer: fine) { .ft-cells a:hover { background: var(--bd-ink); color: var(--bd-ground); } }
+@media (hover: hover) and (pointer: fine) { .ft-cells a:hover, .ft-cells button:hover { background: var(--bd-ink); color: var(--bd-ground); } }
 .ft-board .sw { margin-left: auto; }
 .ft-board .sw-b { height: var(--ft-cell); }
 
@@ -79,10 +80,10 @@ html[data-globes] .fx { z-index: 61; }
 .ft-card { position: relative; margin: 0; height: clamp(220px, 22vw, 300px); border: 1px solid var(--bd-border); overflow: hidden; }
 .ft-card-bg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .ft-plate { position: absolute; left: 50%; top: 42%; display: grid; justify-items: center; gap: 10px; padding: 16px 22px; transform: translate(-50%, -50%); background: var(--bd-ground); border: 1px solid var(--bd-ink); }
-.ft-plate-mark { display: block; width: 120px; height: auto; color: var(--bd-ink); }
+.ft-plate-mark { display: block; width: 44px; height: 44px; shape-rendering: crispEdges; color: var(--bd-ink); }
 .ft-plate-row { display: flex; gap: 14px; font: 500 var(--bd-num)/1 var(--bd-face); }
 .ft-plate-row .ft-time { color: var(--bd-ink); }
-.ft[data-dir='closedown'] .ft-cities ol { grid-template-columns: repeat(10, minmax(0, 1fr)); }
+.ft[data-dir='closedown'] .ft-cities ol { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 .ft[data-dir='closedown'] .ft-c a { grid-template-areas: 'code' 'meta'; grid-template-columns: 1fr; }
 .ft[data-dir='closedown'] .ft-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .ft[data-dir='closedown'] .ft-meta { flex-direction: column; align-items: flex-start; }
@@ -91,16 +92,16 @@ html[data-globes] .fx { z-index: 61; }
 /* ---------- the end board and the mark ---------- */
 .ft-endb { display: grid; gap: calc(var(--bd-u) * 3); }
 .ft-endb-mark[data-wait] svg { clip-path: inset(-4px 100% -4px -4px); }
-.ft-endb-mark svg { display: block; width: 100%; height: auto; max-height: 34vh; color: var(--bd-ink); }
+.ft-endb-mark svg { display: block; width: auto; height: 34vh; aspect-ratio: 1; color: var(--bd-ink); }
 .ft-slate { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); margin: 0; padding: 0 1px 1px 0; }
 .ft-slate > div { display: grid; gap: 8px; align-content: start; margin: 0 -1px -1px 0; padding: 12px; border: 1px solid var(--bd-border); }
 .ft-slate dd { margin: 0; font-size: 15px; }
 
 /* ---------- a phone: the index in two columns, the whole footer on one screen ---------- */
-@media (max-width: 900px) { .ft-cities ol { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ft-slate { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ft[data-dir='closedown'] .ft-cities ol { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (max-width: 900px) { .ft-cities ol { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ft-slate { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ft[data-dir='closedown'] .ft-cities ol { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
 @media (max-width: 640px) {
   .ft { gap: calc(var(--bd-u) * 2); padding-top: calc(var(--bd-u) * 4); }
-  .ft-endb-mark svg { max-height: 16vh; } .ft-slate { grid-template-columns: repeat(3, minmax(0, 1fr)); } .ft-slate > div { padding: 8px; gap: 4px; }
+  .ft-endb-mark svg { height: 16vh; } .ft-slate { grid-template-columns: repeat(3, minmax(0, 1fr)); } .ft-slate > div { padding: 8px; gap: 4px; }
   .ft-c a { padding: 5px 10px; gap: 2px 8px; }
   .ft .ch { height: 24px; padding: 0 7px; }
   /* the two kinds of links read as one block of cells: no gap between them */
@@ -109,15 +110,15 @@ html[data-globes] .fx { z-index: 61; }
   .ft-tm-w { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .ft-board { display: grid; grid-template-columns: minmax(0, 1fr); gap: calc(var(--bd-u) * 2); }
   .ft-cells { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .ft-cells a { padding: 0 12px; }
+  .ft-cells a, .ft-cells button { padding: 0 12px; }
   /* an odd last cell fills its row, so the block of cells has no hole */
-  .ft-cells a:last-child:nth-child(odd) { grid-column: span 2; }
+  .ft-cells > :last-child:nth-child(odd) { grid-column: span 2; }
   .ft-board .sw { margin-left: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ft-end { padding-top: calc(var(--bd-u) * 2); }
   .ft-last { font-size: 16px; }
   .ft-tl { font-size: 14px; }
 }
-@media (prefers-reduced-motion: reduce) { .ft-c a, .ft-cells a { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .ft-c a, .ft-cells a, .ft-cells button { transition: none; } }
 
 /* the white dot: a dark veil over the page with a bright line that collapses to a dot (or opens from one) */
 .ft-veil { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; background: #0c0d0d; pointer-events: none; opacity: 0; }

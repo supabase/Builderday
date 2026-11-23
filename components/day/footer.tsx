@@ -1,14 +1,14 @@
 'use client';
 import Link from 'next/link';
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
-import { CITIES, EPOCH, EVENT } from '@/lib/day-data';
+import { CITIES, EPOCH, EVENT, CITY_WORD } from '@/lib/day-data';
 import type { HomeWorld } from '@/lib/home';
 import { hhmm } from '@/lib/format';
 import { LUMA_LIVE, lumaHref } from '@/lib/luma';
 import { CODE, PLACE, localTime } from '@/lib/places';
 import { StateChip } from '@/components/screen/chip';
 import { mountGlobes } from '@/components/screen/globe';
-import { HackMark } from '@/components/wheel/mark';
+import { BuilderLogo } from '@/components/wheel/builder-logo';
 import { Switches, setScreenFx, step, wake } from '@/components/board/prefs';
 import { cityWord, focusCity, type Day } from '@/components/board/day-model';
 import { cityPrizeName, finalLine, globalPrizeName } from '@/components/home/final-parts';
@@ -16,7 +16,7 @@ import { tokEase, tokMs, wipe } from '@/components/shared/motion';
 import { DATE, type Href } from './home-parts';
 import './footer.css';
 
-/* How every day page ends (footer plan, 2026-11-17). One footer for the day home and the city pages, in four
+/* How every day page ends. One footer for the day home and the city pages, in four
    directions, tuned at /lab/footer and saved in saved/footer.config.json:
    - horizon: the wheel's glass globe rising from a horizon, the ten cities on an arc over it, the city you are on (or
      the one that is live) at the top and lit; pointing at a name turns the globe to that city. The globe is drawn by
@@ -36,10 +36,11 @@ export { FOOT_DEF, FOOT_BOUNDS, FOOT_CHOICES, FOOT_LABELS, clampFoot, type FootC
 const NUM = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
 const listOf = (a: string[]) => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
 /* the last line: one sentence that is true now, from the model */
-export function lastLine(W: HomeWorld, startHour: number): string {
-  const at = hhmm(startHour * 60) + ' local time';
+export function lastLine(W: HomeWorld): string {
   if (W.allDone || W.picked) return finalLine(W);
   const next = W.cs.filter((x) => x.state === 'next').sort((a, b) => a.start - b.start)[0];
+  /* each city at its own start: the next one's, in its own local time */
+  const at = next ? hhmm(next.start + next.city.offset) + ' local time' : '';
   if (W.live.length) {
     /* in the chips' own words: building (votes open too), then last votes */
     const build = W.live.filter((x) => x.state === 'build').map((x) => x.name), last = W.live.filter((x) => x.state === 'vote' && x.entries).map((x) => x.name);
@@ -75,7 +76,7 @@ function useArc(on: boolean, phoneToo: boolean): boolean {
 /* the white dot: Screen off collapses the picture to a line and then a dot, and the plain page appears; Screen on
    opens from the line. The switch itself flips when the screen is dark, so the change is never seen. Under reduced
    motion (the token is 0) it flips at once. */
-function useWhiteDot(on: boolean) {
+export function useWhiteDot(on: boolean) {
   useEffect(() => {
     if (!on) return;
     setScreenFx((next, commit) => {
@@ -121,8 +122,12 @@ function useTurn(el: React.RefObject<HTMLElement | null>, aim: number) {
 }
 
 export type FootSections = { how: string; prizes: string };
-export function DayFooter({ W, day, href, sound, city, cfg: given, sections, minute, fastext, style, face }: {
+export function DayFooter({ W, day, href, sound, city, cfg: given, sections, minute, fastext, style, face, noCities = false, placed }: {
   W: HomeWorld; day: Day; href: Href; sound: boolean; city?: string; cfg: FootCfg; sections: FootSections; minute: number; fastext?: boolean;
+  /* the preview page, before the day: the city pages are closed, so no ten cities and no city before and after */
+  noCities?: boolean;
+  /* the person already has a place: Register opens their account instead */
+  placed?: () => void;
   /* the page's board tokens and face: the footer sits outside <main>, so it carries them itself */
   style?: CSSProperties; face?: string;
 }) {
@@ -145,7 +150,7 @@ export function DayFooter({ W, day, href, sound, city, cfg: given, sections, min
   const vars = { ...style, '--ft-size': cfg.size + 'px', '--ft-rise': cfg.rise, '--ft-gap': cfg.gap + 'px', '--ft-name': cfg.nameSize + 'px', '--ft-cell': cfg.cellH + 'px' } as CSSProperties;
 
   const cities = (
-    <nav className="ft-cities" aria-label="The ten cities">
+    <nav className="ft-cities" aria-label={`The ${CITY_WORD} cities`}>
       <ol>
         {W.cs.map((x, i) => {
           const p = pos(i), w = cityWord(x, W, day), me = i === lit;
@@ -168,10 +173,10 @@ export function DayFooter({ W, day, href, sound, city, cfg: given, sections, min
 
   return (
     <footer className="bd ft" data-dir={cfg.dir} data-arc={arc ? '' : undefined} data-face={face} data-fastext={fastext ? '' : undefined} style={vars}>
-      {city && cfg.tail ? <Tail city={city} href={href} /> : null}
-      {cfg.dir === 'closedown' ? <Closedown W={W} lit={lit} line={lastLine(W, day.startHour)} clock={loaded ? localTime(CITIES[lit].id, ms) : ''} /> : null}
+      {city && cfg.tail && !noCities ? <Tail city={city} href={href} /> : null}
+      {cfg.dir === 'closedown' ? <Closedown W={W} lit={lit} line={lastLine(W)} clock={loaded ? localTime(CITIES[lit].id, ms) : ''} /> : null}
       {cfg.dir === 'endboard' ? <EndMark W={W} /> : null}
-      {horizon ? (
+      {noCities ? null : horizon ? (
         <div className="ft-sky">
           {cities}
           <span ref={globe} className="ft-globe" data-globe="" data-half="" data-lat={PLACE[CITIES[lit].id][0]} data-lon={PLACE[CITIES[lit].id][1]} data-glow="1" aria-hidden="true" />
@@ -183,7 +188,7 @@ export function DayFooter({ W, day, href, sound, city, cfg: given, sections, min
           <a href={sections.how}>How it works</a>
           <a href={sections.prizes}>Prizes</a>
           <a href="/preview#questions">Questions</a>
-          {LUMA_LIVE ? <a href={lumaHref(city)}>Register</a> : null}
+          {placed ? <button type="button" aria-haspopup="dialog" onClick={placed}>Your place</button> : LUMA_LIVE ? <a href={lumaHref(city)}>Register</a> : null}
         </nav>
         <nav className="ft-cells ft-sb" aria-label="Supabase">
           <a href="https://supabase.com">supabase.com</a>
@@ -194,7 +199,7 @@ export function DayFooter({ W, day, href, sound, city, cfg: given, sections, min
         <Switches sound={sound} />
       </div>
       <div className="ft-end">
-        {cfg.last ? <p className="ft-last">{lastLine(W, day.startHour)}</p> : null}
+        {cfg.last ? <p className="ft-last">{lastLine(W)}</p> : null}
         <p className="ft-sig bd-k">{EVENT.name} · {DATE}{cfg.credit ? ' · Wheel by anthony lio' : ''}</p>
       </div>
     </footer>
@@ -216,12 +221,12 @@ function Tail({ city, href }: { city: string; href: Href }) {
 /* turning the globe by hand (off by default): arrow keys or a drag step through the cities, with the wheel's click */
 function Spin({ aim, setAim }: { aim: number; setAim: (i: number | null) => void }) {
   const drag = useRef<{ x: number; at: number } | null>(null);
-  const go = (d: number) => { setAim((aim + d + 10) % 10); step(true); };
+  const go = (d: number) => { setAim((aim + d + CITIES.length) % CITIES.length); step(true); };
   return (
-    <span className="ft-spin" role="slider" tabIndex={0} aria-label="Turn the globe" aria-valuemin={1} aria-valuemax={10} aria-valuenow={aim + 1} aria-valuetext={CITIES[aim].name}
+    <span className="ft-spin" role="slider" tabIndex={0} aria-label="Turn the globe" aria-valuemin={1} aria-valuemax={CITIES.length} aria-valuenow={aim + 1} aria-valuetext={CITIES[aim].name}
       onKeyDown={(e) => { if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); go(1); } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); go(-1); } }}
       onPointerDown={(e) => { wake(); drag.current = { x: e.clientX, at: aim }; e.currentTarget.setPointerCapture(e.pointerId); }}
-      onPointerMove={(e) => { const d = drag.current; if (!d) return; const n = (d.at + Math.round((e.clientX - d.x) / 40) + 100) % 10; if (n !== aim) { setAim(n); step(true); } }}
+      onPointerMove={(e) => { const d = drag.current; if (!d) return; const n = (d.at + Math.round((e.clientX - d.x) / 40) + CITIES.length * 10) % CITIES.length; if (n !== aim) { setAim(n); step(true); } }}
       onPointerUp={() => { drag.current = null; }} />
   );
 }
@@ -238,7 +243,7 @@ function Closedown({ W, lit, line, clock }: { W: HomeWorld; lit: number; line: s
         <g stroke="#f4f4f2" strokeOpacity="0.14">{Array.from({ length: 35 }, (_, i) => <line key={i} x1={i * 20} x2={i * 20} y1={184} y2={260} />)}</g>
       </svg>
       <figcaption className="ft-plate">
-        <HackMark id="ft-card-mark" label="" className="ft-plate-mark" />
+        <BuilderLogo className="ft-plate-mark" />
         <span className="ft-plate-row"><span className="ft-code">{CODE[x.id]}</span><span className="ft-time" suppressHydrationWarning>{clock}</span></span>
       </figcaption>
     </figure>
@@ -260,7 +265,7 @@ function EndMark({ W }: { W: HomeWorld }) {
   const slate: [string, ReactNode][] = [['Event', EVENT.name], ['Date', DATE], ['Cities', CITIES.length + ', east to west'], ['Prizes', globalPrizeName() + ' and ' + cityPrizeName() + ' ×' + CITIES.length], ['Picked by', W.picked ? EVENT.pickers + ': ' + W.final.p.name : EVENT.pickers], ['Made with', 'Supabase']];
   return (
     <div className="ft-endb">
-      <div ref={ref} className="ft-endb-mark"><HackMark id="ft-end-mark" label={EVENT.name} /></div>
+      <div ref={ref} className="ft-endb-mark"><BuilderLogo /></div>
       <dl className="ft-slate">{slate.map(([k, v]) => <div key={k}><dt className="bd-k">{k}</dt><dd>{v}</dd></div>)}</dl>
     </div>
   );

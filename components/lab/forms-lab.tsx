@@ -7,13 +7,14 @@ import { useFormsState } from '@/components/forms/store';
 import { applyGround } from '@/components/ground/apply-ground';
 import '@/components/forms/forms.css';
 import './forms-lab.css';
+import { EVENT } from '@/lib/day-data';
 
 const SEC = 'py-6 [box-shadow:inset_0_calc(-1*var(--line-hair))_0_var(--c-line)]';
 const K = 'type-label mb-2 text-ink-2';
 const MONO = 'font-mono text-xs/[1.6] font-medium whitespace-pre-wrap wrap-anywhere text-ink-2';
 /* The forms tuning page: open each sheet, see the state the pages read, clear what is stored. */
 const inHours = (h: number) => new Date(Date.now() + h * 3600000);
-const SAMPLE = { name: 'Sentry Pup', pitch: 'A watchdog for your Edge Functions that barks in Slack before your users notice.', handle: 'mira_k', city: 'berlin', cityName: 'Berlin', slug: 'sentry-pup', votes: 45, rank: 1 };
+const SAMPLE = { name: 'Sentry Pup', pitch: 'A watchdog for your Edge Functions that barks in Slack before your users notice.', handle: 'mira_k', city: 'london', cityName: 'London', slug: 'sentry-pup', votes: 45, rank: 1 };
 const GROUNDS = [['night', 'Night'], ['paper', 'Paper'], ['mint', 'Mint']];
 
 export function FormsLab({ ground }: { ground: string | null }) {
@@ -27,9 +28,9 @@ function Lab({ ground: g0 }: { ground: string }) {
   const RUN: Record<string, () => Promise<unknown>> = {
     signIn: () => F.signIn(),
     ensureVoter: () => F.ensureVoter(),
-    submit: () => F.submit({ city: 'berlin', cityName: 'Berlin', deadline: inHours(3) }),
-    submitClosed: () => F.submit({ city: 'berlin', cityName: 'Berlin', deadline: inHours(-1 / 60) }),
-    remind: () => { const d = new Date(); d.setUTCHours(0, 0, 0, 0); return F.remind({ city: 'tokyo', cityName: 'Tokyo', when: d }); },
+    submit: () => F.submit({ city: 'london', cityName: 'London', deadline: inHours(3) }),
+    submitClosed: () => F.submit({ city: 'london', cityName: 'London', deadline: inHours(-1 / 60) }),
+    remind: () => { const d = new Date(); d.setUTCHours(0, 0, 0, 0); return F.remind({ city: 'seoul', cityName: 'Seoul', when: d }); },
     share: () => F.share(SAMPLE),
     shareMine: () => { const e = st.entry; return F.share(e ? { name: e.name, pitch: e.pitch, handle: e.handle, city: e.city, cityName: e.cityName, slug: e.slug } : SAMPLE); },
     signOut: () => F.signOut(),
@@ -44,7 +45,7 @@ function Lab({ ground: g0 }: { ground: string }) {
   return (
     <main className="mx-auto box-content max-w-[960px] px-6 pt-8 pb-18">
       <header className="flex flex-wrap items-end justify-between gap-4 pb-4 [box-shadow:inset_0_calc(-1*var(--line-hair))_0_var(--c-line)]">
-        <div><p className={K}>Supabase Hackday</p><h1 className="text-h1 leading-[1.1] font-regular tracking-tight">Forms lab</h1></div>
+        <div><p className={K}>{EVENT.name}</p><h1 className="text-h1 leading-[1.1] font-regular tracking-tight">Forms lab</h1></div>
         <div className="lab-seg inline-flex" role="group" aria-label="Ground">{GROUNDS.map(([k, t]) => <button key={k} className="fm-b" type="button" aria-pressed={ground === k} onClick={() => setGround(k)}>{t}</button>)}</div>
       </header>
       <section className={SEC} aria-labelledby="k-flows">

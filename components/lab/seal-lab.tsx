@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { CITIES } from '@/lib/day-data';
 import { BOUNDS, KNOBS, MODES, SEAL_CITIES, clampCfg, forCity, merged, render, toSvgString, type Knob, type SealCfg, type SealCfgInput, type SealMode } from '@/lib/seal';
 import { param, type Query } from '@/lib/clock';
 import { SealSvgView } from '@/components/seal/seal-svg';
@@ -10,7 +11,7 @@ import './seal-lab.css';
 /* The seal tuning page: one large seal (click it for a new one), the ten cities at 120px and 24px, the winner's
    interlaced seal, and the knobs. Save writes saved/seal.config.json; ?mode= and ?seed= preview a variation.
    Keys: R new seed, S save, P replay. */
-const NAMES: Record<string, string> = { sydney: 'Sydney', tokyo: 'Tokyo', singapore: 'Singapore', bengaluru: 'Bengaluru', berlin: 'Berlin', lagos: 'Lagos', london: 'London', 'sao-paulo': 'São Paulo', 'new-york': 'New York', 'san-francisco': 'San Francisco' };
+const NAMES: Record<string, string> = Object.fromEntries(CITIES.map((c) => [c.id, c.name]));
 const LABELS: Record<string, string> = { lobes: 'Lobes', rings: 'Rings', amp: 'Amplitude', inner: 'Inner radius', drift: 'Phase drift', density: 'Density', interlace: 'Interlace', harmonic: 'Harmonic', loop: 'Loop / turns', gap: 'Ring gap', rails: 'Rails', weight: 'Line weight' };
 const MODE_NAME: Record<SealMode, string> = { rosette: 'Rosette', band: 'Band', medallion: 'Medallion' };
 
@@ -78,7 +79,7 @@ export function SealLab({ saved, q }: { saved: SealCfgInput; q: Query }) {
           <button ref={big} type="button" className="big" id="big" aria-label="Draw a new seal" onClick={() => { replayNext.current = true; shuffle(); }}>{bigSvg ? <SealSvgView seal={bigSvg} /> : null}</button>
           <p className="meta" id="meta">Seed <b>{cfg.seed}</b> · {cfg.mode} · {m.lobes} lobes · {cfg.continuous ? 'one continuous line' : (bigSvg ? bigSvg.paths.length : 0) + ' closed curves'}</p>
         </section>
-        <section className="row"><h2 className="lbl">Ten cities at 120px</h2>
+        <section className="row"><h2 className="lbl">Every city at 120px</h2>
           <ul className="cities" id="cities">{SEAL_CITIES.map((id) => <li key={id}><SealSvgView seal={forCity(cfg, id, { size: 120 })} /><span>{NAMES[id]}</span></li>)}</ul></section>
         <section className="row"><h2 className="lbl">At 24px, as a row marker</h2>
           <ul className="marks" id="marks">{SEAL_CITIES.map((id) => <li key={id}><SealSvgView seal={forCity(cfg, id, { size: 24 })} /><span>{NAMES[id]}</span></li>)}</ul></section>

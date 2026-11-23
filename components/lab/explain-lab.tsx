@@ -1,7 +1,8 @@
 'use client';
-import { useCallback, useEffect, useState } from 'react';
-import { SCOPE_BOUNDS, SCOPE_CHOICES, SCOPE_LABELS, clampScope, type PrizeMode, type Scene, type ScopeCfg } from '@/components/day/scope';
-import type { Dir } from '@/components/day/acts';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { SCOPE_BOUNDS, SCOPE_CHOICES, SCOPE_LABELS, beamFrame, clampScope, type DayDir, type PrizeMode, type Scene, type ScopeCfg } from '@/components/day/scope';
+import { lineMo, lineScore, lineStills } from '@/components/day/line';
+import type { LineClock } from '@/components/day/step-through';
 import { Tube, tubeCosts, type TubeCost } from '@/components/day/tube';
 import { beamStats, type BeamStats } from '@/components/day/beam';
 import { HowItWorks, PrizeBlock, facts } from '@/components/day/explain';
@@ -17,6 +18,9 @@ import './explain-lab.css';
 
 const GROUPS: Group[] = [
   { name: 'Modes', knobs: [{ k: 'dir', kind: 'select', label: 'Direction' }, { k: 'renderer', kind: 'select', label: 'Renderer' }, { k: 'accent', kind: 'select', label: 'Accent' }, { k: 'letters', kind: 'select', label: 'Lettering' }, { k: 'lines', kind: 'select', label: 'Scan lines' }, { k: 'prize', kind: 'select', label: 'Prizes' }, { k: 'layout', kind: 'select', label: 'Layout' }, { k: 'build', kind: 'select', label: 'Build' }, { k: 'vote', kind: 'select', label: 'Vote' }, { k: 'final', kind: 'select', label: 'Final' }, { k: 'cash', kind: 'select', label: '$10,000' }, { k: 'neo', kind: 'select', label: 'MacBook Neo' }] },
+  { name: 'The morning line', knobs: [{ k: 'turnMode', kind: 'select', label: 'Turn' }, { k: 'panel', kind: 'select', label: 'Panel' }, { k: 'afterglow', kind: 'select', label: 'Afterglow' }, { k: 'smallLayout', kind: 'select', label: 'Small tube' }, { k: 'lGrid', kind: 'select', label: 'Grid' }, { k: 'lMarks', kind: 'select', label: 'Cities' }, { k: 'lBanks', kind: 'select', label: 'Final line-up' }, { k: 'lLand', kind: 'toggle', label: 'Land dots' }, { k: 'lLandA', kind: 'range', label: 'Land light' }, { k: 'pickClick', kind: 'toggle', label: 'A click at the pick (sound on)' },
+    { k: 'gR', kind: 'range', label: 'Globe size' }, { k: 'lTilt', kind: 'range', label: 'Tilt, °' }, { k: 'lineAt', kind: 'range', label: 'Where the 09:00 line sits, °' }, { k: 'typeRate', kind: 'range', label: 'Typing, letters/s' }, { k: 'cardLines', kind: 'range', label: 'Lines in the card' }, { k: 'rankRows', kind: 'range', label: 'Rows in the ranking' }, { k: 'beats', kind: 'range', label: 'Vote beats' }, { k: 'beatGap', kind: 'range', label: 'Beat spacing, ms' },
+    { k: 'spikeH', kind: 'range', label: 'Spike height' }, { k: 'arcH', kind: 'range', label: 'Arc height' }, { k: 'flyStagger', kind: 'range', label: 'Stagger in a city, ms' }, { k: 'tailLen', kind: 'range', label: 'Tail length' }, { k: 'fadeIn', kind: 'range', label: 'Fade-in floor, ms' }, { k: 'fadeOut', kind: 'range', label: 'Fade-out floor, ms' }, { k: 'farLevel', kind: 'range', label: 'Far side brightness' }, { k: 'rampW', kind: 'range', label: 'Horizon ramp, °' }, { k: 'pickDim', kind: 'range', label: 'The others at the pick' }, { k: 'seam', kind: 'range', label: 'Seam, ms' }] },
   { name: 'Step-through', knobs: [{ k: 'story', kind: 'select', label: 'The tube plays' }, { k: 'jump', kind: 'select', label: 'A press' }, { k: 'tour', kind: 'toggle', label: 'Plays the day once by itself' }, { k: 'tourPhone', kind: 'toggle', label: 'Also on a phone' }, { k: 'bar', kind: 'toggle', label: 'The day bar' }, { k: 'next', kind: 'toggle', label: '“Next: Vote” in the sheet' }] },
   { name: 'Beam', knobs: [{ k: 'bw', kind: 'range', label: 'Spot' }, { k: 'halo', kind: 'range', label: 'Halo size' }, { k: 'haloW', kind: 'range', label: 'Halo share' }, { k: 'dwell', kind: 'range', label: 'Dwell' }, { k: 'speed', kind: 'range', label: 'Long lines dim' }, { k: 'expo', kind: 'range', label: 'Exposure' }, { k: 'hot', kind: 'range', label: 'Hot cores go white' }, { k: 'after', kind: 'range', label: 'Afterglow frames' }, { k: 'fade', kind: 'range', label: 'Afterglow fade' }, { k: 'budget', kind: 'range', label: 'Beam budget' }] },
   { name: 'Depth', knobs: [{ k: 'depth', kind: 'range', label: 'Far lines dim' }, { k: 'gap', kind: 'range', label: 'Gap at crossings' }, { k: 'tilt', kind: 'range', label: 'Vote tilt, °' }, { k: 'turn', kind: 'range', label: 'Globe turn' }] },
@@ -26,11 +30,17 @@ const GROUPS: Group[] = [
   { name: 'Time', knobs: [{ k: 'loop', kind: 'range', label: 'Loop, s' }, { k: 'fps', kind: 'range', label: 'Frames/s' }, { k: 'smooth', kind: 'toggle', label: 'Draw every frame' }, { k: 'hold', kind: 'range', label: 'Hold at end' }, { k: 'still', kind: 'range', label: 'Still (reduced)' }, { k: 'blips', kind: 'range', label: 'Radar votes' }] },
 ];
 const OLD: [Scene, string][] = [['build', 'Build'], ['vote', 'Vote'], ['final', 'Final'], ['cash', 'The global prize'], ['neo', 'The city prize']];
-const DIRS: Dir[] = ['globe', 'rack', 'plans', 'board'];
+const DIRS: DayDir[] = ['line', 'globe', 'rack', 'plans', 'board'];
 const PRIZE_MODES: PrizeMode[] = ['glass', 'flaps', 'nixie', 'tubes', 'docket'];
 /* each step's most telling moment, as a phase of the whole day (three steps) */
 const STILLS: [string, number][] = [['Build', 0.55 / 3], ['Vote', 1.7 / 3], ['Final', 2.9 / 3]];
 const F = facts();
+/* each direction's stills: the morning line's three rests, or today's telling moments */
+const stillsOf = (cfg: ScopeCfg, d: DayDir): [string, number][] => {
+  if (d !== 'line') return STILLS;
+  const at = lineStills(lineScore({ ...cfg, dir: 'line' }, F, lineMo()));
+  return [['Build', at[0]], ['Vote', at[1]], ['Final', at[2]]];
+};
 /* the two named looks, first on the saved rail: the drawings as first built, and in the site's own lettering and
    scan lines (what saved/explain.config.json uses until the owner picks). A look sets only these keys. */
 type Look = { look: string } & Partial<ScopeCfg>;
@@ -86,7 +96,7 @@ export function ExplainLab({ saved, bare, only, at, r, compare, look }: { saved:
   }
   if (compare) return <Compare cfg={cfg} bare={bare} />;
   if (only) {
-    const isDir = (DIRS as string[]).includes(only), one = clampScope({ ...cfg, ...(look === 'first' ? lookOf(FIRST) : {}), ...(isDir ? { dir: only as Dir } : {}), renderer: r === 'canvas' ? 'canvas' : 'beam' });
+    const isDir = (DIRS as string[]).includes(only), one = clampScope({ ...cfg, ...(look === 'first' ? lookOf(FIRST) : {}), ...(isDir ? { dir: only as DayDir } : {}), renderer: r === 'canvas' ? 'canvas' : 'beam' });
     return <div className="xl xl-only"><Tube scene={isDir ? 'day' : (only as Scene)} cfg={one} f={F} at={at !== undefined && Number.isFinite(at) ? at : undefined} /></div>;
   }
   return (
@@ -96,6 +106,8 @@ export function ExplainLab({ saved, bare, only, at, r, compare, look }: { saved:
         <p>How it works and the prizes, drawn the way a vector monitor draws. Click a tube for a new seed. Seed {cfg.seed}.</p>
         <p className="xl-gl" data-bad={stats.contexts > 1 ? '' : undefined}>WebGL contexts on this page: <b>{stats.contexts}</b> · buffer: <b>{stats.format}</b>{stats.lost ? ' · lost ' + stats.lost : ''}</p>
       </header>
+
+      <LineBench cfg={cfg} />
 
       <section className="xl-sec" aria-labelledby="x1-h">
         <h2 id="x1-h">X1 · The beam</h2>
@@ -127,7 +139,7 @@ export function ExplainLab({ saved, bare, only, at, r, compare, look }: { saved:
               <p className="xl-cap">{SCOPE_LABELS[d]}{cfg.dir === d ? ' · picked' : ''}</p>
               <button type="button" className="xl-hit" tabIndex={-1} onClick={reseed} aria-label={'New seed (' + SCOPE_LABELS[d] + ')'}><Tube scene="day" cfg={{ ...cfg, dir: d }} f={F} /></button>
               <ol className="xl-stills">
-                {STILLS.map(([k, at]) => <li key={k}><Tube scene="day" cfg={{ ...cfg, dir: d }} f={F} at={at} /><span className="xl-cap">{k}</span></li>)}
+                {stillsOf(cfg, d).map(([k, at]) => <li key={k}><Tube scene="day" cfg={{ ...cfg, dir: d }} f={F} at={at} /><span className="xl-cap">{k}</span></li>)}
               </ol>
             </li>
           ))}
@@ -205,5 +217,71 @@ function Compare({ cfg, bare }: { cfg: ScopeCfg; bare: boolean }) {
         {side.map(([k, c, name]) => <div key={k} className="xl-page xl-cmp-page"><p className="xl-cap">{name}</p><HowItWorks f={DAY} id={'cmp-p-' + k} scope={c} /></div>)}
       </section>
     </div>
+  );
+}
+
+/* X0: the morning line on a page and in the sheet, with what it takes to read its motion: a speed switch, frame keys
+   (a sixtieth of a second each way, holding the drawing), a strip with a tick at every beat of the score above the
+   day bar, and the meter: beam time (length times brightness, what a real beam spends) now and at its highest in the
+   loop, against the budget. */
+const SPEEDS = [1, 0.5, 0.25, 0.1];
+function LineBench({ cfg }: { cfg: ScopeCfg }) {
+  const line = clampScope({ ...cfg, dir: 'line' }), S = useMemo(() => lineScore(line, F, lineMo()), [line]);
+  const [speed, setSpeed] = useState(1), [clock, setClock] = useState<LineClock | null>(null), [peak, setPeak] = useState<[number, number]>([0, 0]), [now, setNow] = useState(0);
+  const head = useRef<HTMLSpanElement>(null), key = JSON.stringify(line);
+  /* the highest beam time in the loop, worked out at ten frames a second, after the page has drawn */
+  useEffect(() => {
+    const c = JSON.parse(key) as ScopeCfg, id = window.setTimeout(() => {
+      let t = 0, l = 0; const n = Math.round(S.loop * 10);
+      for (let i = 0; i < n; i++) { const fr = beamFrame('day', i / n, { ...c, after: 0 }, F); t = Math.max(t, fr.time); l = Math.max(l, fr.len); }
+      setPeak([t, l]);
+    }, 200);
+    return () => window.clearTimeout(id);
+  }, [key, S]);
+  /* the strip's playhead every frame; the meter's reading four times a second */
+  useEffect(() => {
+    if (!clock) return;
+    let raf = 0, last = 0; const c = JSON.parse(key) as ScopeCfg;
+    const tick = (t: number) => {
+      raf = requestAnimationFrame(tick);
+      if (head.current) head.current.style.transform = 'translateX(' + ((100 * clock.t) / clock.max).toFixed(3) + '%)';
+      if (t - last > 250) { last = t; setNow(Math.round(beamFrame('day', clock.t / clock.max, { ...c, after: 0 }, F).time)); }
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [clock, key]);
+  const frame = (d: number) => { if (!clock) return; clock.setPaused(true); clock.scrub(clock.t + d / 60); };
+  const strip = (
+    <div className="xl-strip" aria-hidden="true">
+      {S.beats.map((b, i) => <span key={i} className="xl-beat" style={{ left: ((100 * b) / S.loop).toFixed(3) + '%' }} />)}
+      {S.acts.map((a, i) => <span key={'a' + i} className="xl-beat xl-act" style={{ left: ((100 * a) / S.loop).toFixed(3) + '%' }} />)}
+      <span className="xl-head-w"><span ref={head} className="xl-head" /></span>
+    </div>
+  );
+  const pct = Math.round((100 * peak[0]) / line.budget);
+  return (
+    <section className="xl-sec" aria-labelledby="x0-h">
+      <h2 id="x0-h">X0 · The morning line</h2>
+      <p className="xl-note">The globe turns at one speed under a fixed 09:00 line; one project, yours, is followed in the panel: Build, Vote, Final. Loop {S.loop.toFixed(1)} s ({S.turns} turns of {S.turn.toFixed(1)} s): Build {S.B.toFixed(1)} s, Vote {S.V.toFixed(1)} s, Final {(S.loop - S.Fs).toFixed(1)} s. Press a step to turn there; arrow keys cut; drag the bar to scrub.</p>
+      <div className="xl-bench" role="group" aria-label="Reading the motion">
+        <span className="xl-speeds" role="radiogroup" aria-label="Speed">
+          {SPEEDS.map((v) => <button key={v} type="button" role="radio" aria-checked={speed === v} className="xl-k" onClick={() => setSpeed(v)}>{v}×</button>)}
+        </span>
+        <button type="button" className="xl-k" onClick={() => frame(-1)} aria-label="One frame back">◀ Frame</button>
+        <button type="button" className="xl-k" onClick={() => frame(1)} aria-label="One frame on">Frame ▶</button>
+        <button type="button" className="xl-k" onClick={() => clock?.setPaused(false)}>Play</button>
+        <span className="xl-meter" data-bad={peak[0] > line.budget * 0.85 ? '' : undefined}>Beam time now <b>{now.toLocaleString('en-US')}</b> · highest in the loop <b>{peak[0] ? Math.round(peak[0]).toLocaleString('en-US') : '…'}</b> of {line.budget.toLocaleString('en-US')} ({peak[0] ? pct : '…'}%) · plain length at most {peak[1] ? Math.round(peak[1]).toLocaleString('en-US') : '…'}</span>
+      </div>
+      <div className="xl-in">
+        <div className="xl-page">
+          <p className="xl-cap">On a day page</p>
+          <HowItWorks f={DAY} id="x0-how" scope={line} speed={speed} onClock={setClock} strip={strip} />
+        </div>
+        <div className="xl-sheet">
+          <p className="xl-cap">In the preview home’s sheet (400 wide)</p>
+          <HowItWorks f={DAY} compact id="x0-how-s" scope={line} speed={speed} />
+        </div>
+      </div>
+    </section>
   );
 }
