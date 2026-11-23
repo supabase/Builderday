@@ -15,7 +15,7 @@ import { SupabaseMark } from '@/components/shared/supabase-mark';
 import { tokEase, tokMs } from '@/components/shared/motion';
 import type { WheelStatus } from './click';
 import './wheel.css';
-import { at } from '@/lib/routes';
+import { at, away } from '@/lib/routes';
 
 /* The city wheel as a page: the canvas, the mark, the link with its small globe, and the facts of the active city as
    a row of cells before its name. The screen lines are drawn over all of it, with holes for the two globes.
@@ -63,7 +63,7 @@ function Pill({ ref, href, press, text }: { ref: RefObject<(HTMLAnchorElement & 
   const words = <span key={seen.n} className={'wh-pill-text' + (seen.n ? ' is-fresh' : '')}>{text}</span>;
   return press
     ? <button ref={ref} type="button" className={PILL} aria-haspopup="dialog" onClick={press}>{words}</button>
-    : <a ref={ref} className={PILL} href={at(href)}>{words}</a>;
+    : <a ref={ref} className={PILL} href={at(href)} {...away(href)}>{words}</a>;
 }
 
 /* A cell as a block that turns on its long axis when `k` changes, like a drum of cards: the face that was there rolls
@@ -190,7 +190,7 @@ export function Wheel({ cities, cfg, start = 0, noGl = false, cells = true, mark
                 <span className="wh-cta-text"><span className="wh-cta-action">{city.action}</span> <span>{date}</span></span>
               </button>
             ) : (
-              <a ref={cta} className="wh-cta" href={at(city.href)}>
+              <a ref={cta} className="wh-cta" href={at(city.href)} {...away(city.href)}>
                 <span ref={lens} className="wh-lens" aria-hidden="true" {...dot} />
                 <span className="wh-cta-text"><span className="wh-cta-action">{city.action}</span> <span>{date}</span></span>
               </a>

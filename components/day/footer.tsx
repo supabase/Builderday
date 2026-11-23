@@ -5,6 +5,7 @@ import { CITIES, EPOCH, EVENT, CITY_WORD } from '@/lib/day-data';
 import type { HomeWorld } from '@/lib/home';
 import { hhmm } from '@/lib/format';
 import { LUMA_LIVE, lumaHref } from '@/lib/luma';
+import { away } from '@/lib/routes';
 import { CODE, PLACE, localTime } from '@/lib/places';
 import { StateChip } from '@/components/screen/chip';
 import { mountGlobes } from '@/components/screen/globe';
@@ -188,7 +189,7 @@ export function DayFooter({ W, day, href, sound, city, cfg: given, sections, min
           <a href={sections.how}>How it works</a>
           <a href={sections.prizes}>Prizes</a>
           <a href="/preview#questions">Questions</a>
-          {placed ? <button type="button" aria-haspopup="dialog" onClick={placed}>Your place</button> : LUMA_LIVE ? <a href={lumaHref(city)}>Register</a> : null}
+          {placed ? <button type="button" aria-haspopup="dialog" onClick={placed}>Your place</button> : LUMA_LIVE ? <a href={lumaHref(city)} {...away(lumaHref(city))}>Register</a> : null}
         </nav>
         <nav className="ft-cells ft-sb" aria-label="Supabase">
           <a href="https://supabase.com">supabase.com</a>

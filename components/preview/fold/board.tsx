@@ -7,7 +7,7 @@ import type { OurFact } from '../facts';
 import { flapInto, flapOpts, reducedMotion } from './flap';
 import familySaved from '@/saved/family.config.json';
 import { clampFamily, showPeople } from '@/lib/family';
-import { at } from '@/lib/routes';
+import { at, away } from '@/lib/routes';
 const FAMILY = clampFamily(familySaved);
 
 /* Ten cities, one day: the board. Ten rows, east to west: the city (a button that makes it the visitor's city), when
@@ -164,7 +164,7 @@ export function FoldBoard({ cities, cur, nearest, pick, mode, beltSpan, beltLead
               <td><span className="pf-state" data-status={c.status}><StatusIcon status={c.status} />{STATUS_LABEL[c.status]}</span></td>
               <td>{i === mine && onMine
                 ? <button type="button" className="pf-go" aria-haspopup="dialog" onClick={onMine}>Your place<span className="sr-only"> in {c.name}: your account</span></button>
-                : <a className="pf-go" href={at(c.reg)}>{c.status === 'full' ? 'Waiting list' : c.status === 'sold' ? 'Sold out' : 'Register'}<span className="sr-only"> for {c.name}</span></a>}</td>
+                : <a className="pf-go" href={at(c.reg)} {...away(c.reg)}>{c.status === 'full' ? 'Waiting list' : c.status === 'sold' ? 'Sold out' : 'Register'}<span className="sr-only"> for {c.name}</span></a>}</td>
             </tr>
           ))}
         </tbody>

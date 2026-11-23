@@ -3,6 +3,7 @@ import { useEffect, useId, useRef, useState, type RefObject } from 'react';
 import { EDITOR_ROOM, HOW_TO_SUBMIT } from '@/lib/event/rule';
 import { EDITORS, RULES, SERVER, SUPABASE_MCP, checkIt, lineFor, sayIt } from '@/lib/hackday-server';
 import { LUMA_LIVE, lumaHref } from '@/lib/luma';
+import { away } from '@/lib/routes';
 import { meNow, useFormsState } from '@/components/forms/store';
 import { useFlapText } from '@/components/preview/fold/flap';
 import './get-ready.css';
@@ -123,7 +124,7 @@ export function GetReady({ state = 'before', city, cityId, live = SERVER.live, u
             {pass
               ? <div className="gr-body"><p className="ex-t">You’re on the list for {pass.cityName}</p><p className="gr-note">On the day, type the code on the screen in the room, and you can submit.</p></div>
               : <div className="gr-body"><p className="ex-t">Register for {city ?? 'your city'} on Luma</p>
-                  {LUMA_LIVE ? <a className="gr-a" href={lumaHref(cityId)}>Register</a> : <p className="gr-cmd" data-off="">The Luma pages are not open yet.</p>}
+                  {LUMA_LIVE ? <a className="gr-a" href={lumaHref(cityId)} {...away(lumaHref(cityId))}>Register</a> : <p className="gr-cmd" data-off="">The Luma pages are not open yet.</p>}
                   <p className="gr-note">{HOW_TO_SUBMIT}</p></div>}
           </li>
         ) : null}
