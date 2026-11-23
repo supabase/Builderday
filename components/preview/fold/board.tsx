@@ -31,7 +31,8 @@ const useForYou = (cities: OurFact[]) => {
   return useMemo(() => {
     if (!zone) return null;
     const f = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
-    return cities.map((c) => f.format(new Date(c.opens)).replace(/,? (\d\d:\d\d)$/, ', $1'));
+    /* from the parts: Safari writes "Thu 10 Dec at 10:00", Chrome "Thu 10 Dec, 10:00" */
+    return cities.map((c) => { const p: Record<string, string> = {}; for (const x of f.formatToParts(new Date(c.opens))) p[x.type] = x.value; return `${p.weekday} ${p.day} ${p.month}, ${p.hour}:${p.minute}`; });
   }, [cities, zone]);
 };
 

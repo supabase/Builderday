@@ -22,13 +22,20 @@
 .pf-hdr-wrap { position: sticky; top: calc(var(--pf-hdr) - var(--pf-hh)); z-index: 30; box-sizing: border-box; height: var(--pf-hh); margin-bottom: calc(-1 * var(--pf-hh)); padding-top: calc(var(--pf-mc) - 22px); pointer-events: none; }
 .pf-hdr { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 24px; height: 44px; padding: 0 var(--pf-gutter); }
 .pf-hdr > * { pointer-events: auto; }
-/* the paper and one rule, in one step, with holes for the globes that pass under it */
+/* the paper and one rule, in one step, with holes for the globes that pass under it. It rides the sticky header
+   (absolute, from the window's top edge once the header is stuck) rather than being fixed to the window: on iPhone a
+   fixed layer inside a sticky one is moved on its own while the toolbar grows back on a scroll up, and the rule and
+   the paper slipped away from the header. It reaches up by the header's own travel (hh - hdr), so the few pixels of
+   scroll before the header sticks leave no gap above it. */
 .pf-hdr::before {
-  content: ''; position: fixed; inset: 0 0 auto 0; z-index: -1; height: var(--pf-hdr); box-sizing: border-box;
+  /* the header's travel before it sticks: the box starts that far above the window's top once stuck, so the holes
+     (in window coordinates) move down by it */
+  --pf-up: calc(var(--pf-hh) - var(--pf-hdr));
+  content: ''; position: absolute; left: 0; right: 0; top: calc(22px - var(--pf-mc)); z-index: -1; height: var(--pf-hh); box-sizing: border-box;
   background: var(--wh-paper); border-bottom: 1px solid var(--pf-rule); visibility: hidden; pointer-events: none;
   mask-image:
-    radial-gradient(circle var(--globe-radius, 0px) at var(--globe-x, -999px) var(--globe-y, -999px), transparent calc(100% - 1px), #000 100%),
-    radial-gradient(circle var(--dock-radius, 0px) at var(--dock-x, -999px) var(--dock-y, -999px), transparent calc(100% - 1px), #000 100%);
+    radial-gradient(circle var(--globe-radius, 0px) at var(--globe-x, -999px) calc(var(--globe-y, -999px) + var(--pf-up)), transparent calc(100% - 1px), #000 100%),
+    radial-gradient(circle var(--dock-radius, 0px) at var(--dock-x, -999px) calc(var(--dock-y, -999px) + var(--pf-up)), transparent calc(100% - 1px), #000 100%);
   mask-composite: intersect;
 }
 .pf-hdr::before { opacity: 0; transition: opacity calc(var(--dur-hover, 140ms) * 0.8) var(--ease-exit), visibility 0s calc(var(--dur-hover, 140ms) * 0.8); }

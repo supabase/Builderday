@@ -1,8 +1,8 @@
 import { BUILDER_DAY } from '@/lib/event/format';
 import day from '@/saved/day.config.json';
 import { CODE, PLACE } from '@/lib/places';
-import { RULES, SERVER, sayIt } from '@/lib/hackday-server';
-import { CITIES, EPOCH, EVENT, SCHED, USUAL_START, mulberry32, sched, startsSentence } from '@/lib/day-data';
+import { RULES, SERVER } from '@/lib/hackday-server';
+import { CITIES, EPOCH, EVENT, SCHED, USUAL_START, mulberry32, sched } from '@/lib/day-data';
 import { hhmm } from '@/lib/format';
 import { PRIZES } from '@/lib/prizes';
 import type { WheelStatus } from '@/components/wheel/click';
@@ -49,14 +49,14 @@ export function ourWheel(live?: Record<string, { people: number; status: WheelSt
       ['The winner', `${EVENT.pickers} pick one of the ${fin}`],
     ],
     how: [
-      ['How do I enter?', `Register for your city on Luma, then come on ${EVENT.day} December. Building runs ${cfg.buildMin} minutes from your city’s start. ${startsSentence()} Submit your project on your city’s page or from your editor, then share it. Anyone with the link can vote.`],
-      ['How do I submit?', `Two ways. In the browser, on your city’s page, you type the code on the screen in the room, then your project’s name, a one-line pitch and its GitHub repository. There’s nothing to set up. From your editor, you add the Builder Day server before the day and say “${sayIt()}” It fills in the name, the pitch and the repository and sends them. Both ask for the code on the screen and run the same checks.${SERVER.live ? '' : ' The server is not open yet. The line to add it will be in Get ready.'}`],
-      ['Can I build with a team?', `Yes, up to ${BUILDER_DAY.teamMax} people on the same city’s list. One of you starts a team in your account and shares its code; the others join with it. The team has one entry, any of you can submit or edit it, and none of you can vote for it.`],
-      ['What is checked?', `${RULES.join(' ')} A repository made before the day is refused.`],
-      ['Who can vote?', onDay && EVENT.publicAt != null ? `The builders on a city’s list vote from its start. Everyone else, after confirming an email once, and the judges vote from minute ${EVENT.publicAt}. Voting closes ${cfg.voteAfter} minutes after building ends.` : `Anyone with the link, after confirming an email once. Voting opens when building starts and closes ${cfg.voteAfter} minutes after it ends.`],
-      ['Who goes to the final?', `The top ${top} by votes in each city, so ${fin} finalists. First place in each city wins ${cityPrize}.`],
-      ['What do the judges do?', onDay ? `Each judge has ${EVENT.judgeVotes} votes, each worth ${EVENT.judgeWeight}, and can put several on one project. They count in the same tally as everyone’s.` : `Each judge has ${EVENT.judgeVotes} votes and can put several on one project. Their votes count in the same tally as everyone’s.`],
-      ['How is the winner picked?', `${EVENT.pickers} pick one of the ${fin} finalists at ${pickAt}. The winner gets ${PRIZES.global.what ?? "the global prize"}.`],
+      ['How do I enter?', `Register for your city on Luma and come on ${EVENT.day} December. You get ${cfg.buildMin} minutes to build something new with Supabase.`],
+      ['How do I submit?', `In your browser on your city’s page, or from your editor with the Builder Day server. Both ask for the code shown in the room.${SERVER.live ? '' : ' The editor server opens soon.'}`],
+      ['Can I build with a team?', `Yes, up to ${BUILDER_DAY.teamMax} people on the same city’s list. One of you starts a team in your account and shares the code. A team sends one entry and can’t vote for it.`],
+      ['What is checked?', RULES.join(' ')],
+      ['Who can vote?', onDay && EVENT.publicAt != null ? `Builders on a city’s list vote from the start. Everyone else and the judges vote from minute ${EVENT.publicAt}, after confirming an email once. Voting closes ${cfg.voteAfter} minutes after building ends.` : `Anyone with the link, after confirming an email once. Voting closes ${cfg.voteAfter} minutes after building ends.`],
+      ['Who goes to the final?', `The top ${top} in each city, ${fin} in all. First place in each city also wins ${cityPrize}.`],
+      ['What do the judges do?', onDay ? `Each judge has ${EVENT.judgeVotes} votes, each worth ${EVENT.judgeWeight}, and can put several on one project.` : `Each judge has ${EVENT.judgeVotes} votes and can put several on one project. They count in the same tally as everyone’s.`],
+      ['How is the winner picked?', `${EVENT.pickers} pick one of the ${fin} finalists. The winner gets ${PRIZES.global.what ?? 'the global prize'}.`],
     ],
   };
 }

@@ -40,9 +40,9 @@ const H = ({ level, id, children }: { level: 2 | 3; id: string; children: string
 export function HowItWorks({ f, compact = false, id = 'how', scope, day, level = 2, speed, onClock, strip }: { f: ExplainFacts; compact?: boolean; id?: string; scope?: ScopeCfg; day?: DayFinal; level?: 2 | 3; speed?: number; onClock?: (c: LineClock | null) => void; strip?: React.ReactNode }) {
   const cfg = scope ?? SAVED, top = EVENT.finalists, F = facts(f, day), fin = F.finalists ?? top * CITIES.length, layout = cfg.layout;
   const steps = [
-    { scene: 'build' as const, k: 'Build', t: f.buildMin + ' minutes to build', p: 'Build something new with Supabase in ' + f.buildMin + ' minutes. Submit it on your city’s page or from your editor.' },
-    { scene: 'vote' as const, k: 'Vote', t: 'Votes from the first minute', p: 'Voting opens when building starts and closes ' + f.voteAfter + ' minutes after it ends. Anyone with the link can vote, so share your project while you build.' },
-    { scene: 'final' as const, k: 'Final', t: fin + ' finalists, one winner', p: 'The top ' + top + ' in each city go to the final. ' + EVENT.pickers + ' pick one of the ' + fin + '.' },
+    { scene: 'build' as const, k: 'Build', t: f.buildMin + ' minutes to build', p: 'Build something new with Supabase. Submit it in your browser or from your editor.' },
+    { scene: 'vote' as const, k: 'Vote', t: 'Share it, get votes', p: 'Anyone with the link can vote. Share your project while you build.' },
+    { scene: 'final' as const, k: 'Final', t: fin + ' finalists, one winner', p: 'The top ' + top + ' in each city go to the final. ' + EVENT.pickers + ' pick the winner.' },
   ];
   const accent = { ['--ex-accent' as string]: cfg.accent === 'orange' ? '#ff7a1a' : '#3ecf8e' };
   /* one tube for the day: the step-through */

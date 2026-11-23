@@ -9,6 +9,8 @@
 .gr-n { font: 500 12px/22.8px var(--ex-face); color: var(--ex-muted); font-variant-numeric: tabular-nums; }
 .gr-body { display: grid; gap: 12px; min-width: 0; }
 .gr-body > .ex-t { margin: 0; }
+/* the second half of the editor step (the sentence to say) sits a little apart from the line */
+.gr-body > .gr-then { margin-top: 12px; }
 /* building: the sentence to say is the step that matters now */
 .gr-step[data-now] > .gr-body > .ex-t { font-size: 22px; line-height: 1.2; }
 .gr-step[data-now] .gr-cmd { border-color: var(--ex-ink); }

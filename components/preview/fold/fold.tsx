@@ -16,7 +16,7 @@ import { clampParts, partsVars, type PartsCfg } from '@/components/board/config'
 import { realMinute } from '@/lib/clock';
 import { LUMA_LIVE, lumaHref } from '@/lib/luma';
 import { PRIZES } from '@/lib/prizes';
-import { EVENT, startsSentence } from '@/lib/day-data';
+import { EVENT } from '@/lib/day-data';
 import footSaved from '@/saved/footer.config.json';
 import endSaved from '@/saved/ending.config.json';
 import partsSaved from '@/saved/parts.config.json';
@@ -290,7 +290,8 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
   const flap = useMemo(() => ({ flapMs: cfg.flapMs, flaps: line && cfg.arrive === 'tube' ? cfg.flaps : 0, stagger: cfg.flapStagger }), [cfg.flapMs, cfg.flaps, cfg.flapStagger, cfg.arrive, line]);
   const lede = `${count(n)} cities, one day: ${ours.date}. Each city starts at its own local time and builds for ${ours.buildMin} minutes; voting closes ${ours.voteAfter} minutes after building ends.`;
   const late = ord === 'prize-first';
-  const cityLede = `${startsSentence()} Pick yours here and every Register button on this page follows it.`;
+  /* each row shows its own start, so the lede only says what picking does */
+  const cityLede = 'Pick your city. Every Register button on the page follows it.';
 
   /* the footer: the end board, built from the day pages' data as it stands before the day */
   const P = useMemo(() => clampParts(partsSaved as Partial<PartsCfg>), []);

@@ -1,7 +1,6 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { GetReady } from '@/components/day/get-ready';
-import { EDITOR_ROOM } from '@/lib/event/rule';
 import { RULES, SERVER, sayIt } from '@/lib/hackday-server';
 import { once } from './motion';
 import { reducedMotion } from './flap';
@@ -29,8 +28,8 @@ function DryRun({ city, cityId, auto, step, hold }: { city: string; cityId: stri
   const box = useRef<HTMLElement>(null), [run, setRun] = useState(0), [shown, setShown] = useState<number | null>(null), [take, setTake] = useState<Take>('browser');
   const lines: [string, string][] = [
     ...(take === 'browser'
-      ? [['do', `Open ${city}’s page and press Submit.`], ['ask', 'Type the code on the screen in the room.'], ['do', 'Your project’s name, a one-line pitch, its GitHub repository.']] as [string, string][]
-      : [['say', sayIt(city)], ['ask', EDITOR_ROOM]] as [string, string][]),
+      ? [['do', `Open ${city}’s page and press Submit.`], ['ask', 'Type the code shown in the room.'], ['do', 'Add a name, a one-line pitch and the GitHub repo.']] as [string, string][]
+      : [['say', sayIt(city)], ['ask', 'Your editor asks for the code shown in the room.']] as [string, string][]),
     ...RULES.map((r) => ['rule', r] as [string, string]),
     ['link', `Your project’s link: /city/${cityId}/p/your-project`],
   ];
@@ -65,7 +64,7 @@ function DryRun({ city, cityId, auto, step, hold }: { city: string; cityId: stri
         ))}
       </ol>
       <figcaption id="pf-dry-cap" className="pf-dry-cap">
-        <span>{take === 'browser' || SERVER.live ? 'What submitting looks like on the day.' : 'A rehearsal of submitting on the day. The server is not open yet.'}</span>
+        <span>{take === 'browser' || SERVER.live ? 'What submitting looks like on the day.' : 'What submitting will look like. The server opens soon.'}</span>
         <button type="button" className="pf-key" onClick={play}><span className="pf-key-w"><span>{run ? 'Play it again' : 'Play it'}</span><span aria-hidden="true">Play it again</span></span></button>
       </figcaption>
     </figure>
