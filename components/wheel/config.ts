@@ -4,6 +4,9 @@
 
 export type WheelFont = 'study' | 'geist';
 export type WheelMark = 'hack' | 'both' | 'name' | 'builder';
+/* spoke: the cells sit just before the active name and the link is in the bottom corner; column: the page's words, the
+   cells and a Luma pill are one column on the left margin, with the cells on the active name's line */
+export type WheelLayout = 'spoke' | 'column';
 /* glass: the glass ball with the land map in it; ascii: the turning world as frames of text (ascii-globe.ts); none:
    the names turn about an empty hub, moved off the right edge; rings: no spokes and no ball, the names run along
    rings that make a ball seen from a pole, each ring turning the other way (anthony lio's rings study in LW16) */
@@ -48,7 +51,7 @@ export type WheelCfg = {
   ease: number; yawEase: number; openEase: number;
   ghosts: number; ghostAlpha: number; ghostGap: number; ghostFrom: number;
   settleFrom: number; settleTo: number; pulseLow: number; pulseRate: number; statusDelay: number;
-  font: WheelFont; mark: WheelMark;
+  font: WheelFont; mark: WheelMark; layout: WheelLayout;
   /* the globe: which one, the text globe's frames a second, how far left of the hub it sits and how much of the turn's
      smear it takes (in radii), and with none, how far right the hub moves (in radii) */
   globe: WheelGlobe; globeFps: number; globeShift: number; globeEdge: number; bareShift: number;
@@ -92,7 +95,7 @@ export const WHEEL_DEF: WheelCfg = {
   ease: 9, yawEase: 5, openEase: 10,
   ghosts: 3, ghostAlpha: 0.22, ghostGap: 0.07, ghostFrom: 0.25,
   settleFrom: 0.02, settleTo: 0.35, pulseLow: 0.72, pulseRate: 1.25, statusDelay: 600,
-  font: 'study', mark: 'builder', globe: 'glass', globeFps: 8, globeShift: 0.04, globeEdge: 0.15, bareShift: 0.8,
+  font: 'study', mark: 'builder', layout: 'spoke', globe: 'glass', globeFps: 8, globeShift: 0.04, globeEdge: 0.15, bareShift: 0.8,
   globeArrive: 'sweep', globeTurn: 'wake', globeLand: 'hold', globeLight: 'morning', globeMarks: 'all',
   globePick: 'on', globeRim: 'plain', globeBlink: 'few', globeHandover: 'thin',
   globeGrid: 0.52, globeMarkInk: 0.62, globeLeader: 0, globeThin: 0, globeStudy: 1, globeBlinks: 3,
@@ -131,7 +134,7 @@ export const WHEEL_BOUNDS: Record<string, [number, number, number]> = {
 };
 export const WHEEL_TOGGLES = new Set(['sound', 'globeLeader', 'globeThin', 'globeStudy']);
 export const WHEEL_CHOICES: Record<string, string[]> = {
-  font: ['study', 'geist'], mark: ['hack', 'both', 'name', 'builder'], globe: ['glass', 'ascii', 'none', 'rings'],
+  font: ['study', 'geist'], mark: ['hack', 'both', 'name', 'builder'], layout: ['spoke', 'column'], globe: ['glass', 'ascii', 'none', 'rings'],
   globeArrive: ['none', 'sweep', 'print'], globeTurn: ['step', 'wake'], globeLand: ['plain', 'hold'], globeLight: ['none', 'morning'],
   globeMarks: ['one', 'all', 'tags'], globePick: ['off', 'on'], globeRim: ['plain', 'ticks'], globeBlink: ['forever', 'few'], globeHandover: ['leave', 'thin'],
   prize: ['beside', 'lens', 'protected', 'none'], prizeOverlap: ['edge', 'whole'], prizeCell: ['gap', 'block', 'char'], prizeBand: ['off', 'hatch', 'stars'], prizeTurn: ['still', 'once', 'loop'], prizePhone: ['raise', 'clear', 'lens', 'none'],

@@ -1,0 +1,159 @@
+/* format.ts: an event's format, the presets a new event starts from, how a place's entries are ranked under it, and
+   the format said in words for the desk. The database holds the same fields on `events`
+   (supabase/migrations/20261119100000_events.sql); the server maps the row with formatOf(). Pure. */
+
+export type Decide = 'votes' | 'judges' | 'both' | 'apart';
+export type Judging = 'budget' | 'scores';
+export type Criterion = { id: string; name: string };
+
+export type Format = {
+  decide: Decide; judging: Judging; judgeBudget: number; criteria: Criterion[];
+  finalOn: boolean; finalists: number; finalBy: 'pickers' | 'judges'; pickers: string;
+  buildMin: number; voteAfter: number;
+  /* minutes after a place starts when its counts and order are hidden from the public, until its voting closes; null:
+     never (column hide_at, supabase/migrations/20261123100000_hide_at.sql) */
+  hideAt: number | null;
+  /* minutes after a place starts when anyone may vote, and the judges; before it only builders on that place's list.
+     null: everyone from the start (column public_at, supabase/migrations/20261123110000_vote_rules.sql) */
+  publicAt: number | null;
+  /* what one judge's vote counts in the tally (judge_weight); judgeBudget is in the judge's own votes */
+  judgeWeight: number;
+  roomCode: boolean; repoRequired: boolean; repoNew: boolean; teams: boolean; demoRequired: boolean;
+  /* the most people in one team (team_max, supabase/migrations/20261123120000_teams.sql) */
+  teamMax: number;
+  prize: string; placePrize: string;
+};
+
+export const CRITERIA: Criterion[] = [{ id: 'idea', name: 'Idea' }, { id: 'build', name: 'Execution' }, { id: 'supabase', name: 'Use of Supabase' }];
+
+/* Builder Day's format, as it ran before events had settings */
+export const BUILDER_DAY: Format = {
+  decide: 'both', judging: 'budget', judgeBudget: 10, criteria: CRITERIA,
+  finalOn: true, finalists: 3, finalBy: 'pickers', pickers: 'Ant and Copple',
+  buildMin: 90, voteAfter: 30, hideAt: 70, publicAt: 60, judgeWeight: 5,
+  roomCode: true, repoRequired: true, repoNew: true, teams: true, demoRequired: false, teamMax: 4,
+  prize: '$10,000', placePrize: 'A MacBook Neo',
+};
+
+/* what a new event starts from; everything can be changed after */
+export type Preset = { id: string; name: string; line: string; f: Partial<Format> };
+export const PRESETS: Preset[] = [
+  { id: 'builder', name: 'Votes and judges', line: 'Anyone votes, judges add their votes to the same tally. The top of each place goes to a final.', f: { decide: 'both', judging: 'budget', finalOn: true } },
+  { id: 'judged', name: 'Judges only', line: 'Judges score every project on a few criteria. No public vote.', f: { decide: 'judges', judging: 'scores', finalOn: false, finalists: 3 } },
+  { id: 'people', name: 'Votes only', line: 'Only the votes decide. Judges have no part.', f: { decide: 'votes', judging: 'budget', finalOn: false } },
+  { id: 'apart', name: 'Judges, and a people’s choice', line: 'Judges score and pick the winner; the votes give a people’s choice on the side.', f: { decide: 'apart', judging: 'scores', finalOn: false } },
+];
+export function presetOf(f: Format): string | null {
+  const p = PRESETS.find((x) => x.f.decide === f.decide && x.f.judging === f.judging);
+  return p ? p.id : null;
+}
+
+/* the row on `events`, mapped */
+type Row = Record<string, unknown>;
+export function formatOf(r: Row): Format {
+  const crit = Array.isArray(r.criteria) ? (r.criteria as Criterion[]).filter((c) => c && typeof c.id === 'string' && typeof c.name === 'string') : CRITERIA;
+  return {
+    decide: (r.decide as Decide) || 'both', judging: (r.judging as Judging) || 'budget', judgeBudget: Number(r.judge_budget) || 50, criteria: crit.length ? crit : CRITERIA,
+    finalOn: r.final_on !== false, finalists: Number(r.finalists) || 3, finalBy: r.final_by === 'judges' ? 'judges' : 'pickers', pickers: String(r.pickers ?? ''),
+    buildMin: Number(r.build_min) || 90, voteAfter: Number(r.vote_after ?? 30),
+    /* a database without the column hides as Builder Day does; null in the column never hides */
+    hideAt: r.hide_at === undefined ? 70 : r.hide_at == null ? null : Number(r.hide_at),
+    publicAt: r.public_at == null ? null : Number(r.public_at), judgeWeight: Number(r.judge_weight) || 1,
+    roomCode: r.room_code !== false, repoRequired: r.repo_required !== false, repoNew: r.repo_new !== false, teams: r.teams !== false, demoRequired: r.demo_required === true, teamMax: Number(r.team_max) || 4,
+    prize: String(r.prize ?? ''), placePrize: String(r.place_prize ?? ''),
+  };
+}
+export function formatRow(f: Partial<Format>): Row {
+  const o: Row = {};
+  if (f.decide) o.decide = f.decide;
+  if (f.judging) o.judging = f.judging;
+  if (f.judgeBudget != null) o.judge_budget = f.judgeBudget;
+  if (f.criteria) o.criteria = f.criteria;
+  if (f.finalOn != null) o.final_on = f.finalOn;
+  if (f.finalists != null) o.finalists = f.finalists;
+  if (f.finalBy) o.final_by = f.finalBy;
+  if (f.pickers != null) o.pickers = f.pickers;
+  if (f.buildMin != null) o.build_min = f.buildMin;
+  if (f.voteAfter != null) o.vote_after = f.voteAfter;
+  if (f.hideAt !== undefined) o.hide_at = f.hideAt;
+  if (f.publicAt !== undefined) o.public_at = f.publicAt;
+  if (f.judgeWeight != null) o.judge_weight = f.judgeWeight;
+  if (f.roomCode != null) o.room_code = f.roomCode;
+  if (f.repoRequired != null) o.repo_required = f.repoRequired;
+  if (f.repoNew != null) o.repo_new = f.repoNew;
+  if (f.teams != null) o.teams = f.teams;
+  if (f.teamMax != null) o.team_max = f.teamMax;
+  if (f.demoRequired != null) o.demo_required = f.demoRequired;
+  if (f.prize != null) o.prize = f.prize;
+  if (f.placePrize != null) o.place_prize = f.placePrize;
+  return o;
+}
+
+/* the rules that hold the format together; the first broken one, in words, or null */
+export function formatProblem(f: Format): string | null {
+  if (f.judging === 'scores' && !(f.decide === 'judges' || f.decide === 'apart')) return 'Scores only work where judges decide alone or apart from the votes. In one tally, judges vote.';
+  if (!f.criteria.length || f.criteria.length > 6) return 'Give between one and six criteria.';
+  if (!(f.finalists >= 1 && f.finalists <= 20)) return 'Between 1 and 20 go to the final from each place.';
+  if (!(f.buildMin >= 15 && f.buildMin <= 600)) return 'Building lasts between 15 and 600 minutes.';
+  if (!(f.voteAfter >= 0 && f.voteAfter <= 240)) return 'Voting runs on between 0 and 240 minutes.';
+  if (f.hideAt != null && !(Number.isInteger(f.hideAt) && f.hideAt >= 0 && f.hideAt <= 600)) return 'Votes hide between 0 and 600 minutes after the start, or never.';
+  if (f.publicAt != null && !(Number.isInteger(f.publicAt) && f.publicAt >= 0 && f.publicAt <= 600)) return 'Everyone votes from between 0 and 600 minutes after the start, or from the start.';
+  if (!(Number.isInteger(f.judgeWeight) && f.judgeWeight >= 1 && f.judgeWeight <= 20)) return 'A judge’s vote counts as between 1 and 20 votes.';
+  if (!(Number.isInteger(f.teamMax) && f.teamMax >= 2 && f.teamMax <= 10)) return 'A team has between 2 and 10 people.';
+  if (!(f.judgeBudget >= 1 && f.judgeBudget <= 1000)) return 'A judge has between 1 and 1000 votes.';
+  if (!f.repoRequired && !f.demoRequired) return null;
+  return null;
+}
+
+/* who has a say, for the desk's columns */
+export const hasVotes = (f: Format) => f.decide !== 'judges';
+export const hasJudges = (f: Format) => f.decide !== 'votes';
+
+/* one entry's numbers, as the tally keeps them */
+export type Tallied = { votes: number; judge: number; scoreSum?: number; scoreN?: number; reached?: number; created?: number; tie?: number | null };
+export const publicVotes = (e: Tallied) => e.votes - e.judge;
+/* the judges' mean total: each judge's scores added, averaged over the judges who scored */
+/* the judges' average total: every score added up, over the judges who scored (score_n counts judges) */
+export const meanScore = (e: Tallied) => (e.scoreN ? (e.scoreSum || 0) / e.scoreN : 0);
+
+/* the number that ranks an entry in its place */
+export function rankValue(e: Tallied, f: Format): number {
+  if (f.decide === 'votes') return publicVotes(e);
+  if (f.decide === 'both') return e.votes;
+  return f.judging === 'scores' ? meanScore(e) : e.judge;
+}
+/* the people's choice, where it is apart */
+export const choiceValue = (e: Tallied) => publicVotes(e);
+
+/* the order of a place's entries: the format's number, then who got there first */
+export function ranked<T extends Tallied>(list: T[], f: Format, by: (e: T) => number = (e) => rankValue(e, f)): T[] {
+  return list.slice().sort((a, b) => by(b) - by(a) || tieOrder(a.tie, b.tie) || (a.reached ?? a.created ?? 0) - (b.reached ?? b.created ?? 0));
+}
+/* inside a tie: the host's order first (tie_rank, 1 first); an entry the host has not placed comes after */
+export function tieOrder(a: number | null | undefined, b: number | null | undefined): number {
+  return a == null ? (b == null ? 0 : 1) : b == null ? -1 : a - b;
+}
+/* Ties that touch the top `top` places (the places that win something): each entry in such a tie, by key, with
+   'open' until the host has placed every entry in it, then 'settled'. `list` is in ranked order. */
+export function topTies<T>(list: T[], top: number, count: (e: T) => number, tie: (e: T) => number | null | undefined, key: (e: T) => string | number): Map<string | number, 'open' | 'settled'> {
+  const out = new Map<string | number, 'open' | 'settled'>();
+  for (let i = 0; i < list.length && i < top;) {
+    let j = i + 1; while (j < list.length && count(list[j]) === count(list[i])) j++;
+    if (j - i > 1) { const g = list.slice(i, j), st = g.every((e) => tie(e) != null) ? 'settled' : 'open'; g.forEach((e) => out.set(key(e), st)); }
+    i = j;
+  }
+  return out;
+}
+
+/* the format in a few words, for the event's card and the top of Format */
+export function formatLine(f: Format, places: number): string {
+  const who = f.decide === 'votes' ? 'Votes decide' : f.decide === 'judges' ? (f.judging === 'scores' ? 'Judges score' : 'Judges vote') : f.decide === 'both' ? 'Votes and judges in one tally' : 'Judges decide, votes give a people’s choice';
+  const fin = f.finalOn && places > 1 ? ', top ' + f.finalists + ' of each place to a final' : '';
+  return who + fin + ', ' + f.buildMin + ' minutes to build.';
+}
+/* what the value is called on the desk */
+export function rankUnit(f: Format): string {
+  if (f.decide === 'votes' || f.decide === 'both') return 'votes';
+  return f.judging === 'scores' ? 'score' : 'judges’ votes';
+}
+export const maxScore = (f: Format) => f.criteria.length * 5;

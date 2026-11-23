@@ -4,6 +4,7 @@ import { admin } from './supabase';
 import { makeKey, readKey } from './keys';
 import { siteUrl, superAdmins } from './env';
 import { EVENT } from '@/lib/day-data';
+import { eventOfCity } from './events';
 
 export type Person = { id: string; email: string; name: string | null; auth_user: string | null };
 export type Pass = {
@@ -11,10 +12,10 @@ export type Pass = {
   sent_at: string | null; opened_at: string | null; checked_in_at: string | null; checked_in_how: 'room' | 'host' | null;
   list_email: string; luma_status: string | null; luma_registered_at: string | null; claimed_at: string | null; editor_seen_at: string | null;
 };
-export type Role = { id: string; role: 'super' | 'host' | 'judge'; city: string | null; budget: number };
+export type Role = { id: string; role: 'super' | 'admin' | 'host' | 'judge'; event: string | null; city: string | null; budget: number };
 
 export const PASS_COLS = 'id, person, city, source, key_version, editor_version, sent_at, opened_at, checked_in_at, checked_in_how, list_email, luma_status, luma_registered_at, claimed_at, editor_seen_at';
-/* one event per site: every place read or made here is in this one */
+/* the public site's event (Builder Day): the default wherever a caller does not name one */
 export const EVENT_ID = EVENT.id;
 export const norm = (email: string) => String(email || '').trim().toLowerCase();
 
@@ -40,13 +41,13 @@ export async function ensurePerson(email: string, name?: string | null, ip?: str
   return data as Person;
 }
 
-export async function passOf(person: string): Promise<Pass | null> {
-  const { data } = await admin().from('passes').select(PASS_COLS).eq('event', EVENT_ID).eq('person', person).maybeSingle();
+export async function passOf(person: string, event: string = EVENT_ID): Promise<Pass | null> {
+  const { data } = await admin().from('passes').select(PASS_COLS).eq('event', event).eq('person', person).maybeSingle();
   return data as Pass | null;
 }
 /* the place listed under this address, whoever holds it now */
-export async function passByListEmail(email: string): Promise<Pass | null> {
-  const { data } = await admin().from('passes').select(PASS_COLS).eq('event', EVENT_ID).eq('list_email', norm(email)).maybeSingle();
+export async function passByListEmail(email: string, event: string = EVENT_ID): Promise<Pass | null> {
+  const { data } = await admin().from('passes').select(PASS_COLS).eq('event', event).eq('list_email', norm(email)).maybeSingle();
   return data as Pass | null;
 }
 
@@ -62,9 +63,9 @@ export type Ensured = { pass: Pass; made: boolean; moved: string | null; kept?: 
    - Not listed, but the account behind this address holds a place listed under another address (claimed): that
      place is kept and nothing is made; the caller logs it. */
 export async function ensurePass(person: Person, city: string, source: Pass['source'], addedBy?: string | null, luma?: LumaFacts): Promise<Ensured> {
-  const db = admin(), email = norm(person.email);
+  const db = admin(), email = norm(person.email), ev = await eventOfCity(city);
   const lumaCols = luma ? { luma_guest_id: luma.guestId || null, luma_status: luma.status || null, luma_registered_at: luma.registeredAt || null } : {};
-  const old = await passByListEmail(email);
+  const old = await passByListEmail(email, ev);
   if (old && old.city === city) {
     if (!luma) return { pass: old, made: false, moved: null };
     const { data } = await db.from('passes').update(lumaCols).eq('id', old.id).select(PASS_COLS).single();
@@ -76,17 +77,17 @@ export async function ensurePass(person: Person, city: string, source: Pass['sou
     const { data } = await db.from('passes').update({ city, source, ...lumaCols, checked_in_at: null, checked_in_how: null, checked_in_by: null }).eq('id', old.id).select(PASS_COLS).single();
     return { pass: data as Pass, made: false, moved: old.city };
   }
-  const held = await passOf(person.id);
+  const held = await passOf(person.id, ev);
   if (held) return { pass: held, made: false, moved: null, kept: 'held' };
-  const { data, error } = await db.from('passes').insert({ person: person.id, city, source, event: EVENT_ID, list_email: email, added_by: addedBy || null, ...lumaCols }).select(PASS_COLS).single();
-  if (error) { const again = await passByListEmail(email); if (again) return { pass: again, made: false, moved: null }; throw new Error(error.message); }
+  const { data, error } = await db.from('passes').insert({ person: person.id, city, source, event: ev, list_email: email, added_by: addedBy || null, ...lumaCols }).select(PASS_COLS).single();
+  if (error) { const again = await passByListEmail(email, ev); if (again) return { pass: again, made: false, moved: null }; throw new Error(error.message); }
   return { pass: data as Pass, made: true, moved: null };
 }
 
 /* Luma says this registration is no longer approved: the place it made goes, unless the person is checked in
    (decision 14). Only a place from Luma, in that city; a host's place stays. The account always stays. */
 export async function dropLumaPass(email: string, city: string): Promise<'gone' | 'checked-in' | 'none'> {
-  const old = await passByListEmail(email);
+  const old = await passByListEmail(email, await eventOfCity(city));
   if (!old || old.city !== city || old.source !== 'luma') return 'none';
   if (old.checked_in_at) return 'checked-in';
   await admin().from('passes').delete().eq('id', old.id);
@@ -94,7 +95,7 @@ export async function dropLumaPass(email: string, city: string): Promise<'gone' 
 }
 
 export async function rolesOf(person: string): Promise<Role[]> {
-  const { data } = await admin().from('roles').select('id, role, city, budget').eq('person', person);
+  const { data } = await admin().from('roles').select('id, role, event, city, budget').eq('person', person);
   return (data || []) as Role[];
 }
 

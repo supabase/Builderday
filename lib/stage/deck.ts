@@ -53,6 +53,7 @@ export function defaultDeck(city: string, sample = false): SceneRow[] {
     sc(city, p(), 'questions', 'Questions?', 'Then go to Building and start the clock.'),
     sc(city, p(), 'building', 'Building', 'Start the clock from here. Add minutes if the room needs them. Show the ranking when the room is ready for it.'),
     sc(city, p(), 'voting', 'Voting', 'Voting runs from the start of building. Anyone can vote with an email, confirmed once. Read the top out now and then.'),
+    sc(city, p(), 'showcase', 'What was built', 'Off by default. The entries in turn, one a board tick: picture, name, who built it, the pitch. Leave it on while people vote or eat.', {}, true),
     sc(city, p(), 'top3', 'The top 3', 'One press per place, third first. Start the talk timer as each one presents.'),
     sc(city, p(), 'tombola', 'Tombola', 'Off by default. A draw among everyone outside the top 3. Ask for a drum roll.', {}, true),
     sc(city, p(), 'final', 'The final', 'Where to watch the final. The ten cities fill in as they finish.'),

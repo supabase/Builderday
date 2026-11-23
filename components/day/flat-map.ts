@@ -124,6 +124,11 @@ export type MapDraw = {
   unroll?: { t: number; facing: number; r: number } | null;
   /* dots instead of characters (a phone) */
   dots?: boolean; ratio?: number;
+  /* the day pages: each city's mark as its state (`+`, `[+]`, `[:]`, `[.]`, `[3]`), and how strong its ink is (0 to 1);
+     absent, every mark is the plain `+` and the active one the green `[+]` (the preview) */
+  states?: { mark: string; ink: number }[];
+  /* the start line: a column of characters at the longitude where the day starts now */
+  line?: { col: number; char: string; ink: number } | null;
 };
 
 /* the cells' size on the canvas */
@@ -150,10 +155,11 @@ export function drawMap(ctx: CanvasRenderingContext2D, d: MapDraw) {
       ctx.fillStyle = grey(L.ink, ch === '|' || ch === ':' ? 1 : 0.8);
       ctx.beginPath(); ctx.arc((c + 0.5) * colW, (r + 0.5) * lineH, rad, 0, Math.PI * 2); ctx.fill();
     }
+    if (d.line) { ctx.fillStyle = grey(L.ink, d.line.ink); ctx.fillRect((d.line.col + 0.5) * colW - Math.max(0.5, rad * 0.5), 0, Math.max(1, rad), d.h); }
     for (const m of d.marks) {
       if (!shown(m.r, m.c)) continue;
       const on = m.i === d.active;
-      ctx.fillStyle = on ? L.green : grey(L.ink, 1);
+      ctx.fillStyle = on ? L.green : grey(L.ink, d.states?.[m.i]?.ink ?? 1);
       ctx.beginPath(); ctx.arc((m.c + 0.5) * colW, (m.r + 0.5) * lineH, on ? p * 0.62 : p * 0.42, 0, Math.PI * 2); ctx.fill();
     }
     if (cursorAt >= 0) { const r = Math.floor(cursorAt / g.cols), c = cursorAt % g.cols; ctx.fillStyle = grey(L.ink, 1); ctx.fillRect(c * colW, r * lineH, colW, lineH); }
@@ -193,10 +199,23 @@ export function drawMap(ctx: CanvasRenderingContext2D, d: MapDraw) {
     ctx.fillStyle = grey(L.ink, L.grid); ctx.fillText(sea, 0, y);
     ctx.fillStyle = grey(L.ink, 1); ctx.fillText(land, 0, y);
   }
+  if (d.line) {
+    /* the start line: its character in every row, over the sea and the land alike, but never over a mark or a code */
+    ctx.fillStyle = grey(L.ink, d.line.ink);
+    for (let r = 0; r < g.rows; r++) if (shown(r, d.line.col) && !marked.has(r * 10000 + d.line.col)) { ctx.clearRect(d.line.col * colW, r * lineH, colW, lineH); ctx.fillText(d.line.char, d.line.col * colW, (r + 0.5) * lineH); }
+  }
   for (const m of d.marks) {
     if (!shown(m.r, m.c)) continue;
-    const y = (m.r + 0.5) * lineH, x = m.c * colW;
-    if (m.i === d.active) { ctx.fillStyle = L.green; ctx.fillText('[', x - colW, y); ctx.fillText('+', x, y); ctx.fillText(']', x + colW, y); }
+    const y = (m.r + 0.5) * lineH, x = m.c * colW, st = d.states?.[m.i];
+    if (st) {
+      /* the state: one character in the mark's cell, brackets either side when it has them; the active one in green */
+      const mk = st.mark, on = m.i === d.active, body = mk.length === 3 ? mk[1] : mk;
+      ctx.fillStyle = on ? L.green : grey(L.ink, st.ink);
+      /* brackets need a free cell either side: two marks closer than that (Santiago and Rosario) keep the body only */
+      const near = d.marks.some((o) => o !== m && o.r === m.r && Math.abs(o.c - m.c) < 4);
+      if ((mk.length === 3 && !near) || on) { ctx.fillText('[', x - colW, y); ctx.fillText(']', x + colW, y); }
+      ctx.fillText(body, x, y);
+    } else if (m.i === d.active) { ctx.fillStyle = L.green; ctx.fillText('[', x - colW, y); ctx.fillText('+', x, y); ctx.fillText(']', x + colW, y); }
     else { ctx.fillStyle = grey(L.ink, L.markInk); ctx.fillText('+', x, y); }
   }
   if (cursorAt >= 0) { const r = Math.floor(cursorAt / g.cols), c = cursorAt % g.cols; ctx.fillStyle = grey(L.ink, 1); ctx.fillText('█', c * colW, (r + 0.5) * lineH); }

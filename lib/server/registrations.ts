@@ -6,7 +6,8 @@
    - anything else (pending, waitlist, declined, invited): no place. A place that came from Luma for that city goes,
      unless the person is checked in. The account always stays. */
 import { admin } from './supabase';
-import { EVENT_ID, dropLumaPass, ensurePass, ensurePerson, linkFor, norm, type Pass } from './people';
+import { dropLumaPass, ensurePass, ensurePerson, linkFor, norm, type Pass } from './people';
+import { eventOfCity } from './events';
 import { send } from './mail';
 import { whenLocal } from './time';
 import { guestStatus, lumaOn } from './luma';
@@ -43,7 +44,7 @@ export async function applyGuest(city: CityLite, g: Registration, how: 'hook' | 
     const r = await dropLumaPass(email, city.id);
     if (r === 'gone') { await say('off the list (Luma: ' + g.status + ')', null, { email }); forget(city.id); return { result: 'gone', mail: null, pass: null }; }
     if (r === 'checked-in') {
-      await db.from('passes').update({ luma_status: g.status }).eq('event', EVENT_ID).eq('list_email', email);
+      await db.from('passes').update({ luma_status: g.status }).eq('event', await eventOfCity(city.id)).eq('list_email', email);
       await say('kept on the list: checked in (Luma: ' + g.status + ')', null, { email });
       return { result: 'stays-checked-in', mail: null, pass: null };
     }

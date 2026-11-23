@@ -4,7 +4,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Status } from './parts';
 import { RESEND_S } from '@/lib/forms';
-import { EVENT } from '@/lib/day-data';
 
 export function DeskSignIn({ onIn, why, mail }: { onIn: () => void; why?: string; mail: 'resend' | 'outbox' }) {
   const [email, setEmail] = useState(''), [code, setCode] = useState(''), [step, setStep] = useState<'email' | 'code'>('email');
@@ -45,10 +44,10 @@ export function DeskSignIn({ onIn, why, mail }: { onIn: () => void; why?: string
   return (
     <div className="dk"><main className="dk-in">
       <div className="dk-in-card">
-        <p className="dk-kicker">{EVENT.name} · Desk</p>
+        <p className="dk-kicker">Supabase events · Desk</p>
         <div>
           <h1 className="dk-h">{step === 'email' ? 'Sign in to the desk' : 'Enter the code'}</h1>
-          <p className="dk-p">{step === 'email' ? 'For hosts, judges and super admins. We email you a six-digit code.' : <>Sent to <b>{email.trim()}</b>. It works for one hour.</>}</p>
+          <p className="dk-p">{step === 'email' ? 'For the people who run an event: admins, hosts and judges. We email you a six-digit code.' : <>Sent to <b>{email.trim()}</b>. It works for one hour.</>}</p>
         </div>
         {step === 'email' ? (
           <form className="dk-form" onSubmit={send}>

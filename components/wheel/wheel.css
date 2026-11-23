@@ -37,10 +37,10 @@
   filter: drop-shadow(0.75px 0 rgb(255 70 70 / 0.5)) drop-shadow(-0.75px 0 rgb(70 130 255 / 0.5)) drop-shadow(0 0 7px rgb(61 61 255 / 0.9));
 }
 .wh-wordmark[data-mark='both'], .wh-wordmark[data-mark='name'], .wh-wordmark[data-mark='builder'] { display: flex; align-items: center; gap: 14px; }
-/* the Builder Day pixel globe: its own green, square pixels, and the tube's red and blue apart, without the glow */
-.wh-wordmark svg.wh-builder { width: 30px; height: 30px; flex: none; shape-rendering: crispEdges;
-  filter: drop-shadow(0.75px 0 rgb(255 70 70 / 0.5)) drop-shadow(-0.75px 0 rgb(70 130 255 / 0.5)); }
-.wh-wordmark[data-mark='builder'] { gap: 12px; }
+/* the Builder Day logo as its brand has it: the pixel globe and the name in its green, the name in Manrope */
+.wh-wordmark svg.wh-builder { width: 28px; height: 28px; flex: none; shape-rendering: crispEdges; filter: none; }
+.wh-wordmark[data-mark='builder'] { gap: 12px; color: #56bd88; }
+.wh-wordmark[data-mark='builder'] .wh-name { font: 600 22px/1 var(--font-manrope), var(--wh-sans); letter-spacing: -0.02em; }
 /* the name beside the mark, in the face and size of the page's other top-line words */
 .wh-name { font: 500 17px/1 var(--wh-sans); letter-spacing: -0.01em; white-space: nowrap; }
 .wh-wordmark[data-mark='both'] > svg:first-child { filter: none; width: 20px; height: 21px; }
@@ -91,8 +91,9 @@ button.wh-cta { appearance: none; margin: 0; padding: 0; border: 0; background: 
 @media (max-width: 480px) {
   .wh-wordmark[data-mark='name'] { gap: 10px; }
   .wh-wordmark[data-mark='name'] svg { width: 72px; height: 34px; }
-  .wh-wordmark svg.wh-builder { width: 26px; height: 26px; }
+  .wh-wordmark svg.wh-builder { width: 24px; height: 24px; }
   .wh-wordmark[data-mark='builder'] { gap: 10px; }
+  .wh-wordmark[data-mark='builder'] .wh-name { font-size: 19px; }
   .wh-name { font-size: 15px; }
 }
 
@@ -142,3 +143,90 @@ button.wh-cta { appearance: none; margin: 0; padding: 0; border: 0; background: 
 @keyframes wh-dot-in { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .wh-flow .wh-canvas, .wh-flow .dot-globe, .pf .dot-globe { transition: none; animation: none; } }
 @media (scripting: none) { .wh-flow .wh-canvas:not([data-drawn]) { opacity: 1; } }
+
+/* ---------- the column (cfg.layout 'column') ----------
+   The page's words, the cells and a Luma pill as one column on the left margin. The engine places the column (it
+   moves it to the active name's line); the words sit over the cells and the pill under them, so the cells stay put
+   whatever the words say. */
+.wh-col { position: absolute; top: 0; left: var(--wh-gutter); z-index: 3; transform: translateY(-50%); }
+.wh-fixed .wh-col { position: fixed; }
+.wh-fixed.wh-rides .wh-col { position: absolute; }
+.wh-flow .wh-col:not([data-placed]) { visibility: hidden; }
+.wh-pin .wh-col .wh-cells { position: static; transform: none; translate: none; }
+.wh-col.is-stacked .wh-cells { display: inline-flex; flex-direction: column; align-items: stretch; }
+.wh-col.is-stacked .wh-face { width: auto !important; }
+.wh-col .wh-cells > div:not(.sr-only) { padding: 0; border: 0; background: none; margin: 0 -1px -1px 0; }
+.wh-col .wh-cells > div:not(.sr-only) > dd { flex: 1; }
+.wh-lead { position: absolute; left: 0; bottom: calc(100% + 48px); display: flex; flex-direction: column; gap: 56px; width: max-content; }
+.wh-lead :is(p, h1) { margin: 0; font: 400 20px/1.6 var(--wh-sans); letter-spacing: -0.01em; color: var(--wh-ink); }
+.wh-lead .wh-lead-muted { color: var(--wh-muted); }
+.wh-supabase { display: inline-flex; align-items: center; gap: 6px; margin-left: 4px; vertical-align: -3px; color: var(--wh-ink); font-weight: 600; letter-spacing: -0.03em; }
+.wh-supabase svg { width: 19px; height: 20px; }
+.wh-col-foot { position: absolute; left: 0; top: calc(100% + 40px); display: flex; flex-direction: column; align-items: flex-start; gap: 16px; }
+/* a short window: the words close up so they stay clear of the header */
+@media (max-height: 760px) { .wh-lead { gap: 24px; bottom: calc(100% + 32px); } .wh-col-foot { top: calc(100% + 32px); } }
+
+/* a face is one whole cell; two cells share a border line, so the colour must not be see-through */
+.wh-face {
+  box-sizing: border-box; display: flex; align-items: center; gap: 7px; height: 33px; padding: 0 12px;
+  border: 1px solid var(--wh-rule); background: var(--wh-paper); backface-visibility: hidden;
+}
+/* dark text on a light cell, at 7 to 1 or more */
+.wh-face[data-status='nearing'] { border-color: #f8d3a0; background-color: #f8d3a0; color: #6b2a00; }
+.wh-face[data-status='open'] { border-color: #dcfce7; background-color: #dcfce7; color: #14532d; }
+/* the turn answers the wheel (a key, a drag), so it moves at once on the brand ease-out.
+   the turn: the cell is the front of a four-sided drum. While it turns, the old face is the front and the new face
+   the bottom (forward) or the top (back); the drum turns a quarter about its centre, and each face darkens as it
+   turns away from the light. */
+.wh-prism { display: block; perspective: 420px; }
+.wh-drum { --h: 33px; --wh-turn: var(--dur-slide, 220ms); display: block; position: relative; transform-style: preserve-3d; }
+.wh-drum.is-quick { --wh-turn: calc(var(--dur-slide, 220ms) / 2); }
+.wh-drum.is-turning .wh-face { position: absolute; inset: 0 auto auto 0; }
+.wh-drum.is-turning .wh-face.is-new { position: relative; }
+.wh-drum.is-turning .is-old { transform: translateZ(calc(var(--h) / 2)); animation: wh-face-away var(--wh-turn) var(--ease-out, cubic-bezier(.23, 1, .32, 1)) both; }
+.wh-prism[data-dir='up'] .is-turning .is-new { transform: rotateX(-90deg) translateZ(calc(var(--h) / 2)); }
+.wh-prism[data-dir='down'] .is-turning .is-new { transform: rotateX(90deg) translateZ(calc(var(--h) / 2)); }
+.wh-drum.is-turning .is-new { animation: wh-face-toward var(--wh-turn) var(--ease-out, cubic-bezier(.23, 1, .32, 1)) both; }
+.wh-prism[data-dir='up'] .wh-drum.is-turning { animation: wh-drum-up var(--wh-turn) var(--ease-out, cubic-bezier(.23, 1, .32, 1)) both; }
+.wh-prism[data-dir='down'] .wh-drum.is-turning { animation: wh-drum-down var(--wh-turn) var(--ease-out, cubic-bezier(.23, 1, .32, 1)) both; }
+@keyframes wh-drum-up { from { transform: translateZ(calc(var(--h) / -2)) rotateX(0deg); } to { transform: translateZ(calc(var(--h) / -2)) rotateX(90deg); } }
+@keyframes wh-drum-down { from { transform: translateZ(calc(var(--h) / -2)) rotateX(0deg); } to { transform: translateZ(calc(var(--h) / -2)) rotateX(-90deg); } }
+@keyframes wh-face-away { from { filter: brightness(1); } to { filter: brightness(0.35); } }
+@keyframes wh-face-toward { from { filter: brightness(0.35); } to { filter: brightness(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .wh-drum.is-turning, .wh-drum.is-turning .wh-face { animation: none; }
+  .wh-drum.is-turning .is-old { display: none; } .wh-drum.is-turning .is-new { transform: none; }
+}
+
+/* the Luma link: a white pill with brown words */
+.wh-pill {
+  appearance: none; margin: 0; border: 0; cursor: pointer; box-sizing: border-box; overflow: hidden;
+  display: inline-flex; align-items: center; height: 40px; padding: 0 20px; border-radius: 999px;
+  background: #fff; color: #5b2a06; font: 500 14px/1 var(--wh-mono); white-space: nowrap; text-decoration: none;
+  transition: background-color var(--dur-hover, 140ms) var(--ease-out, ease-out), scale var(--dur-press, 90ms) var(--ease-out, ease-out);
+}
+@media (hover: hover) and (pointer: fine) { .wh-pill:hover { background: #e6e6e3; } }
+.wh-pill:active { scale: var(--press, 0.97); }
+.wh-pill:focus-visible { outline: 2px solid var(--wh-ink); outline-offset: 4px; }
+.wh-pill-text { flex: none; white-space: nowrap; }
+.wh-pill-text.is-fresh { animation: wh-pill-fade var(--dur-hover, 140ms) var(--ease-out, ease-out) both; }
+@keyframes wh-pill-fade { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .wh-pill, .wh-pill-text.is-fresh { transition: none; animation: none; } }
+
+/* no room for the cells beside the names (a phone): the column docks at the foot of the first screen, in the flow */
+.wh-col.is-docked {
+  top: auto; bottom: 30px; right: var(--wh-gutter); transform: none;
+  display: flex; flex-direction: column; gap: 20px;
+}
+.wh-fixed:not(.wh-rides) .wh-col.is-docked { top: calc(100svh - var(--wh-peek, 0px) - 30px); bottom: auto; transform: translateY(-100%); }
+.wh-col.is-docked :is(.wh-lead, .wh-col-foot) { position: static; width: auto; }
+.wh-col.is-docked .wh-lead { gap: 12px; }
+.wh-col.is-docked .wh-lead :is(p, h1) { font-size: 16px; line-height: 1.45; text-shadow: 0 0 6px var(--wh-paper), 0 0 14px var(--wh-paper), 0 0 24px var(--wh-paper); }
+.wh-col.is-docked .wh-cells { display: flex; flex-wrap: wrap; }
+
+/* docked (a phone): the facts sit at the top, under the logo; the words and the pill stay at the foot */
+.wh-col.is-docked { top: var(--wh-dock, 88px); bottom: 30px; justify-content: flex-start; pointer-events: none; }
+.wh-fixed:not(.wh-rides) .wh-col.is-docked { top: var(--wh-dock, 88px); bottom: auto; height: calc(100svh - var(--wh-peek, 0px) - 30px - var(--wh-dock, 88px)); transform: none; }
+.wh-col.is-docked > * { pointer-events: auto; }
+.wh-col.is-docked .wh-cells { order: -1; align-self: flex-start; }
+.wh-col.is-docked .wh-lead { margin-top: auto; }

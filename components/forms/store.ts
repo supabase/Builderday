@@ -18,6 +18,14 @@ export type Me = {
   judging: Record<string, { budget: number; used: number; per: Record<string, number> }>;
   editor: { url: string } | null;
   open?: boolean;
+  /* the person's team (lib/server/teams.ts), and whether this event has teams and how many may be in one */
+  team?: MyTeam | null;
+  teams?: { on: boolean; max: number };
+};
+export type MyTeam = {
+  code: string; city: string; cityName: string; max: number; set: boolean;
+  members: { name: string; you: boolean; named: boolean }[];
+  entry: { name: string; slug: string } | null; link: string;
 };
 export type Result<T = unknown> = { ok: true; data: T } | { ok: false; error: string; wait?: number; field?: string };
 export type Entry = {
@@ -154,6 +162,10 @@ const live = {
   claimVerify(email: string, code: string): Promise<Result<{ claimed: boolean; city: string; cityName: string; replaced: string | null }>> {
     return call<{ claimed: boolean; city: string; cityName: string; replaced: string | null }>('/api/auth/claim/verify', 'POST', { email, code }).then(async (r) => { if (r.ok) await loadMe(); return r; });
   },
+  /* make a team, join one by its code, or leave yours; the person is read again after, since the entry may change */
+  team(action: 'make' | 'join' | 'leave', code?: string): Promise<Result<{ team: MyTeam | null }>> {
+    return call<{ team: MyTeam | null }>('/api/team', 'POST', { action, code }).then(async (r) => { if (r.ok) { if (me) { me = { ...me, team: r.data.team }; emit(); } await loadMe(); } return r; });
+  },
   signOut() { return call('/api/auth/out', 'POST').then(() => { me = null; write('code', null); emit(); }); },
 
   entryFor(handle: string | null): Entry | null { void handle; return me ? me.entry : null; },
@@ -222,7 +234,7 @@ const RESEND = 30;
 let lastError = '';
 export function takeError(): string { const e = lastError; lastError = ''; return e; }
 
-type Driver = typeof standIn & Partial<Pick<typeof live, 'roomIn' | 'checkIn' | 'sendLinkAgain' | 'deleteEntry' | 'claim' | 'claimVerify'>>;
+type Driver = typeof standIn & Partial<Pick<typeof live, 'roomIn' | 'checkIn' | 'sendLinkAgain' | 'deleteEntry' | 'claim' | 'claimVerify' | 'team'>>;
 let driver: Driver = standIn;
 /* FormsProvider sets the driver as it renders, before any child reads the store */
 export function useDriver(on: boolean) {
@@ -245,7 +257,7 @@ export function meNow(): Me | null { return liveOn() ? me : null; }
 /* the first /api/me has answered (always true for the stand-in) */
 export function meLoaded(): boolean { return !liveOn() || loaded; }
 /* every method goes to the driver in use */
-type Store = Driver & { roomIn: typeof live.roomIn; checkIn: typeof live.checkIn; sendLinkAgain: typeof live.sendLinkAgain; deleteEntry: typeof live.deleteEntry; claim: typeof live.claim; claimVerify: typeof live.claimVerify };
+type Store = Driver & { roomIn: typeof live.roomIn; checkIn: typeof live.checkIn; sendLinkAgain: typeof live.sendLinkAgain; deleteEntry: typeof live.deleteEntry; claim: typeof live.claim; claimVerify: typeof live.claimVerify; team: typeof live.team };
 export const store: Store = new Proxy({} as Store, {
   get: (_t, k: string) => { const d = driver as unknown as Record<string, unknown>; const v = d[k]; return typeof v === 'function' ? (v as (...a: unknown[]) => unknown).bind(d) : v; },
 });

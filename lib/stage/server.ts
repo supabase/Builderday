@@ -11,13 +11,14 @@
    The clock lives on `cities`, which Realtime does not carry, so after a clock change the stage row is touched: every
    screen then reads the city's times again. */
 
-import { CITY_IDS } from '@/lib/day-data';
 import { admin, asUser } from '@/lib/server/supabase';
 import { backendOn } from '@/lib/server/env';
 import { deskUser } from '@/lib/server/roles';
 import { forget } from '@/lib/server/snapshot';
 import { said } from '@/lib/server/http';
+import { eventForCity, placeEvents } from '@/lib/server/events';
 import { act } from './act';
+import { BD_WALL, wallEvent, type WallEvent } from './event';
 import { CITY_COLS, cityFrom, deckFrom, stageFrom, stageTo } from './rows';
 import type { CityLive, SceneRow, StageAction, StageRow } from './types';
 
@@ -35,9 +36,32 @@ async function facts(id: string, withCode: boolean): Promise<{ room_code: string
   return { room_code: (code.data as { room_code?: string | null } | null)?.room_code ?? null, listed: listed.count ?? null, here: here.count ?? null };
 }
 
-/* the city's deck, row and times, or null when the backend is off, unreachable, or has no stage for the city yet */
+/* a place's name from its row: Builder Day's cities and any place another event has on the desk. Null when the
+   backend is off, the place is not in the table, or it cannot be read. */
+export async function placeName(id: string): Promise<string | null> {
+  if (!backendOn() || !/^[a-z0-9-]{1,80}$/.test(id)) return null;
+  try {
+    const { data } = await admin().from('cities').select('name').eq('id', id).maybeSingle();
+    return (data as { name?: string } | null)?.name ?? null;
+  } catch { return null; }
+}
+
+/* the place's event for its wall and remote: Builder Day's (from the code, as always) for its own places, when the
+   backend is off, or when the event cannot be read; another event's name, format, prizes and number of places */
+export async function wallEventFor(id: string): Promise<WallEvent> {
+  if (!backendOn()) return BD_WALL;
+  try {
+    const [e, m] = await Promise.all([eventForCity(id), placeEvents()]);
+    if (!e) return BD_WALL;
+    let n = 0; m.forEach((ev) => { if (ev === e.id) n++; });
+    return wallEvent(e, n);
+  } catch { return BD_WALL; }
+}
+
+/* the place's deck, row and times, or null when the backend is off, unreachable, or has no stage for the place yet.
+   Any place in the table has a stage (Builder Day's cities and the desk's own places alike). */
 export async function loadStage(id: string, o: { hidden: boolean; code: boolean }): Promise<StageStart | null> {
-  if (!backendOn() || !CITY_IDS.includes(id)) return null;
+  if (!backendOn() || !/^[a-z0-9-]{1,80}$/.test(id)) return null;
   try {
     const sb = admin();
     let q = sb.from('scenes').select('id, city, position, kind, title, data, notes, hidden').eq('city', id).order('position');

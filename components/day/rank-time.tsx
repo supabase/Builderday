@@ -17,14 +17,16 @@ export const LINE = ['#3ecf8e', '#4d6bff', '#f4f4f2'];
 export const lineOf = (rank: number) => LINE[rank - 1] ?? '#6b6c6b';
 const PAD = { l: 44, r: 16, t: 16, b: 34 }, LABEL_W = 300, GAP = 26, H = 460;
 
-export function RankTime({ W, open, hot, setHot, draw = false }: { W: CityWorld; open: (o: Row) => void; hot: number | null; setHot: (id: number | null) => void; draw?: boolean }) {
+/* n: how many lines (the top n); tall: the chart's height in px; pic: the pictures' width by the names, in px */
+export function RankTime({ W, open, hot, setHot, draw = false, n = 10, tall = H, pic = 40 }: { W: CityWorld; open: (o: Row) => void; hot: number | null; setHot: (id: number | null) => void; draw?: boolean; n?: number; tall?: number; pic?: number }) {
+  const H = tall, rowH = Math.max(24, Math.round(pic * 0.5625) + 4), GAP_N = Math.max(GAP, rowH + 8);
   const box = useRef<HTMLDivElement>(null), [w, setW] = useState(0);
   useEffect(() => {
     const el = box.current; if (!el) return;
     const ro = new ResizeObserver(([e]) => setW(Math.round(e.contentRect.width))); ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const narrow = w < 560, labelW = narrow ? 0 : Math.min(LABEL_W, w * 0.34), top = W.ranked.slice(0, 10);
+  const narrow = w < 560, labelW = narrow ? 0 : Math.min(LABEL_W + pic - 40, w * 0.4), top = W.ranked.slice(0, n);
   const a = W.x.start, b = Math.min(W.now, W.x.end), plotW = w - PAD.l - PAD.r - labelW, plotH = H - PAD.t - PAD.b;
   const vmax = Math.max(10, ...top.map((o) => o.v)) * 1.08;
   const X = (m: number) => PAD.l + ((m - a) / (W.x.end - a)) * plotW, Y = (v: number) => PAD.t + plotH - (v / vmax) * plotH;
@@ -42,14 +44,14 @@ export function RankTime({ W, open, hot, setHot, draw = false }: { W: CityWorld;
   });
   /* the names at the right: at their line's end, pushed apart so they never overlap, held inside the chart */
   const ends = top.map((o, k) => ({ o, k, y: Y(o.v) })).sort((p, q) => p.y - q.y);
-  for (let k = 1; k < ends.length; k++) ends[k].y = Math.max(ends[k].y, ends[k - 1].y + GAP);
+  for (let k = 1; k < ends.length; k++) ends[k].y = Math.max(ends[k].y, ends[k - 1].y + GAP_N);
   const over = ends.length ? ends[ends.length - 1].y - (PAD.t + plotH) : 0;
-  if (over > 0) { ends[ends.length - 1].y -= over; for (let k = ends.length - 2; k >= 0; k--) ends[k].y = Math.min(ends[k].y, ends[k + 1].y - GAP); }
+  if (over > 0) { ends[ends.length - 1].y -= over; for (let k = ends.length - 2; k >= 0; k--) ends[k].y = Math.min(ends[k].y, ends[k + 1].y - GAP_N); }
   const lit = (id: number) => hot == null || hot === id;
-  const label = 'Votes over time for the top ten in ' + W.city.name + ', from ' + hhmm(a + W.off) + ' to ' + hhmm(b + W.off) + ' local.';
+  const label = 'Votes over time for the top ' + (n === 10 ? 'ten' : n) + ' in ' + W.city.name + ', from ' + hhmm(a + W.off) + ' to ' + hhmm(b + W.off) + ' local.';
   return (
-    <div className="rt" ref={box} data-hot={hot == null ? undefined : ''} data-draw={draw ? '' : undefined}>
-      <p className="rt-key bd-k"><span>Votes · the top ten</span><span>Local time</span></p>
+    <div className="rt" ref={box} style={{ ['--rt-row' as string]: rowH + 'px', ['--rt-pic' as string]: pic + 'px' }} data-hot={hot == null ? undefined : ''} data-draw={draw ? '' : undefined}>
+      <p className="rt-key bd-k"><span>Votes · the top {n === 10 ? 'ten' : n}</span><span>Local time</span></p>
       <div className="rt-plot" style={{ height: H }}>
         {/* nothing until the width is measured, so a phone never gets a desktop-wide chart for a frame */}
         {w ? <svg className="rt-svg" width={w} height={H} viewBox={`0 0 ${w} ${H}`} role="img" aria-label={label}>
@@ -77,7 +79,7 @@ export function RankTime({ W, open, hot, setHot, draw = false }: { W: CityWorld;
               <li key={o.p.id} style={{ top: y }} data-lit={lit(o.p.id) ? '' : undefined} data-k={o.rank <= 3 ? 'top' : 'rest'}>
                 <button type="button" onClick={() => open(o)} onPointerEnter={(e) => { if (e.pointerType !== 'touch') setHot(o.p.id); }} onPointerLeave={() => setHot(null)} onFocus={() => setHot(o.p.id)} onBlur={() => setHot(null)}
                   aria-label={ord(o.rank) + ', ' + o.p.name + ', ' + fmtN(o.v) + ' votes'}>
-                  <span className="rt-pl">{o.rank}</span><i style={{ background: lineOf(o.rank) }} /><Thumb p={o.p} w={40} /><span className="rt-nm">{o.p.name}</span>
+                  <span className="rt-pl">{o.rank}</span><i style={{ background: lineOf(o.rank) }} /><Thumb p={o.p} w={pic} /><span className="rt-nm">{o.p.name}</span>
                 </button>
               </li>
             ))}

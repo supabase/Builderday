@@ -1,0 +1,18 @@
+/* the emails lab: each email in a frame at a client's width, side by side, on the site's ground */
+.el { min-height: 100vh; padding: 32px 20px 64px; background: var(--c-ground); color: var(--c-ink); font-family: var(--font-sans); }
+.el-h { margin: 0; font-size: 20px; font-weight: 500; }
+.el-p { margin: 6px 0 16px; color: var(--c-ink-2); font-size: 14px; }
+.el-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 14px; }
+.el-tabs button { padding: 7px 10px; border: 1px solid var(--c-line); background: none; color: var(--c-ink-2); font: 500 13px/1 var(--font-sans); cursor: pointer; }
+.el-tabs button.on { border-color: var(--c-ink); color: var(--c-ink); }
+.el-tabs button:active { transform: scale(var(--press)); }
+.el-inv { margin-left: 10px; color: var(--c-ink-2); font-size: 13px; display: inline-flex; gap: 6px; align-items: center; }
+.el-subject { margin-bottom: 18px; font: 500 14px/1.4 var(--font-sans); }
+.el-subject span, .el-subject em { margin-right: 10px; color: var(--c-ink-3); font: 500 11px/1 var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; font-style: normal; }
+.el-subject em { margin: 0 0 0 10px; }
+.el-frames { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 32px; }
+.el-frames figure { margin: 0; max-width: 100%; }
+.el-frames figcaption { margin-bottom: 10px; color: var(--c-ink-3); font: 500 12px/1 var(--font-mono); }
+.el-frames iframe { display: block; height: 1060px; max-width: 100%; border: 1px solid var(--c-line); background: #fff; cursor: pointer; }
+.el-frames.inv iframe { filter: invert(1) hue-rotate(180deg); }
+.el-text { width: 340px; max-width: 100%; margin: 0; padding: 14px; border: 1px solid var(--c-line); color: var(--c-ink-2); font: 12px/1.5 var(--font-mono); white-space: pre-wrap; word-break: break-word; }

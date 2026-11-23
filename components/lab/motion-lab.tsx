@@ -31,6 +31,7 @@ const GROUPS: Group[] = [
   { name: 'The wire', knobs: [{ k: 'slide', kind: 'range', label: 'Slide' }, { k: 'durFlash', kind: 'range', label: 'Lit for' }] },
   { name: 'Finalists landing', knobs: [{ k: 'durDraw', kind: 'range', label: 'Draw' }, { k: 'stagger', kind: 'range', label: 'Stagger' }] },
   { name: 'The pick', knobs: [{ k: 'durReveal', kind: 'range', label: 'Reveal' }] },
+  { name: 'The day on air', knobs: [{ k: 'durAirReveal', kind: 'range', label: 'Votes revealed' }, { k: 'durAirPrint', kind: 'range', label: 'A print (final lines, ranking rows)' }] },
   { name: 'How it works', knobs: [{ k: 'tourStep', kind: 'range', label: 'Each step, at least' }, { k: 'durJump', kind: 'range', label: 'Jump to a step' }] },
   { name: 'How it works: the morning line', knobs: [{ k: 'tourTurn', kind: 'range', label: 'One turn of the globe' }, { k: 'tourHold', kind: 'range', label: 'Rest after Build and Vote' }, { k: 'pickHold', kind: 'range', label: 'Rest on the pick' }, { k: 'durFlight', kind: 'range', label: 'A finalist flies' }, { k: 'durCross', kind: 'range', label: 'Ring at the 09:00 line' }] },
   { name: 'Footer', knobs: [{ k: 'durDot', kind: 'range', label: 'Screen off: line and dot' }, { k: 'durTurn', kind: 'range', label: 'Globe turns to a city' }] },

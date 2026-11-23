@@ -4,6 +4,8 @@ import { RESEND_S, emailOK } from '@/lib/forms';
 import { emit, store, type Session } from './store';
 import { FM_ACT, FM_F, FM_FORM, FM_H, FM_L, FM_NOTE, FM_P, FM_T, ErrBox, Sheet, useSheet } from './sheet';
 import { roomCodeOK } from '@/lib/event/rule';
+import { EVENT } from '@/lib/day-data';
+import type { ArtSubject } from './art-config';
 
 /* Sign-in: email, then six digits. Used on its own and as the email step before a first vote. On a site with the
    backend, a city's sheet also takes the four characters on the stage ("Code on the screen"): typed, they sign in at
@@ -13,19 +15,25 @@ import { roomCodeOK } from '@/lib/event/rule';
 export type SignInOpts = { label?: string; title?: string; reason?: string; verb?: string; city?: string; cityName?: string; room?: boolean };
 export type Who = { handle: string; email: string };
 
+/* the sheet's picture: what the sheet is for, in characters (SIGN IN, VOTE, SUBMIT), the globe on the city when there is one */
+export function signInArt(o: SignInOpts): ArtSubject {
+  return { word: o.label || 'Sign in', city: o.city || null, lines: [EVENT.short, DAY_SHORT, o.cityName || 'Fourteen cities'] };
+}
+const DAY_SHORT = new Date(Date.UTC(EVENT.year, EVENT.month - 1, EVENT.day)).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+
 export function SignInSheet({ o, done }: { o: SignInOpts; done: (who: Who | null) => void }) {
   const result = useRef<Who | null>(null);
   /* a code sent in the last ten minutes picks up where the person left off */
   const [start] = useState(() => { const sent = store.codeSent(); return sent && Date.now() - sent.at < 600000 ? { step: 'code' as const, email: sent.email } : { step: 'email' as const, email: store.lastEmail() || '' }; });
   const emRef = useRef<HTMLInputElement>(null), firstDigit = useRef<HTMLInputElement>(null);
   return (
-    <Sheet label={o.label || 'Sign in'} focusRef={start.step === 'code' ? firstDigit : emRef} onDone={() => done(result.current)}>
+    <Sheet label={o.label || 'Sign in'} art={signInArt(o)} focusRef={start.step === 'code' ? firstDigit : emRef} onDone={() => done(result.current)}>
       <SignInBody o={o} start={start} emRef={emRef} firstDigit={firstDigit} onSignedIn={(s) => { result.current = { handle: s.handle, email: s.email }; }} />
     </Sheet>
   );
 }
 
-function SignInBody({ o, start, emRef, firstDigit, onSignedIn }: { o: SignInOpts; start: { step: 'email' | 'code'; email: string }; emRef: React.RefObject<HTMLInputElement | null>; firstDigit: React.RefObject<HTMLInputElement | null>; onSignedIn: (s: Session) => void }) {
+export function SignInBody({ o, start, emRef, firstDigit, onSignedIn }: { o: SignInOpts; start: { step: 'email' | 'code'; email: string }; emRef: React.RefObject<HTMLInputElement | null>; firstDigit: React.RefObject<HTMLInputElement | null>; onSignedIn: (s: Session) => void }) {
   const { id, close, busy: busyRef, open: openRef } = useSheet();
   const [step, setStep] = useState(start.step), [email, setEmail] = useState(start.email), [value, setValue] = useState(start.email);
   const [emErr, setEmErr] = useState(''), [sending, setSending] = useState(false);

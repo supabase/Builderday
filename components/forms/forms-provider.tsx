@@ -1,8 +1,9 @@
 'use client';
-import { Fragment, createContext, useCallback, useContext, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
+import { Fragment, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { ShareProject } from '@/lib/forms';
-import { emit, store, useDriver, type Entry } from './store';
+import { emit, meKnown, store, useDriver, type Entry } from './store';
+import { teamCode, teamCodeOK } from '@/lib/team';
 import { token } from './sheet';
 import { SignInSheet, type SignInOpts, type Who } from './sign-in-sheet';
 import { SubmitSheet, type SubmitOpts } from './submit-sheet';
@@ -77,6 +78,22 @@ export function FormsProvider({ children, live = false }: { children: ReactNode;
       reset: () => { store.reset(); emit(); },
     };
   }, [show]);
+
+  /* a team link (/team/KTR482 lands here with ?team=): sign in if need be, then the account, where the join form
+     waits with the code (components/account/team.tsx) */
+  useEffect(() => {
+    if (!live) return;
+    let code = '';
+    try { code = new URL(window.location.href).searchParams.get('team') || ''; } catch { return; }
+    if (!teamCodeOK(code)) return;
+    let gone = false;
+    meKnown().then(() => {
+      if (gone) return;
+      if (store.session()) { forms.account(); return; }
+      forms.signIn({ title: 'Sign in to join team ' + teamCode(code), reason: 'Use the email you registered with on Luma. Teams are made from the people on a city’s list.' }).then((who) => { if (who) forms.account(); });
+    });
+    return () => { gone = true; };
+  }, [live, forms]);
 
   return (
     <FormsContext.Provider value={forms}>

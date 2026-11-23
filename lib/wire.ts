@@ -8,7 +8,7 @@
    The events come from the same seeded data both pages read (day-data.ts), so the wire never says anything a row
    does not show. A lead change is said once the new leader has held it for LEAD_HOLD minutes, the way a live page
    would have to wait to be sure; nothing leads before LEAD_MIN votes. Pure, and memoised per city and schedule. */
-import { EVENT, inAt, leader, top3, votesAtMin, all, type CitySched, type SeedCity } from './day-data';
+import { EVENT, hiddenAt, inAt, leader, top3, votesAtMin, all, type CitySched, type SeedCity } from './day-data';
 import { dur, fmtN, hhmm } from './format';
 import type { HomeCity, HomeWorld } from './home';
 
@@ -23,7 +23,7 @@ const VOTE_MARKS = [1000, 2000, 5000];
 const CACHE = new Map<string, WireEvent[]>();
 /* one city's events across its session */
 export function cityEvents(sd: SeedCity, x: CitySched): WireEvent[] {
-  const key = sd.seed + ':' + sd.i + ':' + x.start + ':' + x.buildEnd + ':' + x.end;
+  const key = sd.seed + ':' + sd.i + ':' + x.start + ':' + x.buildEnd + ':' + x.end + ':' + x.hide;
   const hit = CACHE.get(key); if (hit) return hit;
   const nm = x.city.name, i = sd.i, N = sd.entries, ev: WireEvent[] = [];
   ev.push({ m: x.start, city: i, kind: 'open', text: nm + ' opens. Building and voting start now.' });
@@ -37,6 +37,8 @@ export function cityEvents(sd: SeedCity, x: CitySched): WireEvent[] {
   let said: number | null = null, cand: number | null = null, since = 0, marks = 0;
   const entries = all(sd);
   for (let m = x.start; m <= x.end; m++) {
+    /* while the counts are hidden the wire says nothing about them: no lead change, no vote total, until the close */
+    if (hiddenAt(x, m)) continue;
     const b = leader(sd, x, m);
     if (b && b.v >= LEAD_MIN) {
       if (b.p.id !== cand) { cand = b.p.id; since = m; }

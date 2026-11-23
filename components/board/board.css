@@ -166,7 +166,7 @@
 
 /* ---------- the switches ---------- */
 .sw { display: inline-flex; gap: 6px; }
-.sw-b { height: calc(var(--bd-u) * 5); padding: 0 12px; border: 1px solid var(--bd-border); background: var(--bd-ground); font: 500 var(--bd-num)/1 var(--bd-face); cursor: pointer; }
+.sw-b { height: calc(var(--bd-u, 8px) * 5); padding: 0 12px; border: 1px solid var(--bd-border); background: var(--bd-ground); font: 500 var(--bd-num)/1 var(--bd-face); cursor: pointer; }
 .sw-b[aria-pressed="true"] { background: var(--bd-ink); color: var(--bd-ground); border-color: var(--bd-ink); }
 .sw-b:disabled { color: #8a8b8a; cursor: default; }
 /* a touch screen of any width gets the full press height */

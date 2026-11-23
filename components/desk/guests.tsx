@@ -151,7 +151,8 @@ export function Guests({ s, c, now, act, ask }: { s: DeskState; c: DeskCity; now
                       <span className={g.opened ? 'is-on' : ''}>{g.opened ? 'Opened their link ' + ago(g.opened, now) : g.sent ? 'Link sent ' + ago(g.sent, now) : 'Link not sent'}</span>
                       {g.signedIn ? <span className="is-on">Signed in</span> : null}
                       {g.inRoom ? <span className="is-on">{(g.inRoomHow === 'host' ? 'Marked in the room ' : 'Checked in ') + ago(g.inRoom, now)}</span> : null}
-                      {g.entry ? <span className="is-on">Has an entry</span> : null}
+                      {g.team ? <span>Team {g.team}</span> : null}
+                      {g.entry ? <span className="is-on">{g.team ? 'Team has an entry' : 'Has an entry'}</span> : null}
                       {g.editor ? <span className="is-on">Editor connected {ago(g.editor, now)}</span> : null}
                     </div>
                     {shown?.person === g.person ? <input className="fm-i" style={{ marginTop: 'var(--s-2)' }} readOnly value={shown.link} aria-label={'Link for ' + (g.name || g.email)} onFocus={(e) => e.target.select()} /> : null}
@@ -164,7 +165,7 @@ export function Guests({ s, c, now, act, ask }: { s: DeskState; c: DeskCity; now
                     <button type="button" className="dk-t" disabled={busy === k} aria-label={'Send it again to ' + (g.name || g.email)} onClick={() => run(k, 'guest.again', { city: c.id, person: g.person }, (r) => r.status === 'sent' ? 'Sent again.' : 'In the outbox, not sent. Copy the link instead.')}>Send it again</button>
                     <button type="button" className="dk-t" disabled={busy === k} aria-label={'Copy link for ' + (g.name || g.email)} onClick={() => copy(g.person)}>Copy link</button>
                     {g.editor ? <button type="button" className="dk-t" disabled={busy === k} aria-label={'End editor line: ' + (g.name || g.email)} onClick={() => ask({ title: 'End ' + (g.name || g.email) + '’s editor line?', text: 'Their editor stops working with the old line. They copy a new one from their account on the site; their emailed link still works.', yes: 'End the line', danger: true, run: () => run(k, 'guest.editor', { city: c.id, person: g.person }, () => 'Editor line ended. They need to copy the new one.') })}>End editor line</button> : null}
-                    <button type="button" className="dk-t" disabled={busy === k} aria-label={'Remove ' + (g.name || g.email)} onClick={() => ask({ title: 'Remove ' + (g.name || g.email) + '?', text: 'They come off ' + c.name + '’s list and their link stops working.' + (g.entry ? ' Their entry stays until you hide it.' : ''), yes: 'Remove', danger: true, run: () => run(k, 'guest.remove', { city: c.id, person: g.person }) })}>Remove</button>
+                    <button type="button" className="dk-t" disabled={busy === k} aria-label={'Remove ' + (g.name || g.email)} onClick={() => ask({ title: 'Remove ' + (g.name || g.email) + '?', text: 'They come off ' + c.name + '’s list and their link stops working.' + (g.team ? ' They leave team ' + g.team + '.' : '') + (g.entry ? ' Their entry stays until you hide it.' : ''), yes: 'Remove', danger: true, run: () => run(k, 'guest.remove', { city: c.id, person: g.person }) })}>Remove</button>
                   </div>
                 </li>
               );

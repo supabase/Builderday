@@ -140,11 +140,11 @@ button.pf-cell { font: inherit; cursor: pointer; }
    or on a slow start, it shows by itself after 1.6s. The header and the mark are at rest from the first paint and
    play no entrance. Every keyframe fills backwards only: once it ends the element is simply at rest, so hover and the
    engine's own placing are never held by it. --pf-after moves the rest later (print: after the globe). */
-.pf[data-intro='hold'] :is(.wh-foot, .pf-main) { opacity: 0; animation: pf-show 0s 1.6s forwards; }
-.pf[data-intro='hold'] .wh-cells { visibility: hidden; animation: pf-vis 0s 1.6s forwards; }
+.pf[data-intro='hold'] :is(.wh-foot, .wh-col-foot, .pf-main) { opacity: 0; animation: pf-show 0s var(--pf-hold-max, 1.6s) forwards; }
+.pf[data-intro='hold'] .wh-cells { visibility: hidden; animation: pf-vis 0s var(--pf-hold-max, 1.6s) forwards; }
 @keyframes pf-show { to { opacity: 1; } }
 @keyframes pf-vis { to { visibility: visible; } }
-@media (scripting: none) { .pf[data-intro='hold'] :is(.wh-foot, .pf-main) { opacity: 1; animation: none; } .pf[data-intro='hold'] .wh-cells { visibility: visible; animation: none; } }
+@media (scripting: none) { .pf[data-intro='hold'] :is(.wh-foot, .wh-col-foot, .pf-main) { opacity: 1; animation: none; } .pf[data-intro='hold'] .wh-cells { visibility: visible; animation: none; } }
 
 /* the words: each line rises a few pixels from a little ink (never 0: the headline is the largest paint) while its red
    and blue copies close onto it and fade, a step apart. The copies are pseudo-elements moved by translate (compositor
@@ -172,7 +172,7 @@ button.pf-cell { font: inherit; cursor: pointer; }
 /* flap: the mono line is turned on flaps by script; the headline as tune */
 .pf[data-arrival='flap'] .pf-words-2 { animation: none; }
 /* sweep (before): the words fade up 8px, a step apart */
-.pf[data-arrival='sweep'] :is(.pf-words-1 > span, .pf-words-2) { animation: pf-rise 300ms var(--ease-out) calc(120ms + var(--pf-k, 0) * 60ms) backwards; }
+.pf[data-arrival='sweep'] :is(.pf-words-1 > span, .pf-words-2) { animation: pf-rise var(--pf-w-ms) var(--ease-out) calc(var(--pf-w-step) * (2 + var(--pf-k, 0))) backwards; }
 .pf[data-arrival='sweep'] .pf-words-1 > span::before, .pf[data-arrival='sweep'] .pf-words-1 > span::after { animation: none; }
 @keyframes pf-rise { from { opacity: 0; translate: 0 8px; } }
 /* back with the browser's Back or Forward: the words in one short step */
@@ -197,7 +197,7 @@ button.pf-cell { font: inherit; cursor: pointer; }
 .pf[data-intro='in']:is([data-arrival='scan'], [data-arrival='east'], [data-arrival='quiet'], [data-arrival='register']) :is(.wh-cells > div, .wh-lens, .wh-cta-text > span, .pf-main) { animation: none; }
 .pf[data-intro='in'][data-arrival='quiet'] :is(.wh-foot, .wh-cells, .pf-main) { animation: pf-fade var(--wh-canvas-in) var(--ease-out) backwards; }
 /* sweep (before): everything fades up together */
-.pf[data-intro='in'][data-arrival='sweep'] :is(.wh-cells > div, .wh-lens, .wh-cta-text > span, .pf-main) { animation: pf-rise 300ms var(--ease-out) 120ms backwards; }
+.pf[data-intro='in'][data-arrival='sweep'] :is(.wh-cells > div, .wh-lens, .wh-cta-text > span, .pf-main) { animation: pf-rise var(--pf-w-ms) var(--ease-out) calc(var(--pf-w-step) * 2) backwards; }
 /* register: what is there closes from red and blue apart (a filter, on the few elements, once) */
 .pf[data-intro='in'][data-arrival='register'] :is(.wh-canvas, .wh-foot, .wh-cells, .pf-words-2) { animation: pf-split calc(var(--pf-w-ms) * 1.4) var(--ease-out) backwards; }
 @keyframes pf-split { from { filter: drop-shadow(var(--pf-w-edge-r, 10px) 0 rgb(255 70 70 / 0.6)) drop-shadow(calc(-1 * var(--pf-w-edge-r, 10px)) 0 rgb(70 130 255 / 0.6)); } to { filter: drop-shadow(0 0 rgb(255 70 70 / 0)) drop-shadow(0 0 rgb(70 130 255 / 0)); } }
@@ -206,11 +206,11 @@ button.pf-cell { font: inherit; cursor: pointer; }
 .pf-scan {
   position: fixed; inset: 0; z-index: 4; pointer-events: none; animation-play-state: running;
   background: radial-gradient(ellipse 50% 50% at 50% 50%, rgb(0 0 0 / calc(var(--wh-vig, 0.45) * 0.0000)) 0%, rgb(0 0 0 / calc(var(--wh-vig, 0.45) * 0.0020)) 20%, rgb(0 0 0 / calc(var(--wh-vig, 0.45) * 0.0156)) 40%, rgb(0 0 0 / calc(var(--wh-vig, 0.45) * 0.0527)) 60%, rgb(0 0 0 / calc(var(--wh-vig, 0.45) * 0.1250)) 80%, rgb(0 0 0 / calc(var(--wh-vig, 0.45) * 0.2441)) 100%, rgb(0 0 0 / calc(var(--wh-vig, 0.45) * 0.4219)) 120%, rgb(0 0 0 / calc(var(--wh-vig, 0.45) * 0.6699)) 140%, rgb(0 0 0 / calc(var(--wh-vig, 0.45) * 0.8240)) 150%), var(--wh-paper);
-  animation: pf-scan 720ms steps(24, end) both;
+  animation: pf-scan var(--pf-print-ms) steps(24, end) both;
 }
 .pf-scan::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: rgb(244 244 242 / 0.55); box-shadow: 0 0 12px rgb(120 160 255 / 0.5); }
 @keyframes pf-scan { from { clip-path: inset(0 0 0 0); } 99.9% { clip-path: inset(100% 0 0 0); visibility: visible; } to { clip-path: inset(100% 0 0 0); visibility: hidden; } }
-.pf-scan::before { animation: pf-scan-line 720ms steps(24, end) both; }
+.pf-scan::before { animation: pf-scan-line var(--pf-print-ms) steps(24, end) both; }
 /* the line waits for t0 (the wheel's first frame), so it uncovers the wheel; the words stay over it, never waiting */
 .pf[data-intro='hold'] .pf-scan, .pf[data-intro='hold'] .pf-scan::before { animation-play-state: paused; }
 .pf[data-intro='hold'] .pf-scan::before { visibility: hidden; }
@@ -351,7 +351,7 @@ button.pf-go { padding: 0; border: 0; background: none; font: inherit; cursor: p
   .pf-you { margin: 2px 0 6px; }
   .pf-for { min-width: 0; }
   .pf-board td:nth-child(3)::before { content: 'For you: '; color: var(--pf-muted); }
-  .pf-board td:nth-child(4)::after { content: ' people'; }
+  .pf-board td.pf-people::after { content: ' people'; }
   .pf-clocks { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 

@@ -2,14 +2,15 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { stageVars, type StageCfg } from '@/lib/stage/config';
 import { TO_SUBMIT, TO_VOTE, visible } from '@/lib/stage/deck';
+import { BD_WALL, hasVote, type WallEvent } from '@/lib/stage/event';
 import { worldAt, type Content, type World } from '@/lib/stage/world';
 import type { StageDriver } from '@/lib/stage/driver';
 import type { CityLive, SceneKind, StageAction } from '@/lib/stage/types';
-import { localTime } from '@/lib/places';
+import { placeTime } from '@/lib/stage/rows';
 import { clampParts, partsVars } from '@/components/board/config';
 import partsSaved from '@/saved/parts.config.json';
-import { Deadline, DeadlineCtx, Doors, LinkSlide, Line, Needs, Prizes, Question, Questions, Rules, Say, Speaker, Submit, Tour, Welcome, WordsSlide, type SceneProps } from './intro';
-import { Building, Final, Tombola, Top3, Voting, wakeSound, type LiveProps } from './live';
+import { Deadline, DeadlineCtx, Doors, LinkSlide, Line, Needs, Prizes, Question, Questions, Rules, Say, ProductSlide, Speaker, Submit, Tour, Welcome, WordsSlide, type SceneProps } from './intro';
+import { Building, Final, Showcase, Tombola, Top3, Voting, wakeSound, type LiveProps } from './live';
 import { Door } from './parts';
 import { Wall as WallCtx, useArrival, useReduced, useSecond, useSnap, useAwake } from './use';
 import { useStageKeys } from './keys';
@@ -24,9 +25,9 @@ import './stage.css';
 
 const PARTS = partsVars(clampParts(partsSaved));
 const SCENES: Record<SceneKind, (p: SceneProps & LiveProps) => ReactNode> = {
-  doors: Doors, welcome: Welcome, speaker: Speaker, words: WordsSlide, link: LinkSlide, question: Question, needs: Needs, tour: Tour, say: Say,
+  doors: Doors, welcome: Welcome, speaker: Speaker, words: WordsSlide, link: LinkSlide, product: ProductSlide, question: Question, needs: Needs, tour: Tour, say: Say,
   line: Line, deadline: Deadline, rules: Rules, prizes: Prizes, submit: Submit, questions: Questions,
-  building: Building, voting: Voting, top3: Top3, tombola: Tombola, final: Final,
+  building: Building, voting: Voting, showcase: Showcase, top3: Top3, tombola: Tombola, final: Final,
 };
 
 export type WallProps = {
@@ -36,11 +37,13 @@ export type WallProps = {
   /* the lab's wall is framed: no full screen, keys only while the pointer or focus is in the lab */
   framed?: boolean;
   className?: string;
+  /* the place's event: Builder Day unless the page says otherwise */
+  event?: WallEvent;
   /* the numbers behind the live scenes: the seeded world by default; the real pages pass the snapshots' */
   source?: (o: { city: CityLive; now: number; rows: number; arrivals: number }) => World;
 };
 
-export function StageWall({ driver, cfg, name, url, seed, content, first, keys = false, framed = false, className, source }: WallProps) {
+export function StageWall({ driver, cfg, name, url, seed, content, first, keys = false, framed = false, className, source, event = BD_WALL }: WallProps) {
   const snap = useSnap(driver), now = useSecond(driver, first), reduced = useReduced();
   const deck = visible(snap.deck), s = deck.find((x) => x.id === snap.row.scene) ?? deck[0], step = s ? snap.row.step : 0;
   const base = useArrival(s?.id ?? '', step);
@@ -56,11 +59,11 @@ export function StageWall({ driver, cfg, name, url, seed, content, first, keys =
   const [num, setNum] = useState('');
   useStageKeys({ on: keys && snap.can.drive, framed, deck, onAction: (a) => {
     wakeSound();
-    const q = driver.ask(a, name, (ms) => localTime(snap.city.id, ms));
+    const q = driver.ask(a, name, (ms) => placeTime(snap.city, ms));
     if (q) setAsk({ q, a }); else void driver.send(a);
   }, onList: () => setList((v) => !v), ask, onConfirm: () => { if (ask) void driver.send(ask.a); setAsk(null); }, onCancel: () => { setAsk(null); setList(false); }, onNum: setNum });
   const style = { ...stageVars(cfg), ...PARTS } as CSSProperties;
-  const ctx = useMemo(() => ({ cfg, name, fresh: (i: number) => i > base, reduced, now: driver.now }), [cfg, name, base, reduced, driver]);
+  const ctx = useMemo(() => ({ cfg, name, ev: event, fresh: (i: number) => i > base, reduced, now: driver.now }), [cfg, name, event, base, reduced, driver]);
   const Scene = s ? SCENES[s.kind] : null;
   const props = s ? { s, step, city: snap.city, world, now, url, ranked, chart: snap.row.chart_on, talkEnds: snap.row.timer.ends_at ?? null, spin: snap.row.timer.spin ?? null } : null;
   return (
@@ -69,7 +72,7 @@ export function StageWall({ driver, cfg, name, url, seed, content, first, keys =
         <DeadlineCtx.Provider value={{ deadline: snap.row.timer.deadline ?? null }}>
           <div className="sw-in" data-kind={s?.kind}>
             {Scene && props ? <Scene key={s!.id} {...props} /> : <div className="st-sc st-mid"><p className="st-h st-2">The deck is empty.</p></div>}
-            {snap.row.timer.qr ? <div className="sw-qr"><p className="st-h">To submit</p><Door url={url} code={snap.city.room_code} /><p className="st-l st-key">{TO_SUBMIT.replace(/^To submit, s/, 'S')}</p><p className="st-l st-2">{TO_VOTE}</p></div> : null}
+            {snap.row.timer.qr ? <div className="sw-qr"><p className="st-h">To submit</p><Door url={url} code={snap.city.room_code} /><p className="st-l st-key">{TO_SUBMIT.replace(/^To submit, s/, 'S')}</p>{hasVote(event) ? <p className="st-l st-2">{TO_VOTE}</p> : null}</div> : null}
             {list ? <ol className="sw-list">{deck.map((x, i) => <li key={x.id} data-on={x.id === s?.id ? '' : undefined}><span>{i + 1}</span>{x.title}</li>)}</ol> : null}
             {num ? <p className="sw-num st-k">Scene {num}, Enter to go</p> : null}
             {ask ? <div className="sw-ask" role="alertdialog" aria-label={ask.q}><p>{ask.q}</p><p className="st-2">Enter to go ahead, Esc or Back to cancel.</p></div> : null}

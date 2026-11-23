@@ -1,7 +1,7 @@
 'use client';
 import { createContext, useCallback, useContext, useEffect, useRef } from 'react';
 import { NEEDS, ONE, RULES, TO_SUBMIT, editorOf } from '@/lib/stage/deck';
-import { localTime } from '@/lib/places';
+import { placeTime } from '@/lib/stage/rows';
 import { CITIES, EVENT } from '@/lib/day-data';
 import { PRIZES } from '@/lib/prizes';
 import { sayIt } from '@/lib/hackday-server';
@@ -15,6 +15,7 @@ import { dayFacts } from '@/components/day/explain-facts';
 import savedNeo from '@/saved/neo.config.json';
 import savedScope from '@/saved/explain.config.json';
 import type { Pen } from '@/components/day/pen';
+import { hasFinal } from '@/lib/stage/event';
 import { BeamLayer, SW, eio, eo } from './beam-layer';
 import { Door, In, Num, Others, Words } from './parts';
 import { useWall } from './use';
@@ -29,14 +30,14 @@ const cap = (s: string) => s.replace(/^an? /, '').replace(/^./, (c) => c.toUpper
 
 /* 1. Doors: the city, its time, when it starts, the door, and the other nine */
 export function Doors({ city, world, now, url }: SceneProps) {
-  const { name } = useWall();
+  const { name, ev } = useWall();
   return (
     <div className="st-sc st-doors">
       <div className="st-doors-l">
-        <p className="st-k">{EVENT.name}</p>
+        <p className="st-k">{ev.bd ? EVENT.name : ev.name}</p>
         <h1 className="st-d1"><Words v={name} /></h1>
-        <p className="st-h"><span className="st-2">It is </span><Num v={localTime(city.id, now)} width={5} /><span className="st-2"> here.</span></p>
-        <p className="st-b">{city.build_start ? 'Building started at ' + localTime(city.id, city.build_start) + '.' : now < city.planned_start ? 'Building starts at ' + localTime(city.id, city.planned_start) + '.' : 'Building starts soon.'}</p>
+        <p className="st-h"><span className="st-2">It is </span><Num v={placeTime(city, now)} width={5} /><span className="st-2"> here.</span></p>
+        <p className="st-b">{city.build_start ? 'Building started at ' + placeTime(city, city.build_start) + '.' : now < city.planned_start ? 'Building starts at ' + placeTime(city, city.planned_start) + '.' : 'Building starts soon.'}</p>
         {city.listed !== null ? <p className="st-b st-2">{city.listed} on the list{city.here !== null ? ', ' + city.here + ' here' : ''}</p> : null}
         <p className="st-b st-key">{TO_SUBMIT}</p>
       </div>
@@ -48,10 +49,10 @@ export function Doors({ city, world, now, url }: SceneProps) {
 
 /* 2. Welcome */
 export function Welcome({ s }: SceneProps) {
-  const { name } = useWall(), h = s.data.hosts?.filter(Boolean) ?? [];
+  const { name, ev } = useWall(), h = s.data.hosts?.filter(Boolean) ?? [];
   return (
     <div className="st-sc st-mid">
-      <p className="st-h st-2">{EVENT.name}</p>
+      <p className="st-h st-2">{ev.bd ? EVENT.name : ev.name}</p>
       <h1 className="st-d1"><Words v={name} /></h1>
       {h.length ? <p className="st-b st-2">Hosted by {h.length > 1 ? h.slice(0, -1).join(', ') + ' and ' + h[h.length - 1] : h[0]}</p> : null}
     </div>
@@ -89,6 +90,35 @@ export function LinkSlide({ s }: SceneProps) {
     <div className="st-sc st-mid">
       <h1 className="st-d2"><Words v={s.data.label ?? s.title} /></h1>
       {s.data.url ? <p className="st-b st-2">{s.data.url.replace(/^https?:\/\//, '')}</p> : null}
+    </div>
+  );
+}
+
+/* a host's product slide: a Supabase product's name, one line, a picture, and its link as a QR the room can scan.
+   With a picture, the words and the QR sit on the left and the picture on the right; without one, the QR takes the
+   right. */
+export function ProductSlide({ s }: SceneProps) {
+  const d = s.data, name = d.heading || s.title;
+  const words = (
+    <div className="st-product-t">
+      <h1 className="st-d2"><Words v={name} /></h1>
+      {d.line ? <p className="st-h st-2">{d.line}</p> : null}
+    </div>
+  );
+  if (d.picture) return (
+    <div className="st-sc st-product st-product-pic">
+      <div className="st-product-l">
+        {words}
+        {d.url ? <Door url={d.url} code={null} size="small" /> : null}
+      </div>
+      {/* eslint-disable-next-line @next/next/no-img-element -- a product picture from the deck, any address */}
+      <img className="st-product-p" src={d.picture} alt="" />
+    </div>
+  );
+  return (
+    <div className="st-sc st-product">
+      {words}
+      {d.url ? <Door url={d.url} code={null} /> : null}
     </div>
   );
 }
@@ -218,7 +248,7 @@ export function Deadline({ step, city }: SceneProps) {
   return (
     <div className="st-sc st-mid st-deadline">
       <h1 className="st-d2"><Words v={'You have ' + city.build_min + ' minutes.'} /></h1>
-      <p className="st-flap-row"><Num v={(step ? 'Deadline ' : 'Starts   ') + localTime(city.id, at)} width={14} className="st-flap" /></p>
+      <p className="st-flap-row"><Num v={(step ? 'Deadline ' : 'Starts   ') + placeTime(city, at)} width={14} className="st-flap" /></p>
     </div>
   );
 }
@@ -241,7 +271,33 @@ export function Rules({ step }: SceneProps) {
 
 /* 11. The prizes: the city prize, then the pick; the drawings already built (the laptop, the glass) */
 const NEO = clampNeo(savedNeo as Partial<NeoLook>), SCOPE = clampScope(savedScope as Partial<ScopeCfg>);
-export function Prizes({ step }: SceneProps) {
+export function Prizes(props: SceneProps) {
+  const { ev } = useWall();
+  return ev.bd ? <BuilderPrizes {...props} /> : <EventPrizes {...props} />;
+}
+/* another event's prizes, in words: the place prize, then (where there is one) the final's prize. No drawings: they
+   are Builder Day's laptop and ten-city glass. */
+function EventPrizes({ step }: SceneProps) {
+  const { ev } = useWall(), final = hasFinal(ev);
+  const place = ev.placePrize ? cap(ev.placePrize) : 'To be announced';
+  const who = ev.decide === 'apart' ? 'For the judges’ pick here' : ev.decide === 'judges' ? 'For the judges’ 1st place here' : 'For 1st place here';
+  return (
+    <div className="st-sc st-prizes">
+      <div className="st-prize">
+        <p className="st-d3"><Num v={place} /></p>
+        <p className="st-b st-2">{who}</p>
+      </div>
+      {final && step >= 1 ? (
+        <In i={1} className="st-prize">
+          <p className="st-d3"><Num v={ev.prize ? cap(ev.prize) : 'To be announced'} /></p>
+          <p className="st-b st-2">For the pick from the final</p>
+        </In>
+      ) : null}
+      {final && step >= 1 ? <In i={1} as="p" className="st-h st-prizes-cut"><span className="st-g" data-g="">The top {ev.finalists}</span> of each place go to the final.</In> : null}
+    </div>
+  );
+}
+function BuilderPrizes({ step }: SceneProps) {
   const { cfg } = useWall(), item = cap(PRIZES.city.what ?? 'To be announced'), amount = cap(PRIZES.global.what ?? 'To be announced');
   const cities = dayFacts().cities, n = CITIES.length * EVENT.finalists;
   return (
@@ -276,7 +332,7 @@ export function Submit({ s, step, city, url }: SceneProps) {
         <p className="st-b st-2">It asks for the email you gave Luma and the room code.</p>
       </div>
       {/* the web half holds its place from the first step, so the second press lands it without moving the first */}
-      <div className={'st-submit-r' + (step >= 1 ? (fresh(1) ? ' st-in' : '') : ' st-hide')} aria-hidden={step < 1}><p className="st-h">Or on the web</p><Door url={url} code={city.room_code} /><p className="st-l st-key">{TO_SUBMIT}</p></div>
+      <div className={'st-submit-r' + (step >= 1 ? (fresh(1) ? ' st-in' : '') : ' st-hide')} aria-hidden={step < 1}><p className="st-h">{url ? 'Or on the web' : 'With the room code'}</p><Door url={url} code={city.room_code} /><p className="st-l st-key">{TO_SUBMIT}</p></div>
     </div>
   );
 }

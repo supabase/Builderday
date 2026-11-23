@@ -43,11 +43,12 @@
 .rt[data-hot] .rt-line:not([data-lit]) { opacity: 0.16; }
 .rt-names { position: absolute; top: 0; right: 0; margin: 0; padding: 0; list-style: none; }
 .rt-names li { position: absolute; left: 0; right: 0; transform: translateY(-50%); transition: opacity var(--dur-hover, 140ms) var(--ease-out); }
-.rt-names button, .rt-under button { display: flex; align-items: center; gap: 8px; width: 100%; height: 24px; padding: 0; border: 0; background: none; color: var(--bd-muted); cursor: pointer; text-align: left; font: 500 14px/1 var(--bd-sans); }
+.rt-names button, .rt-under button { display: flex; align-items: center; gap: 8px; width: 100%; height: var(--rt-row, 24px); padding: 0; border: 0; background: none; color: var(--bd-muted); cursor: pointer; text-align: left; font: 500 14px/1 var(--bd-sans); }
 .rt-names [data-k='top'] button { color: var(--bd-ink); font-size: 16px; }
 .rt-pl { flex: none; width: 2ch; text-align: right; font: 500 12px/1 var(--bd-face); }
 .rt-names i, .rt-under i { flex: none; width: 14px; height: 2px; }
 .rt-names .rp-tube, .rt-under .rp-tube { flex: none; width: 40px; }
+.rt-names .rp-tube { width: var(--rt-pic, 40px); }
 .rt-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rt[data-hot] :is(.rt-names, .rt-under) li:not([data-lit]) { opacity: 0.35; }
 .rt-under { margin: 12px 0 0; padding: 0; list-style: none; }

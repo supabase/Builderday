@@ -30,12 +30,14 @@ export type Verdict = {
 const byId = (id: string): Check => CHECKS.find((c) => c.id === id)!;
 const say = (id: string, v: Record<string, string>) => byId(id).say?.(v) ?? byId(id).what;
 
-export function verify(d: Draft, ctx: { now: Date; hasEntry: boolean; off?: number; repo?: RepoFacts }): Verdict {
+/* noRepo: the event does not ask for a repository and none was given, so there is nothing to check */
+export function verify(d: Draft, ctx: { now: Date; hasEntry: boolean; off?: number; repo?: RepoFacts; noRepo?: boolean }): Verdict {
   const refused: Refusal[] = [], flags: string[] = [], later: string[] = [];
   /* sent after building closed in that city */
   if (d.deadline && ctx.now.getTime() > new Date(d.deadline).getTime()) refused.push({ check: 'closed', say: say('closed', { city: d.cityName, time: atCity(d.deadline, ctx.off) }) });
   /* the repository: its address here, the rest from what the server read */
-  const r = ctx.repo;
+  const r = ctx.noRepo ? undefined : ctx.repo;
+  if (ctx.noRepo) return { ok: refused.length === 0, refused, flags, replaces: ctx.hasEntry, later };
   if (!githubOK(d.repo) || (r && !r.readable)) refused.push({ check: 'repo', say: say('repo', { repo: d.repo }) });
   if (!r) later.push('repo', 'age', 'fork', 'push', 'dates', 'demo', 'supabase');
   else {

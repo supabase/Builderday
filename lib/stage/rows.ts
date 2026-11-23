@@ -3,6 +3,7 @@
    ({ ends_at, paused_left }, ms); the QR is the row's `qr` column; the deadline the wall said and the tombola's draw
    live in the row's `data` json. Pure. */
 
+import { ZONE, localTime } from '@/lib/places';
 import type { CityLive, SceneKind, SceneRow, StageRow, StageTimer } from './types';
 
 type Json = Record<string, unknown>;
@@ -48,7 +49,14 @@ export function cityFrom(r: Json, extra: { room_code: string | null; listed: num
   return {
     id: String(r.id), planned_start: ms(r.planned_start) ?? 0, build_min: Number(r.build_min) || 90, vote_after: Number(r.vote_after) || 0,
     build_start: ms(r.build_start), build_end: ms(r.build_end), vote_end: ms(r.vote_end),
-    submissions_paused: !!r.submissions_paused, voting_paused: !!r.voting_paused, ...extra,
+    submissions_paused: !!r.submissions_paused, voting_paused: !!r.voting_paused, zone: r.zone ? String(r.zone) : null, ...extra,
   };
 }
-export const CITY_COLS = 'id, planned_start, build_min, vote_after, build_start, build_end, vote_end, submissions_paused, voting_paused';
+export const CITY_COLS = 'id, zone, planned_start, build_min, vote_after, build_start, build_end, vote_end, submissions_paused, voting_paused';
+
+/* the time at the place at ms, as 09:41: Builder Day's cities by the code's zone (as before), any other place by its
+   row's zone */
+export function placeTime(c: Pick<CityLive, 'id' | 'zone'>, ms: number): string {
+  if (ZONE[c.id] || !c.zone) return localTime(c.id, ms);
+  try { return new Intl.DateTimeFormat('en-GB', { timeZone: c.zone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(ms); } catch { return localTime(c.id, ms); }
+}

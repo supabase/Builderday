@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CITIES, EVENT, SCHED, EPOCH, sched } from '@/lib/day-data';
-import { CODE, localTime } from '@/lib/places';
+import { CODE } from '@/lib/places';
+import { placeTime } from '@/lib/stage/rows';
 import { TO_VOTE } from '@/lib/stage/deck';
 import { PRIZES } from '@/lib/prizes';
 import type { Project } from '@/lib/data';
@@ -10,6 +11,7 @@ import { click, unlock } from '@/components/wheel/click';
 import { Door, In, Num, Others, Pic, Countdown, Words, mmss, bare } from './parts';
 import type { SceneProps } from './intro';
 import { useWall } from './use';
+import { hasFinal, hasVote, type WallEvent } from '@/lib/stage/event';
 
 /* The live scenes, 14 to 18, drawn from the city's world at the wall's second (counts, the countdown) or at its board
    tick (the ranking, which re-sorts on a tick and glides). Each survives the worst cases: no entries, 182 entries, the
@@ -20,6 +22,7 @@ export type LiveProps = SceneProps & { ranked: World; chart: boolean; talkEnds: 
 /* 14. Building: the countdown as the largest thing on the wall, the door, entries arriving with their pictures, the
    count, the other nine; on the switch, the chart in place of the arrivals */
 export function Building({ city, world, ranked, url, chart }: LiveProps) {
+  const { ev } = useWall();
   const before = world.phase === 'before', label = before ? 'Building' : world.phase === 'build' ? 'Building closes in' : 'Building is closed';
   return (
     <div className="st-sc st-building">
@@ -34,7 +37,7 @@ export function Building({ city, world, ranked, url, chart }: LiveProps) {
         <p className="st-l st-key">To submit: the email you gave Luma and the room code.</p>
       </div>
       <div className="st-build-b">
-        {chart ? <Chart w={ranked} /> : <Arrivals world={world} />}
+        {chart && hasVote(ev) && !ranked.hidden ? <Chart w={ranked} /> : <Arrivals world={world} />}
       </div>
       <Others others={world.others} />
     </div>
@@ -61,7 +64,46 @@ function Arrivals({ world }: { world: World }) {
 
 /* 15. Voting: building is closed, voting closes in; the ranking, ten rows read from the back, the cut under third in
    green; on the switch, the chart of the top ten over time in its place */
-export function Voting({ world, ranked, chart, url }: LiveProps) {
+export function Voting(props: LiveProps) {
+  const { ev } = useWall();
+  return ev.decide === 'judges' ? <Judging {...props} /> : <VotingBoard {...props} />;
+}
+/* where the judges decide alone: what was built, newest first, with no numbers and no order, and the line that the
+   judges decide and the result comes at the end. Once all has closed, a judged event that votes with a budget shows
+   its ranking (the judges' votes); one that scores never shows its scores here. */
+function Judging({ world, ranked, url }: LiveProps) {
+  const done = world.phase === 'done', before = world.phase === 'before', left = world.phase === 'build' || world.phase === 'vote';
+  return (
+    <div className="st-sc st-voting">
+      <p className="st-vote-h st-h">
+        {before ? 'The judges decide.' : done ? 'Judging is closed.' : world.phase === 'build' ? <>Building closes in <span className="st-num st-vote-n">{mmss(world.left)}</span></> : <>Judging closes in <span className="st-num st-vote-n">{mmss(world.left)}</span></>}
+      </p>
+      <p className={'st-l st-key' + (before ? ' st-hide' : '')}>{done ? (ranked.ranking.length ? 'The judges’ votes.' : 'The judges’ result is read out here.') : 'The judges decide. The result comes at the end.'}{left && url ? ' Entries at ' + bare(url) + '.' : ''}</p>
+      {done && ranked.ranking.length ? <Ranking w={ranked} ev={null} /> : <Built world={world} />}
+    </div>
+  );
+}
+/* every entry in so far, newest first: a name and who built it, no numbers */
+function Built({ world }: { world: World }) {
+  if (world.phase === 'before') return <p className="st-b st-2 st-empty">Entries show here as they arrive.</p>;
+  if (!world.all.length) return <p className="st-b st-2 st-empty">No entries yet.</p>;
+  const list = world.all.slice().reverse().slice(0, 10);
+  return (
+    <ol className="st-rank" aria-label="Entries, newest first">
+      {list.map((p) => (
+        <li key={p.id} className="st-row st-row-plain">
+          <span className="st-row-p" />
+          <Pic p={p} className="st-row-pic" />
+          <span className="st-row-n" title={p.name}>{p.name}</span>
+          <span className="st-row-j">{p.handle}</span>
+          <span className="st-row-v" />
+        </li>
+      ))}
+    </ol>
+  );
+}
+function VotingBoard({ world, ranked, chart, url }: LiveProps) {
+  const { ev } = useWall(), apart = ev.decide === 'apart';
   const done = world.phase === 'done', before = world.phase === 'before';
   return (
     <div className="st-sc st-voting">
@@ -69,8 +111,8 @@ export function Voting({ world, ranked, chart, url }: LiveProps) {
         {before ? 'Voting opens with building.' : done ? 'Voting is closed.' : world.phase === 'build' ? <>Voting is open. Building closes in <span className="st-num st-vote-n">{mmss(world.left)}</span></> : <>Building is closed. Voting closes in <span className="st-num st-vote-n">{mmss(world.left)}</span></>}
       </p>
       {/* voting is open to anyone (said apart from submitting, which needs the list and the code) */}
-      <p className={'st-l st-key' + (before || done ? ' st-hide' : '')}>{TO_VOTE.replace('Anyone can vote', 'Anyone can vote at ' + bare(url))}</p>
-      {chart ? <Chart w={ranked} /> : <Ranking w={ranked} />}
+      <p className={'st-l st-key' + (before || done ? ' st-hide' : '')}>{(url ? TO_VOTE.replace('Anyone can vote', 'Anyone can vote at ' + bare(url)) : TO_VOTE) + (apart ? ' This is the people’s choice; the judges pick the winner.' : '')}</p>
+      {chart && !ranked.hidden ? <Chart w={ranked} /> : <Ranking w={ranked} ev={ev} />}
     </div>
   );
 }
@@ -98,31 +140,36 @@ function useFlip(box: React.RefObject<HTMLElement | null>, order: string, axis: 
 }
 
 /* the ranking: rows glide to their new places on the board tick (--ease-move, the stage's glide) */
-function Ranking({ w }: { w: World }) {
+/* ev: the place's event, for the cut (null: no cut) */
+function Ranking({ w, ev }: { w: World; ev: WallEvent | null }) {
+  /* the cut: Builder Day's as always; another event's only where it has a final across places */
+  const cut = ev && hasFinal(ev) ? (ev.bd ? EVENT.finalists : ev.finalists) : 0;
   const box = useRef<HTMLOListElement>(null);
   useFlip(box, w.ranking.map((r) => r.p.id).join(','), 'y', 'var(--st-glide)', 'var(--ease-move)');
   if (w.phase === 'before') return <p className="st-b st-2 st-empty">The ranking starts with the first entry.</p>;
   if (!w.ranking.length) return <p className="st-b st-2 st-empty">No entries yet.</p>;
   return (
     <>
-      <ol ref={box} className="st-rank" aria-label="Ranking">
-        {w.ranking.map((r) => <Row key={r.p.id} r={r} />)}
+      <ol ref={box} className="st-rank" aria-label="Ranking" data-ev={ev && !ev.bd ? '' : undefined}>
+        {w.ranking.map((r) => <Row key={r.p.id} r={r} cut={cut} hidden={w.hidden} />)}
         {/* the cut stays where it is while rows glide across it */}
-        {w.ranking.length >= EVENT.finalists ? <li className="st-cut" data-g="" aria-hidden="true"><span>Top {EVENT.finalists} go to the final</span></li> : null}
+        {cut && w.ranking.length >= cut ? <li className="st-cut" data-g="" aria-hidden="true" style={cut === 3 ? undefined : { top: 'calc((' + cut + ' * 74 + 23) * var(--px))' }}><span>Top {cut} go to the final</span></li> : null}
       </ol>
       {w.tieNote ? <p className="st-l st-2 st-tie">{w.tieNote}</p> : null}
+      {w.hidden ? <p className="st-l st-2 st-tie">Votes are hidden. The order is as it stood when they were hidden; every count appears when voting closes.</p> : null}
     </>
   );
 }
-function Row({ r }: { r: Ranked }) {
+/* hidden: the count prints a fixed placeholder, padded to the column, and no judges' share */
+function Row({ r, cut, hidden }: { r: Ranked; cut: number; hidden?: boolean }) {
   const first = r.place === 1;
   return (
-    <li className="st-row" data-id={r.p.id} data-cut={r.place === EVENT.finalists ? '' : undefined} data-first={first ? '' : undefined}>
+    <li className="st-row" data-id={r.p.id} data-cut={cut && r.place === cut ? '' : undefined} data-first={first ? '' : undefined}>
       <span className="st-row-p">{r.place}</span>
       <Pic p={r.p} className="st-row-pic" />
       <span className="st-row-n" title={r.p.name}>{r.p.name}</span>
-      <span className="st-row-j">{r.tie ? 'Level' : r.j ? r.j + ' from judges' : ''}</span>
-      <span className="st-row-v"><Num v={String(r.v)} width={4} /></span>
+      <span className="st-row-j">{hidden ? '' : r.tie ? 'Level' : r.j ? r.j + ' from judges' : ''}</span>
+      <span className="st-row-v">{hidden ? <Num v={'··'.padStart(4)} width={4} /> : <Num v={String(r.v)} width={4} />}</span>
     </li>
   );
 }
@@ -161,15 +208,64 @@ function Chart({ w }: { w: World }) {
 }
 const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
 
+/* The showcase: the entries in turn, oldest first, one a board tick (the wall's clock picks which, so every screen
+   shows the same one): the picture, the name, who built it, the pitch. The entry the wall arrives on is simply
+   there; each one after lands like a step (st-in: in and 12px up, the stage's enter time, ease-out), the one before
+   is cut. Under reduced motion each is simply swapped. The next picture is laid out unseen so it is ready when it
+   comes. */
+export function Showcase({ world, now, url }: LiveProps) {
+  const { cfg, ev } = useWall(), list = world.all, n = list.length, tickMs = cfg.tick * 1000;
+  const i = n ? Math.floor(now / tickMs) % n : -1, p = i >= 0 ? list[i] : null, next = n > 1 ? list[(i + 1) % n] : null;
+  /* the first entry shown is there on arrival; any change after that lands */
+  const [seen, setSeen] = useState<{ id: number | null; moved: boolean }>({ id: p?.id ?? null, moved: false });
+  if ((p?.id ?? null) !== seen.id) setSeen({ id: p?.id ?? null, moved: true });
+  const moved = seen.moved || (p?.id ?? null) !== seen.id;
+  if (!p) return (
+    <div className="st-sc st-mid">
+      <h1 className="st-d2"><Words v="What was built" /></h1>
+      <p className="st-h st-2">{world.phase === 'before' ? 'Entries show here as they arrive.' : 'No entries yet.'}</p>
+    </div>
+  );
+  return (
+    <div className="st-sc st-show">
+      <p className="st-show-h"><span className="st-k">What was built</span><span className="st-l st-2"><span className="st-num">{i + 1}</span> of <span className="st-num">{n}</span></span></p>
+      <div key={p.id} className={'st-show-card' + (moved ? ' st-in' : '')}>
+        <Pic p={p} className="st-show-pic" />
+        <div className="st-show-t">
+          <h1 className="st-show-n st-d3">{p.name}</h1>
+          {p.handle ? <p className="st-h st-2">by {p.handle}</p> : null}
+          {p.pitch ? <p className="st-show-pitch st-b">{p.pitch}</p> : null}
+        </div>
+      </div>
+      <p className={'st-l st-2' + ((world.phase === 'build' || world.phase === 'vote') && hasVote(ev) ? '' : ' st-hide')}>{url ? TO_VOTE.replace('Anyone can vote', 'Anyone can vote at ' + bare(url)) : TO_VOTE}</p>
+      {next ? <span className="st-show-next" aria-hidden="true"><Pic p={next} /></span> : null}
+    </div>
+  );
+}
+
 /* 16. The top 3: three closed places, then third, second, first, one press each; a talk timer the host can start */
 export function Top3({ step, world, now, talkEnds }: LiveProps) {
+  const { ev } = useWall();
   const top = world.ranking.slice(0, EVENT.finalists), shown = Math.min(step, 3);
+  /* what the places are and what first wins: Builder Day's as always; another event's from its format */
+  const apart = !ev.bd && ev.decide === 'apart', judged = !ev.bd && ev.decide === 'judges';
+  const prize = ev.bd ? PRIZES.city.what : apart ? null : ev.placePrize || null;
+  const unit = (v: number) => judged ? v + (v === 1 ? ' judge’s vote' : ' judges’ votes') : v + (v === 1 ? ' vote' : ' votes');
+  const title = apart ? (world.phase === 'done' ? 'The people’s choice' : 'The people’s choice so far') : world.phase === 'done' ? 'The top 3' : 'The top 3 so far';
+  /* where the judges decide and their result is not on the wall (scores, or before the close): the host reads it */
+  if (judged && !top.length) return (
+    <div className="st-sc st-mid">
+      <h1 className="st-d2"><Words v="The judges’ result" /></h1>
+      <p className="st-h st-2">{world.phase === 'done' ? 'The judges name the winner here.' : 'The judges decide when judging closes.'}</p>
+      {prize ? <p className="st-b st-g" data-g="">1st wins {prize}.</p> : null}
+    </div>
+  );
   const open = (place: number) => shown >= 4 - place; /* third opens first */
   const talk = talkEnds && talkEnds > now ? (talkEnds - now) / 1000 : null;
   return (
     <div className="st-sc st-top3">
       <div className="st-top3-h">
-        <h1 className="st-d3"><Words v={world.phase === 'done' ? 'The top 3' : 'The top 3 so far'} /></h1>
+        <h1 className="st-d3"><Words v={title} /></h1>
         {talk !== null ? <p className="st-talk"><span className="st-k">Talk</span><Num v={mmss(talk)} width={5} /></p> : null}
       </div>
       {!top.length ? <p className="st-b st-2 st-empty">No entries in {world.phase === 'before' ? 'yet' : 'this city'}.</p> : (
@@ -183,8 +279,8 @@ export function Top3({ step, world, now, talkEnds }: LiveProps) {
                   <In i={4 - place} className="st-place-b">
                     <Pic p={r.p} className="st-place-pic" />
                     <span className="st-place-n">{place === 1 ? <Words v={r.p.name} /> : r.p.name}</span>
-                    <span className="st-l st-2">{r.p.handle} · {r.v} {r.v === 1 ? 'vote' : 'votes'}</span>
-                    {place === 1 && PRIZES.city.what ? <span className="st-l st-g" data-g="">Wins {PRIZES.city.what}.</span> : null}
+                    <span className="st-l st-2">{r.p.handle} · {unit(r.v)}</span>
+                    {place === 1 && prize ? <span className="st-l st-g" data-g="">Wins {prize}.</span> : null}
                   </In>
                 ) : <span className="st-place-closed" aria-label="Not revealed yet" />}
               </li>
@@ -194,6 +290,7 @@ export function Top3({ step, world, now, talkEnds }: LiveProps) {
       )}
       {/* a tie at third is said when third opens: who reached the count first keeps the place */}
       {shown >= 1 && world.tieNote ? <p className="st-l st-2">{world.tieNote}</p> : null}
+      {apart ? <p className="st-l st-2">The judges pick the winner.</p> : null}
     </div>
   );
 }
@@ -249,18 +346,43 @@ export function Tombola({ step, world, spin }: LiveProps) {
 export const wakeSound = () => unlock();
 
 /* 18. The final: thirty finalists, one pick; when and where to watch; the ten cities' top threes as they finish */
-export function Final({ city, world, url }: LiveProps) {
+export function Final(props: LiveProps) {
+  const { ev } = useWall();
+  return ev.bd ? <BuilderFinal {...props} /> : <EventFinal />;
+}
+/* another event's last scene: with a final across places, how many go and who picks (the other places' boards are
+   Builder Day's, so none here); with no final, the winner is named in this room */
+function EventFinal() {
+  const { ev } = useWall();
+  if (hasFinal(ev)) return (
+    <div className="st-sc st-mid">
+      <h1 className="st-d2"><Words v={ev.places * ev.finalists + ' finalists. One pick.'} /></h1>
+      <p className="st-h st-2">The top {ev.finalists} of each of the {ev.places} places go to the final.</p>
+      {ev.pickers ? <p className="st-b st-2">{ev.pickers} pick one{ev.prize ? ', who wins ' + ev.prize : ''}.</p> : null}
+    </div>
+  );
+  return (
+    <div className="st-sc st-mid">
+      <h1 className="st-d2"><Words v="The winner" /></h1>
+      <p className="st-h st-2">{ev.decide === 'votes' ? 'The most votes wins, named here.' : 'The judges name the winner here.'}</p>
+      {ev.placePrize ? <p className="st-b st-g" data-g="">1st wins {ev.placePrize}.</p> : null}
+    </div>
+  );
+}
+function BuilderFinal({ city, world, url }: LiveProps) {
   const S = sched(SCHED), pickMs = EPOCH + S.pickAt * 60000, n = CITIES.length * EVENT.finalists;
   const mine = world.phase === 'done' ? world.ranking.slice(0, 3).map((r) => r.p) : null;
   const blocks = CITIES.map((c) => {
     if (c.id === city.id) return { id: c.id, code: CODE[c.id], names: mine?.map((p) => p.name) ?? null, word: world.phase === 'before' ? 'Not started' : world.phase === 'build' ? 'Building' : 'Voting' };
-    const o = world.others.find((x) => x.id === c.id)!;
+    const o = world.others.find((x) => x.id === c.id);
+    /* not read yet (or a place outside the ten): the city waits */
+    if (!o) return { id: c.id, code: CODE[c.id], names: null, word: 'Not started' };
     return { id: c.id, code: CODE[c.id], names: o.state === 'done' ? o.top.map((t) => t.p.name) : null, word: o.state === 'next' ? 'Not started' : o.state === 'build' ? 'Building' : 'Voting' };
   });
   return (
     <div className="st-sc st-final">
       <h1 className="st-d3"><Words v={n + ' finalists. One pick.'} /></h1>
-      <p className="st-b st-2">{EVENT.pickers} pick one at {localTime(city.id, pickMs)}. Watch at {bare(url).split('/')[0]}.</p>
+      <p className="st-b st-2">{EVENT.pickers} pick one at {placeTime(city, pickMs)}. Watch at {bare(url).split('/')[0]}.</p>
       <ul className="st-ten">
         {blocks.map((b) => (
           <li key={b.id} className="st-ten-c" data-here={b.id === city.id ? '' : undefined} data-done={b.names ? '' : undefined}>

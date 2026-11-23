@@ -22,5 +22,18 @@
   "bugCorner": "tr",
   "bugSize": 12,
   "sound": "steps",
-  "fastext": 0
+  "fastext": 0,
+  "air": {
+    "barCells": 16,
+    "barScale": 0,
+    "bar": "hatch",
+    "wireRate": 42,
+    "wireHold": 4,
+    "trail": 1,
+    "printRate": 900,
+    "lineHour": 18,
+    "lineChar": "|",
+    "lineInk": 0.7,
+    "markDim": 0.55
+  }
 }

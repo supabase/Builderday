@@ -116,7 +116,8 @@ try {
   // 6b. a listed guest who also judges: the room code proves the room, not the inbox, so it gives no session
   const [j1] = await rest(e, 'people', { method: 'POST', body: JSON.stringify({ email: em('j1'), name: 'Listed judge' }) });
   await rest(e, 'passes', { method: 'POST', body: JSON.stringify({ person: j1.id, city: A, source: 'luma' }) });
-  await rest(e, 'roles', { method: 'POST', body: JSON.stringify({ person: j1.id, role: 'judge', city: A }) });
+  const [{ event: evA }] = await rest(e, 'cities?id=eq.' + A + '&select=event');
+  await rest(e, 'roles', { method: 'POST', body: JSON.stringify({ person: j1.id, role: 'judge', event: evA, city: A }) });
   const jr = jar(), j1r = await jr.go('/api/auth/room', { email: em('j1'), code: codeA, city: A }), j1me = await jr.go('/api/me');
   check('room code with a judge\'s email: refused, says to use the emailed code; no session, not checked in', j1r.status === 403 && /runs the desk/.test(j1r.body?.error || '') && j1me.body?.signedIn === false && !(await passOf(em('j1'))).passes.checked_in_at, JSON.stringify(j1r) + JSON.stringify(j1me.body));
   const jc = await byCode(em('j1')), j1c = await jc.go('/api/checkin', { code: codeA });

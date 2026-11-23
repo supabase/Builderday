@@ -2,6 +2,8 @@
 import clsx from 'clsx';
 import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, type ReactNode, type RefObject } from 'react';
 import { LABEL } from '@/components/shared/page-parts';
+import type { ArtSubject } from './art-config';
+import { SheetArt, useArtLook } from './sheet-art';
 
 /* The sheet: one <dialog>, opened with showModal(). Every form (sign-in, submit, remind, share) is one of these.
    It animates in and out through data-state (closed, open, closing; forms.css has the motion), keeps Tab inside,
@@ -54,7 +56,7 @@ export function ErrBox({ id, msg, live }: { id: string; msg: string; live?: bool
 }
 
 /* focusRef: what takes focus when the sheet opens; onDone runs once, after the sheet has closed */
-export function Sheet({ label, wide, focusRef, onDone, children }: { label: string; wide?: boolean; focusRef?: RefObject<HTMLElement | null>; onDone: () => void; children: ReactNode }) {
+export function Sheet({ label, wide, art, focusRef, onDone, children }: { label: string; wide?: boolean; art?: ArtSubject; focusRef?: RefObject<HTMLElement | null>; onDone: () => void; children: ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null), id = 'fm-' + useId().replace(/[^a-z0-9]/gi, '');
   const busy = useRef(false), isOpen = useRef(false), st = useRef({ closing: false, done: false, tm: 0, unfit: null as null | (() => void), opener: null as Element | null });
   const doneRef = useRef(onDone);
@@ -115,13 +117,36 @@ export function Sheet({ label, wide, focusRef, onDone, children }: { label: stri
   };
 
   const value = useMemo(() => ({ id, close, busy, focus, open: isOpen }), [id, close, focus]);
+  const look = useArtLook(), mode = art ? look.mode : 'none';
   return (
-    <dialog ref={ref} className={'fm' + (wide ? ' is-wide' : '')} aria-labelledby={id + '-h'} onCancel={onCancel} onClose={onClose} onClick={onClick} onKeyDown={onKeyDown}>
-      <div className="px-8 pt-6 pb-8 phone-window:px-4 phone-window:pt-3 phone-window:pb-[calc(var(--s-5)+env(safe-area-inset-bottom))]">
-        <div className="sticky top-0 z-1 -mt-2 mb-3 flex min-h-11 items-center justify-between bg-ground"><p className={LABEL}>{label}</p>
-          <button className="-mr-3 grid size-11 cursor-pointer touch-manipulation place-items-center text-ink transition-[background-color] duration-hover ease-[ease-out] [-webkit-tap-highlight-color:transparent] hover:bg-tint-1" type="button" data-close aria-label="Close"><IconX className={clsx('size-4', SVG_LINE)} /></button></div>
-        <div data-body><SheetContext.Provider value={value}>{children}</SheetContext.Provider></div>
-      </div>
+    <dialog ref={ref} className={shellClass(mode, wide)} style={shellStyle(mode, look)} aria-labelledby={id + '-h'} onCancel={onCancel} onClose={onClose} onClick={onClick} onKeyDown={onKeyDown}>
+      <SheetShell label={label} art={mode === 'none' ? undefined : art} value={value}>{children}</SheetShell>
     </dialog>
   );
+}
+
+const CloseKey = () => <button className="fm-x -mr-3 grid size-11 cursor-pointer touch-manipulation place-items-center text-ink transition-[background-color] duration-hover ease-[ease-out] [-webkit-tap-highlight-color:transparent] hover:bg-tint-1" type="button" data-close aria-label="Close"><IconX className={clsx('size-4', SVG_LINE)} /></button>;
+/* the sheet's frame, shared by the dialog and the lab's still frames */
+function shellClass(mode: string, wide?: boolean) { return 'fm' + (wide ? ' is-wide' : '') + (mode !== 'none' ? ' has-art is-' + mode : ''); }
+function shellStyle(mode: string, look: { band: number; side: number }) { return mode === 'none' ? undefined : ({ '--fm-band': look.band + 'px', '--fm-side': look.side + 'px' } as React.CSSProperties); }
+function SheetShell({ label, art, value, children }: { label: string; art?: ArtSubject; value: SheetValue; children: ReactNode }) {
+  /* with a picture the small label gives way to it (the heading still names the sheet); the close key sits over it */
+  const body = (
+    <div className="fm-in px-8 pt-6 pb-8 phone-window:px-4 phone-window:pt-3 phone-window:pb-[calc(var(--s-5)+env(safe-area-inset-bottom))]">
+        <div className="fm-top sticky top-0 z-1 -mt-2 mb-3 flex min-h-11 items-center justify-between bg-ground"><p className={LABEL}>{label}</p>
+          {art ? null : <CloseKey />}</div>
+        <div data-body><SheetContext.Provider value={value}>{children}</SheetContext.Provider></div>
+    </div>
+  );
+  if (!art) return body;
+  /* with a picture the sheet's face is a card inside the dialog: the card carries the ground, the hairline and (pass)
+     the notches cut through it, and it scrolls with the content, so the cuts stay on the perforation */
+  return <div className="fm-card"><div className="fm-xr"><CloseKey /></div><SheetArt subject={art} />{body}</div>;
+}
+/* a sheet drawn open on the page, for the labs: the same frame and picture, no dialog, nothing to close */
+export function StillSheet({ label, wide, art, children }: { label: string; wide?: boolean; art?: ArtSubject; children: ReactNode }) {
+  const look = useArtLook(), mode = art ? look.mode : 'none', id = 'fm-' + useId().replace(/[^a-z0-9]/gi, '');
+  const busy = useRef(false), open = useRef(true);
+  const value = useMemo<SheetValue>(() => ({ id, close: () => {}, busy, focus: () => {}, open }), [id]);
+  return <div className={shellClass(mode, wide) + ' is-still'} style={shellStyle(mode, look)} data-state="open" role="group" aria-labelledby={id + '-h'}><SheetShell label={label} art={mode === 'none' ? undefined : art} value={value}>{children}</SheetShell></div>;
 }

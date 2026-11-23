@@ -11,14 +11,17 @@ type Who = Role | 'out';
 export function DeskLab({ who: who0, moment: m0, tab }: { who: Who; moment: Moment; tab?: string }) {
   const [who, setWho] = useState<Who>(who0), [moment, setMoment] = useState<Moment>(m0);
   const [state, setState] = useState<DeskState>(() => sampleState(who0 === 'out' ? 'host' : who0));
-  const [cityId, setCityId] = useState('berlin');
+  /* where the lab desk is: a place, the event with no place chosen (null), or the Events list (event null) */
+  const [cityId, setCityId] = useState<string | null>('berlin'), [onEvent, setOnEvent] = useState(true);
   const view = useMemo(() => {
     const cities = state.cities.map((c) => timesFor(c, moment).city);
-    const cur = cities.find((c) => c.id === cityId) || cities[0];
-    return { s: { ...state, city: cur.id, cities }, now: timesFor(cur, moment).now };
-  }, [state, moment, cityId]);
+    const seesAll = state.can.admin || state.overview.length > 0;
+    const cur = (cityId == null && seesAll) ? null : cities.find((c) => c.id === cityId) || cities[0];
+    const now = timesFor(cur || cities.find((c) => c.id === 'berlin') || cities[0], moment).now;
+    return { s: { ...state, event: onEvent ? state.event : null, city: onEvent && cur ? cur.id : null, cities }, now };
+  }, [state, moment, cityId, onEvent]);
 
-  const pick = (w: Who) => { setWho(w); if (w !== 'out') setState(sampleState(w)); setCityId('berlin'); };
+  const pick = (w: Who) => { setWho(w); if (w !== 'out') setState(sampleState(w)); setCityId('berlin'); setOnEvent(true); };
   const act: DeskAct = useCallback(async (action, p = {}) => {
     await new Promise((r) => setTimeout(r, 250));
     const upd = (f: (s: DeskState) => DeskState) => setState(f);
@@ -64,7 +67,7 @@ export function DeskLab({ who: who0, moment: m0, tab }: { who: Who; moment: Mome
         </div>
       </div>
       {who === 'out' ? <DeskSignIn mail="outbox" onIn={() => pick('host')} />
-        : <Desk s={view.s} act={act} now={view.now} onCity={setCityId} onSignOut={() => setWho('out')} site="http://localhost:4320" tab={tab} />}
+        : <Desk s={view.s} act={act} now={view.now} onGo={(e, c) => { setOnEvent(e != null); setCityId(c); }} onSignOut={() => setWho('out')} site="http://localhost:4320" tab={tab} />}
     </>
   );
 }

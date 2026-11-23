@@ -5,6 +5,9 @@ import { CODE } from '@/lib/places';
 import { CITY_WORD } from '@/lib/day-data';
 import type { OurFact } from '../facts';
 import { flapInto, flapOpts, reducedMotion } from './flap';
+import familySaved from '@/saved/family.config.json';
+import { clampFamily, showPeople } from '@/lib/family';
+const FAMILY = clampFamily(familySaved);
 
 /* Ten cities, one day: the board. Ten rows, east to west: the city (a button that makes it the visitor's city), when
    it starts there, that start in the visitor's own time, people, its state, and a register link. Over it, stuck under
@@ -57,6 +60,8 @@ function drawLand(cv: HTMLCanvasElement, img: HTMLImageElement, w: number, h: nu
 }
 
 export function FoldBoard({ cities, cur, nearest, pick, mode, beltSpan, beltLead, beltMs, dot, mine = -1, onMine }: Props) {
+  /* the People column only once a city has people to show (P3) */
+  const anyPeople = cities.some((c) => c.people == null || showPeople(FAMILY, c.people));
   const forYou = useForYou(cities);
   const sec = useRef<HTMLDivElement>(null), belt = useRef<HTMLDivElement>(null), strip = useRef<HTMLDivElement>(null), land = useRef<HTMLCanvasElement>(null);
   const aim = useRef<number | null>(null), curRef = useRef(cur), wake = useRef<() => void>(() => {});
@@ -141,7 +146,7 @@ export function FoldBoard({ cities, cur, nearest, pick, mode, beltSpan, beltLead
       <table className="pf-board">
         <caption className="sr-only">The {CITY_WORD} cities, east to west, each with its local start</caption>
         <thead>
-          <tr><th scope="col">City</th><th scope="col">Starts there</th><th scope="col">For you</th><th scope="col">People</th><th scope="col">State</th><th scope="col"><span className="sr-only">Register</span></th></tr>
+          <tr><th scope="col">City</th><th scope="col">Starts there</th><th scope="col">For you</th>{anyPeople ? <th scope="col">People</th> : null}<th scope="col">State</th><th scope="col"><span className="sr-only">Register</span></th></tr>
         </thead>
         <tbody>
           {cities.map((c, i) => (
@@ -154,7 +159,7 @@ export function FoldBoard({ cities, cur, nearest, pick, mode, beltSpan, beltLead
               </th>
               <td className="pf-num">{c.session}</td>
               <td className="pf-num pf-for">{forYou ? forYou[i] : '\u00a0'}</td>
-              <td className="pf-num">{c.count.replace(/ (people|person)$/, '')}</td>
+              {anyPeople ? (c.people == null || showPeople(FAMILY, c.people) ? <td className="pf-num pf-people">{c.count.replace(/ (people|person)$/, '')}</td> : <td className="pf-num" aria-label="Not shown yet">–</td>) : null}
               <td><span className="pf-state" data-status={c.status}><StatusIcon status={c.status} />{STATUS_LABEL[c.status]}</span></td>
               <td>{i === mine && onMine
                 ? <button type="button" className="pf-go" aria-haspopup="dialog" onClick={onMine}>Your place<span className="sr-only"> in {c.name}: your account</span></button>

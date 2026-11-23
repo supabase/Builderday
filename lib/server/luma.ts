@@ -74,3 +74,30 @@ export function verifyHook(secret: string, header: string | null, raw: string, n
   if (Math.abs(now / 1000 - t) > 300) return 'old';
   return 'ok';
 }
+
+/* The calendar's events from a date on (newest last), for picking a place: id, name, start, time zone, address and the
+   city Luma knows (often empty). Up to five hundred; a minute's cache. */
+export type LumaEvent = { id: string; name: string; start: string; zone: string; url: string; city: string | null; address: string | null; visibility: string; open: boolean };
+let cal: { at: number; after: string; list: LumaEvent[] } | null = null;
+export async function calendarEvents(after: string): Promise<LumaEvent[]> {
+  if (cal && cal.after === after && Date.now() - cal.at < 60_000) return cal.list;
+  type Raw = { api_id?: string; name?: string; start_at?: string; timezone?: string; url?: string; visibility?: string; registration_open?: boolean; geo_address_json?: { city?: string | null; address?: string | null; full_address?: string | null } | null };
+  const out: LumaEvent[] = [];
+  let cursor = '';
+  for (let n = 0; n < 10; n++) {
+    const r = await get('/calendar/list-events', { after, pagination_limit: '50', ...(cursor ? { pagination_cursor: cursor } : {}) });
+    if (!r.ok) throw fail(r);
+    const j = await r.json() as { entries?: (Raw & { event?: Raw })[]; has_more?: boolean; next_cursor?: string };
+    (j.entries || []).forEach((x) => {
+      const e = x.event || x;
+      if (!e.api_id || !e.start_at) return;
+      const g = e.geo_address_json || null;
+      out.push({ id: e.api_id, name: String(e.name || ''), start: e.start_at, zone: e.timezone || 'UTC', url: e.url || '', city: g?.city || null, address: g?.full_address || g?.address || null, visibility: e.visibility || '', open: !!e.registration_open });
+    });
+    if (!j.has_more || !j.next_cursor) break;
+    cursor = j.next_cursor;
+  }
+  out.sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
+  cal = { at: Date.now(), after, list: out };
+  return out;
+}

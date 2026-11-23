@@ -4,7 +4,7 @@
 import { CITIES, EVENT } from '@/lib/day-data';
 import { DEF as HOME_DEF, world as homeWorld, type HomeCfg, type HomeCity, type HomeWorld } from '@/lib/home';
 import { DEF as CITY_DEF, world as cityWorld, type CityCfg, type CityWorld, type Votes } from '@/lib/city';
-import { EVENT as EV, all, inAt, leader, top3, votesAtMin, type CitySched, type SeedCity } from '@/lib/day-data';
+import { EVENT as EV, all, hiddenAt, inAt, leader, top3, votesAtMin, type CitySched, type SeedCity } from '@/lib/day-data';
 import { fmtN } from '@/lib/format';
 import type { WireEvent, WireKind } from '@/lib/wire';
 import { hhmm } from '@/lib/format';
@@ -50,7 +50,7 @@ export function dayWord(W: HomeWorld, d: Day): StateWord {
 const LEAD_MIN = 10, LEAD_HOLD = 2, ENTRY_MARKS = [50, 100, 150], VOTE_MARKS = [1000, 2000, 5000];
 const EVENTS = new Map<string, WireEvent[]>();
 function eventsOf(sd: SeedCity, x: CitySched): WireEvent[] {
-  const key = [sd.seed, sd.i, sd.entries, sd.list.map((r) => r.p.name).join('|'), x.start, x.buildEnd, x.end].join(':');
+  const key = [sd.seed, sd.i, sd.entries, sd.list.map((r) => r.p.name).join('|'), x.start, x.buildEnd, x.end, String(x.hide)].join(':');
   const hit = EVENTS.get(key); if (hit) return hit;
   const nm = x.city.name, i = sd.i, N = sd.entries, ev: WireEvent[] = [];
   ev.push({ m: x.start, city: i, kind: 'open', text: nm + ' opens. Building and voting start now.' });
@@ -58,6 +58,8 @@ function eventsOf(sd: SeedCity, x: CitySched): WireEvent[] {
   let said: number | null = null, cand: number | null = null, since = 0, marks = 0;
   const entries = all(sd);
   for (let m = x.start; m <= x.end; m++) {
+    /* while the counts are hidden the wire says nothing about them, as lib/wire.ts */
+    if (hiddenAt(x, m)) continue;
     const b = leader(sd, x, m);
     if (b && b.v >= LEAD_MIN) {
       if (b.p.id !== cand) { cand = b.p.id; since = m; }

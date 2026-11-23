@@ -8,8 +8,10 @@ import { SERVER, checkIt } from '@/lib/hackday-server';
 import { Picker, Say } from '@/components/day/get-ready';
 import { meKnown, meLoaded, meNow, store, useFormsState, type Me } from '@/components/forms/store';
 import { useForms } from '@/components/forms/forms-provider';
-import { ErrBox, FM_F, FM_FORM, FM_H, FM_L, FM_NOTE, FM_P, FM_T, Sheet, useSheet, useSheetId } from '@/components/forms/sheet';
+import { token, ErrBox, FM_F, FM_FORM, FM_H, FM_L, FM_NOTE, FM_P, FM_T, Sheet, useSheet, useSheetId } from '@/components/forms/sheet';
 import '@/components/forms/forms.css';
+import type { ArtSubject } from '@/components/forms/art-config';
+import { TeamPart, type TeamLook } from './team';
 import './account.css';
 
 /* The account: a cell in the header of every page, and the sheet it opens.
@@ -17,8 +19,8 @@ import './account.css';
      "Account". Its width is kept for the longest of these, so the header never moves when /api/me answers. The first
      answer swaps the label at once (the page is still arriving); a sign-in or sign-out after that fades the new label
      in over the hover duration.
-   - The sheet: the city, the date and the local start; the editor line with its picker and Copy, and whether the
-     editor has called yet; "Registered with a different email?" when there is no place; the desk for a host or a
+   - The sheet: the city, the date and the local start; the team (components/account/team.tsx); the editor line with
+     its picker and Copy, and whether the editor has called yet; "Registered with a different email?" when there is no place; the desk for a host or a
      judge; Sign out.
    Everything is drawn from /api/me after the page loads, so the first paint is the signed-out page. On a site
    without the backend the cell still signs in through the stand-in, and the sheet says there is no list here. */
@@ -91,12 +93,22 @@ export const Person = ({ on }: { on: boolean }) => (
   <svg className="ac-i" viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><circle cx="10" cy="7" r="3.25" fill={on ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" /><path d="M3.75 17c.6-3.3 3.1-5.25 6.25-5.25s5.65 1.95 6.25 5.25" fill={on ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" /></svg>
 );
 
+/* the sheet's picture: a place prints its city's code with the globe on the city, and the stub carries the city, the
+   day and the start; signed in with no place, or signed out, it prints YOU */
+export function accountArt(me: Me | null): ArtSubject {
+  const p = me?.pass;
+  if (!p) return { word: 'You', lines: [EVENT.short, DAY_SHORT] };
+  const start = localStart(p);
+  return { word: CODE[p.city] || p.city.slice(0, 3), city: p.city, lines: [p.cityName, DAY_SHORT].concat(start ? [start + ' local'] : [], me?.team ? ['Team ' + me.team.code] : []) };
+}
+const DAY_SHORT = new Date(Date.UTC(EVENT.year, EVENT.month - 1, EVENT.day)).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+
 /* the account sheet, opened by the cell */
 export function AccountSheet({ here, done }: { here?: string; done: () => void }) {
   /* Sign out closes the sheet first and signs out once it is gone, so the sheet leaves with what it showed */
-  const forms = useForms(), outRef = useRef(false);
+  const forms = useForms(), outRef = useRef(false), st = useFormsState(), me = meNow();
   return (
-    <Sheet label="Your account" wide onDone={() => { if (outRef.current) forms?.signOut(); done(); }}>
+    <Sheet label="Your account" wide art={accountArt(st.signedIn ? me : null)} onDone={() => { if (outRef.current) forms?.signOut(); done(); }}>
       <AccountLive here={here} outRef={outRef} />
     </Sheet>
   );
@@ -104,7 +116,10 @@ export function AccountSheet({ here, done }: { here?: string; done: () => void }
 function AccountLive({ here, outRef }: { here?: string; outRef: RefObject<boolean> }) {
   const s = useFormsState(), me = meNow(), { close } = useSheet();
   const [moved, setMoved] = useState<Moved | null>(null);
-  if (!s.signedIn) return <AccountBody me={null} here={here} onSignOut={() => close()} />;
+  const forms = useForms();
+  /* signed out (a sign-out elsewhere, or a session that ended): the sheet closes, gives focus back to what opened it,
+     and then sign-in opens in its place, so sign-in hands focus back to the header cell too */
+  if (!s.signedIn) return <AccountBody me={null} here={here} onSignOut={() => close()} onSignIn={forms ? () => { close(); window.setTimeout(() => { openAccount(forms, here); }, token('--dur-panel-exit') + 20); } : undefined} />;
   return <AccountBody me={me} email={s.email} here={here} moved={moved} onClaimed={setMoved} onSignOut={() => { outRef.current = true; close(); }} />;
 }
 
@@ -112,7 +127,7 @@ function AccountLive({ here, outRef }: { here?: string; outRef: RefObject<boolea
 export type Moved = { cityName: string; replaced?: string | null };
 
 /* the body, from a person: the lab draws it with a made-up one */
-export function AccountBody({ me, email, here, onSignOut, claimLook, moved, onClaimed }: { me: Me | null; email?: string | null; here?: string; onSignOut: () => void; claimLook?: 'closed' | 'email' | 'code' | 'done'; moved?: Moved | null; onClaimed?: (m: Moved) => void }) {
+export function AccountBody({ me, email, here, onSignOut, onSignIn, claimLook, teamLook, moved, onClaimed }: { me: Me | null; email?: string | null; here?: string; onSignOut: () => void; onSignIn?: () => void; claimLook?: 'closed' | 'email' | 'code' | 'done'; teamLook?: TeamLook; moved?: Moved | null; onClaimed?: (m: Moved) => void }) {
   const id = useId().replace(/[^a-z0-9]/gi, ''), sid = useSheetId(), hid = sid ? sid + '-h' : id + '-h';
   /* the claim swaps the body for the place's: focus goes to its heading, which the status line follows */
   const head = useRef<HTMLHeadingElement>(null), was = useRef(moved), city = me?.pass?.city;
@@ -120,7 +135,7 @@ export function AccountBody({ me, email, here, onSignOut, claimLook, moved, onCl
   const who = me?.email || email || '';
   const p = me?.pass || null, desk = !!me?.roles?.length;
   const Out = <div className="ac-foot"><p className={FM_NOTE}>Signed in as <b className="font-medium text-ink">{who}</b></p><button className={FM_T} type="button" onClick={onSignOut}>Not you? Sign out</button></div>;
-  if (!me && !who) return <><h2 id={hid} className={FM_H} tabIndex={-1}>Signed out</h2><p className={FM_P}>Sign in with the email you registered with on Luma.</p></>;
+  if (!me && !who) return <><h2 id={hid} className={FM_H} tabIndex={-1}>Signed out</h2><p className={FM_P}>Sign in with the email you registered with on Luma.</p>{onSignIn ? <div className={FM_FORM}><button className="fm-b g w-full" type="button" onClick={onSignIn}>Sign in</button></div> : null}</>;
 
   if (!p) return (
     <>
@@ -142,6 +157,8 @@ export function AccountBody({ me, email, here, onSignOut, claimLook, moved, onCl
       <p className={FM_P}>{DAY}{start ? <>. Building starts at <b>{start}</b>, {p.cityName} time.</> : '.'}{p.checkedIn ? ' You are checked in.' : ''}</p>
       {p.listedAs ? <p className={FM_NOTE + ' mt-2'}>Listed under {p.listedAs}, moved to this email.</p> : null}
       {me?.open && (other || !here) ? <p className={FM_P}><a className="underline-link" href={'/city/' + p.city}>Go to {p.cityName}’s page</a></p> : null}
+
+      {me && me.teams?.on !== false && (store.isLive() || teamLook) ? <TeamPart me={me} look={teamLook} /> : null}
 
       <section className="ac-ed gr" aria-labelledby={id + '-ed'}>
         <h3 id={id + '-ed'} className="ac-k type-label">Your editor line</h3>

@@ -1,22 +1,25 @@
 'use client';
-/* Stage: the city's deck as a list. Add a slide (a speaker, words, or a link), move one up or down, hide or show it,
+/* Stage: the city's deck as a list. Add a slide (a speaker, words, a link, or a product), move one up or down, hide or show it,
    delete one of your own. The event's own scenes can be hidden, never deleted. */
 import { useState, type FormEvent } from 'react';
 import type { DeskAct, DeskCity, DeskScene, DeskState } from '@/lib/event/desk';
 import { Sec, Status, usePress, type Ask } from './parts';
 
-const KIND: Record<string, string> = { speaker: 'Speaker', words: 'Words', link: 'Link' };
+const KIND: Record<string, string> = { speaker: 'Speaker', words: 'Words', link: 'Link', product: 'Product' };
+type Kind = 'speaker' | 'words' | 'link' | 'product';
+const KINDS: Kind[] = ['speaker', 'words', 'link', 'product'];
 function sub(sc: DeskScene): string {
   const d = sc.data as Record<string, string | string[]>;
   if (sc.kind === 'speaker') return String(d.role || (d.name && d.name !== sc.title ? d.name : ''));
   if (sc.kind === 'words') return (Array.isArray(d.lines) ? d.lines : []).join(' · ') || String(d.heading || '');
   if (sc.kind === 'link') return String(d.url || '');
+  if (sc.kind === 'product') return String(d.line || d.url || '');
   return '';
 }
 
 export function Deck({ s, c, act, ask }: { s: DeskState; c: DeskCity; act: DeskAct; ask: (a: Ask) => void }) {
   const { busy, said, run, say } = usePress(act);
-  const [kind, setKind] = useState<'speaker' | 'words' | 'link'>('speaker');
+  const [kind, setKind] = useState<Kind>('speaker');
   const [f, setF] = useState<Record<string, string>>({});
   const set = (k: string) => (e: { target: { value: string } }) => setF((o) => ({ ...o, [k]: e.target.value }));
   const order = s.scenes.map((x) => x.id);
@@ -33,9 +36,11 @@ export function Deck({ s, c, act, ask }: { s: DeskState; c: DeskCity; act: DeskA
     e.preventDefault();
     const data = kind === 'speaker' ? { name: f.name || '', role: f.role || '', line: f.line || '', picture: f.picture || '' }
       : kind === 'words' ? { heading: f.heading || '', lines: [f.l1, f.l2, f.l3].filter((x): x is string => !!x && !!x.trim()) }
-        : { url: f.url || '', label: f.label || '' };
-    const title = kind === 'speaker' ? f.name : kind === 'words' ? f.heading : f.label;
+        : kind === 'product' ? { heading: f.heading || '', line: f.line || '', picture: f.picture || '', url: f.url || '' }
+          : { url: f.url || '', label: f.label || '' };
+    const title = kind === 'speaker' ? f.name : kind === 'words' || kind === 'product' ? f.heading : f.label;
     if (kind === 'link' && !/^https?:\/\//.test(f.url || '')) return say('add', 'Use the full address, starting https://.', true);
+    if (kind === 'product' && f.url && !/^https?:\/\//.test(f.url)) return say('add', 'Use the full address for the link, starting https://.', true);
     run('add', 'scene.add', { city: c.id, kind, title, data }, () => { setF({}); return 'Added at the end of the deck. Move it where it goes.'; });
   };
   return (
@@ -68,7 +73,7 @@ export function Deck({ s, c, act, ask }: { s: DeskState; c: DeskCity; act: DeskA
         <form className="dk-form" onSubmit={add}>
           <fieldset className="dk-seg">
             <legend className="sr-only">Kind of slide</legend>
-            {(['speaker', 'words', 'link'] as const).map((k) => <label key={k}><input type="radio" name="dk-kind" value={k} checked={kind === k} onChange={() => setKind(k)} />{KIND[k]}</label>)}
+            {KINDS.map((k) => <label key={k}><input type="radio" name="dk-kind" value={k} checked={kind === k} onChange={() => setKind(k)} />{KIND[k]}</label>)}
           </fieldset>
           {kind === 'speaker' ? (
             <>
@@ -78,6 +83,14 @@ export function Deck({ s, c, act, ask }: { s: DeskState; c: DeskCity; act: DeskA
               </div>
               <div className="dk-f"><label className="dk-l" htmlFor="dk-sp-l">One line{' '}<small>Optional</small></label><input id="dk-sp-l" className="fm-i" maxLength={120} autoComplete="off" value={f.line || ''} onChange={set('line')} /></div>
               <div className="dk-f"><label className="dk-l" htmlFor="dk-sp-p">Picture address{' '}<small>Optional</small></label><input id="dk-sp-p" className="fm-i" type="url" placeholder="https://" autoComplete="off" spellCheck={false} value={f.picture || ''} onChange={set('picture')} /></div>
+            </>
+          ) : kind === 'product' ? (
+            <>
+              <div className="dk-f"><label className="dk-l" htmlFor="dk-pr-h">Product</label><input id="dk-pr-h" className="fm-i" required maxLength={80} autoComplete="off" placeholder="Edge Functions" value={f.heading || ''} onChange={set('heading')} /></div>
+              <div className="dk-f"><label className="dk-l" htmlFor="dk-pr-l">One line{' '}<small>Optional</small></label><input id="dk-pr-l" className="fm-i" maxLength={120} autoComplete="off" value={f.line || ''} onChange={set('line')} /></div>
+              <div className="dk-f"><label className="dk-l" htmlFor="dk-pr-p">Picture address{' '}<small>Optional</small></label><input id="dk-pr-p" className="fm-i" type="url" placeholder="https://" autoComplete="off" spellCheck={false} value={f.picture || ''} onChange={set('picture')} /></div>
+              <div className="dk-f"><label className="dk-l" htmlFor="dk-pr-u">Link{' '}<small>Optional</small></label><input id="dk-pr-u" className="fm-i" type="url" placeholder="https://" autoComplete="off" spellCheck={false} value={f.url || ''} onChange={set('url')} /></div>
+              <p className="dk-note" style={{ margin: 0 }}>The stage shows the link as a QR code the room can scan.</p>
             </>
           ) : kind === 'words' ? (
             <>

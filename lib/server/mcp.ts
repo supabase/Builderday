@@ -10,7 +10,7 @@
    Five tools: whoami, practice, check_in, submit, status. Before the day pages open only whoami and practice do
    anything; check_in and submit say when they open. submit runs lib/server/entries.ts, the same submit as the form,
    so a refusal reads the same either way. */
-import { citySnapshot } from './snapshot';
+import { publicCity } from './snapshot';
 import { openKey, type Pass, type Person } from './people';
 import { entryOf } from './me';
 import { repoFacts, submitEntry } from './entries';
@@ -22,10 +22,13 @@ import { EVENT } from '@/lib/day-data';
 
 const EVENT_NAME = EVENT.name;
 import { checkInWithCode, nameOfCity } from './room';
+import { eventById, eventOfCity } from './events';
 import { HOW_TO_SUBMIT } from '@/lib/event/rule';
 import { dayGate } from './gate';
 import { guardKey } from './repo-key';
 import { whenLocal } from './time';
+import { teamOf } from './teams';
+import { namesInWords } from '@/lib/team';
 
 const MODERN = '2026-07-28';
 const LEGACY = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05'];
@@ -100,22 +103,27 @@ const left = (at: number | null, now: number) => {
 async function call(who: Who, name: string, a: Record<string, unknown>, req: Request) {
   const s = (k: string) => (typeof a[k] === 'string' ? (a[k] as string) : '');
   const site = siteUrl(req);
+  /* the event of the person's key: Builder Day's day gate holds only there */
+  const ev = await eventOfCity(who.pass.city), isDay = ev === EVENT.id, evRec = await eventById(ev);
   if (name === 'whoami') {
-    const e = await entryOf(who.person.id);
+    const [e, team] = await Promise.all([entryOf(who.person.id, ev), teamOf(who.person, ev, req)]);
     const city = await nameOfCity(who.pass.city), inRoom = !!who.pass.checked_in_at;
+    const mates = team ? team.members.filter((m) => !m.you).map((m) => m.name) : [];
     return text((who.person.name ? who.person.name + ', you are' : 'You are') + ' signed in for ' + city + '. '
+      + (team ? (mates.length ? 'In team ' + team.code + ' with ' + namesInWords(mates) + ': one entry for the team, which any of you can submit or edit. ' : 'In team ' + team.code + ', on your own so far: teammates join with that code in their account on the site. ') : '')
       + (inRoom ? 'Checked in with the room code. ' : 'Not checked in yet: call check_in with the four-character code on the screen in the room before you submit. ')
-      + (e ? 'You have an entry: ' + e.name + ', ' + site + '/city/' + e.city + '/p/' + e.slug + '. Submitting again edits it.' : 'No entry yet.')
+      + (e ? (team ? 'Your team has an entry: ' : 'You have an entry: ') + e.name + ', ' + site + '/city/' + e.city + '/p/' + e.slug + '. Submitting again edits it.' : 'No entry yet.')
       + (who.person.name ? '' : ' Your city’s list has no name for you: pass by with your name when you submit.'),
-    false, { city: who.pass.city, cityName: city, name: who.person.name, checkedIn: inRoom, entry: e ? { name: e.name, url: site + '/city/' + e.city + '/p/' + e.slug } : null });
+    false, { city: who.pass.city, cityName: city, name: who.person.name, checkedIn: inRoom, entry: e ? { name: e.name, url: site + '/city/' + e.city + '/p/' + e.slug } : null,
+      team: team ? { code: team.code, members: team.members.map((m) => m.name) } : null });
   }
   if (name === 'practice') return practice(who, s('repo'), site);
-  if ((name === 'check_in' || name === 'submit') && !(await dayGate()).open) {
+  if ((name === 'check_in' || name === 'submit') && isDay && !(await dayGate()).open) {
     const c = await cityRow(who.pass.city);
     return text((name === 'submit' ? 'Submitting' : 'Checking in') + ' opens on the day, in the room: building in ' + c.name + ' starts at ' + whenLocal(c.planned_start, c.offset_min) + ', local time. Until then, call practice to try the whole path; nothing is entered.', true, { early: true });
   }
   if (name === 'check_in') {
-    const r = await checkInWithCode(who.person, s('code'));
+    const r = await checkInWithCode(who.person, s('code'), ev);
     if (!r.ok) return text(r.error + (r.field === 'code' ? ' Ask for the four-character code on the screen in the room, then call check_in again.' : ''), true, { checkedIn: false });
     const inRoom = (r.already ? 'You are already checked in' : 'Checked in') + ' for ' + (await nameOfCity(r.pass.city)) + ': you can submit.';
     const repo = s('repo');
@@ -132,10 +140,11 @@ async function call(who: Who, name: string, a: Record<string, unknown>, req: Req
     return text(inRoom + ' ' + repo + ' is public and new.' + (f.fork ? ' It is a fork, which the hosts will see.' : ''), false, { checkedIn: true });
   }
   if (name === 'submit') {
-    const r = await submitEntry(who.person, { name: s('name'), pitch: s('pitch'), repo: s('repo'), demo: s('link'), video: s('video'), by: s('by') }, { via: 'editor', keepPicture: true });
+    const r = await submitEntry(who.person, { name: s('name'), pitch: s('pitch'), repo: s('repo'), demo: s('link'), video: s('video'), by: s('by') }, { via: 'editor', keepPicture: true, event: ev });
     if (!r.ok) return text(r.error + (r.field === 'room' ? ' Ask for the four-character code on the screen, call check_in with it, then submit again.' : ''), true, { refused: true, field: r.field || null });
     const url = site + '/city/' + r.entry.city + '/p/' + r.entry.slug;
     const notes = [r.verdict.replaces ? 'Your entry is updated.' : 'You are in.', 'Your project: ' + url];
+    if (r.entry.handle && r.entry.handle !== who.person.name) notes.push('Built by ' + r.entry.handle + '.');
     if (r.keyFound) notes.push(r.keyFound);
     if (!r.entry.picture) notes.push('Add a picture there, so it can be told apart on the ranking.');
     if (r.verdict.later.length) notes.push('GitHub did not answer, so the repository is checked again later.');
@@ -143,7 +152,7 @@ async function call(who: Who, name: string, a: Record<string, unknown>, req: Req
     return text(notes.join(' '), false, { url, name: r.entry.name, replaced: r.verdict.replaces });
   }
   if (name === 'status') {
-    const e = await entryOf(who.person.id), snap = await citySnapshot(e?.city || who.pass.city), now = Date.now();
+    const e = await entryOf(who.person.id, ev), snap = await publicCity(e?.city || who.pass.city), now = Date.now();
     if (!snap) return text('The ranking cannot be read right now. Try again in a minute.', true);
     const build = left(snap.city.buildEnd, now), vote = left(snap.city.voteEnd, now);
     const clock = !snap.city.buildStart ? 'Building has not started in ' + snap.city.name + '.' : build ? 'Building ends in ' + build + '.' : vote ? 'Building has ended; voting closes in ' + vote + '.' : 'Voting has closed in ' + snap.city.name + '.';
@@ -151,7 +160,9 @@ async function call(who: Who, name: string, a: Record<string, unknown>, req: Req
     if (!e) return text('No entry yet. ' + clock + inRoom, false, { checkedIn: !inRoom });
     const order = snap.entries.slice().sort(rankOrder), i = order.findIndex((x) => x.no === e.no), me = order[i];
     if (!me) return text('Your entry, ' + e.name + ', is hidden from the ranking for now: the hosts are looking at it. ' + clock, false, { place: null });
-    return text(e.name + ' is ' + ord(i + 1) + ' of ' + order.length + ' in ' + snap.city.name + ' with ' + me.votes + (me.votes === 1 ? ' vote' : ' votes') + '. The top 3 go to the final. ' + clock,
+    /* while the counts are hidden the editor knows no more than the page: the entry is in, nothing about its count */
+    if (snap.hidden) return text(e.name + ' is in the list in ' + snap.city.name + '. Votes are hidden until voting closes; then every count appears. ' + clock, false, { place: null, of: order.length, votes: null, hidden: true });
+    return text(e.name + ' is ' + ord(i + 1) + ' of ' + order.length + ' in ' + snap.city.name + ' with ' + me.votes + (me.votes === 1 ? ' vote' : ' votes') + '.' + (evRec?.f.finalOn === false ? ' ' : ' The top ' + (evRec?.f.finalists ?? 3) + ' go to the final. ') + clock,
       false, { place: i + 1, of: order.length, votes: me.votes });
   }
   return null;

@@ -3,7 +3,7 @@ import { EVENT, cityById } from '@/lib/day-data';
 import { fmtN, ord } from '@/lib/format';
 import { projectOnDay } from '@/components/day/day';
 import { backendOn } from '@/lib/server/env';
-import { citySnapshot } from '@/lib/server/snapshot';
+import { publicCity } from '@/lib/server/snapshot';
 import { rankOrder } from '@/lib/event/snapshot';
 
 /* A project's share image, drawn when a link is shared: the name, its pitch, the city, and its place and votes at that
@@ -18,18 +18,20 @@ export default async function Image({ params }: { params: Promise<{ city: string
   let name: string = EVENT.name, pitch = '', where = c ? c.name : '', foot = 'Anyone with the link can vote';
   if (c && backendOn()) {
     /* live: the same entry and place the page's title gives (generateMetadata in page.tsx) */
-    const snap = await citySnapshot(city), ranked = (snap?.entries || []).slice().sort(rankOrder), k = ranked.findIndex((e) => e.slug === s);
+    const snap = await publicCity(city), ranked = (snap?.entries || []).slice().sort(rankOrder), k = ranked.findIndex((e) => e.slug === s);
     if (snap && k >= 0) {
       const e = ranked[k], now = Date.now(), t = snap.city;
       name = e.name; pitch = e.pitch || '';
-      if (t.buildStart) where = ord(k + 1) + ' in ' + c.name + ' · ' + fmtN(e.votes) + (e.votes === 1 ? ' vote' : ' votes');
+      if (snap.hidden) where = c.name + ' · Votes hidden';
+      else if (t.buildStart) where = ord(k + 1) + ' in ' + c.name + ' · ' + fmtN(e.votes) + (e.votes === 1 ? ' vote' : ' votes');
       if (t.voteEnd && now >= t.voteEnd) foot = k < EVENT.finalists ? 'In the final' : 'Voting has closed';
     }
   } else if (c) {
     const { W, row, listed } = projectOnDay(city, s, {}, Date.now());
     if (row) {
       name = row.p.name; pitch = row.p.pitch;
-      if (listed && W.votesOn) where = ord(row.rank) + ' in ' + c.name + ' · ' + fmtN(row.v) + (row.v === 1 ? ' vote' : ' votes');
+      if (listed && W.hidden) where = c.name + ' · Votes hidden';
+      else if (listed && W.votesOn) where = ord(row.rank) + ' in ' + c.name + ' · ' + fmtN(row.v) + (row.v === 1 ? ' vote' : ' votes');
       foot = W.voting ? 'Anyone with the link can vote' : listed && W.state === 'done' && row.rank <= EVENT.finalists ? 'In the final' : 'Voting has closed';
     }
   }

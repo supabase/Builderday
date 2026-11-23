@@ -72,12 +72,13 @@ export function Qr({ url, className }: { url: string; className?: string }) {
 }
 export const bare = (u: string) => u.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
-/* the door: the QR, the address under it, and the room code */
+/* the door: the QR, the address under it, and the room code. With no address (a place whose event has no page of
+   its own to sign in on) only the room code shows. */
 export function Door({ url, code, size = 'big', addr = true }: { url: string; code: string | null; size?: 'big' | 'small'; addr?: boolean }) {
   return (
     <div className={'st-door st-door-' + size}>
-      <Qr url={url} />
-      {addr ? <p className="st-addr">{bare(url).split('/').map((x, i) => <Fragment key={i}>{i ? <>/<wbr /></> : null}{x}</Fragment>)}</p> : null}
+      {url ? <Qr url={url} /> : null}
+      {addr && url ? <p className="st-addr">{bare(url).split('/').map((x, i) => <Fragment key={i}>{i ? <>/<wbr /></> : null}{x}</Fragment>)}</p> : null}
       {code ? <p className="st-code"><span className="st-k">Room code</span><Num v={code} className="st-code-v" /></p> : null}
     </div>
   );

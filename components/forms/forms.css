@@ -128,3 +128,50 @@
   text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; cursor: pointer; touch-action: manipulation; }
 .ev-you-out:focus-visible, .ev-you-a:focus-visible { outline: 2px solid var(--bd-ink, #f4f4f2); outline-offset: 2px; }
 @media (hover: hover) and (pointer: fine) { .ev-you-out:hover, .ev-you-a:hover { text-decoration-thickness: 2px; } }
+
+/* ---------------- the sheet's picture (sheet-art.tsx, art.ts; tuned at /lab/sheet) ----------------
+   masthead: a band across the top with the word in characters and the globe; pass: the same band as a ticket's stub,
+   with a notch in each side and a perforation under it; split: a column beside the form (a band on a phone). With a
+   picture the small label gives way and the close key sits over the band's corner. */
+.fm-art { position: relative; height: var(--fm-band, 132px); }
+.fm-art canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.fm.has-art .fm-top { display: none; }
+/* the close key's row: no height, stuck to the top of the scrolling sheet, so the key sits over the band and stays in
+   reach on a long sheet; it carries the ground so it reads over whatever scrolls under it */
+.fm-xr { position: sticky; top: 0; z-index: 2; height: 0; grid-column: 1 / -1; }
+.fm-xr .fm-x { position: absolute; top: var(--s-2); right: var(--s-5); background: var(--c-ground); }
+.fm.is-masthead .fm-art { box-shadow: inset 0 calc(-1 * var(--line-thin)) 0 var(--c-line); }
+/* the perforation: square dashes, one cell on, one off, as the characters are spaced */
+.fm.is-pass .fm-art { background: repeating-linear-gradient(90deg, var(--c-ink-3) 0 3px, transparent 3px 8px) left bottom / 100% var(--line-thin) no-repeat; }
+.fm.is-split { width: min(calc(var(--fm-w) + var(--fm-side, 232px)), calc(100vw - 2 * var(--s-5))); }
+.fm.is-split.is-wide { width: min(calc(var(--fm-w-wide) + var(--fm-side, 232px)), calc(100vw - 2 * var(--s-5))); }
+.fm.is-split .fm-card { display: grid; grid-template-columns: var(--fm-side, 232px) minmax(0, 1fr); }
+.fm.is-split .fm-art { height: auto; min-height: 420px; box-shadow: inset calc(-1 * var(--line-thin)) 0 0 var(--c-line); }
+/* the card: the sheet's face when it has a picture */
+/* clip on the sides: the notch rings sit half outside the card (hidden by the mask) and would make the sheet scroll
+   sideways; clip, unlike hidden, makes no scroll box, so the sticky close key still sticks */
+.fm-card { position: relative; min-height: 100%; background: var(--c-ground); overflow-x: clip; }
+@media (min-width: 720px) {
+  /* the dialog goes clear and casts the drop as a filter, which follows the card's cut edge; the card draws the ring */
+  .fm.has-art { background: none; box-shadow: none; filter: drop-shadow(0 18px 28px var(--c-shade)); }
+  .fm.has-art .fm-card { box-shadow: inset 0 0 0 var(--line-thin) var(--c-line); }
+  /* the stub's notches: a real cut through the card at each edge, on the perforation, the backdrop showing through.
+     The hairline follows the cut's inner arc only: a ring centred on the edge, the half outside the card cut away
+     with it. */
+  /* no drop on the ticket: a shadow would pool inside the notches and read as dark discs; the hairline carries the edge */
+  .fm.is-pass { filter: none; }
+  .fm.is-pass .fm-card { --fm-r: 11px;
+    mask: radial-gradient(circle at 0 var(--fm-band), #0000 var(--fm-r), #000 calc(var(--fm-r) + 0.5px)) left top / 51% 100% no-repeat,
+          radial-gradient(circle at 100% var(--fm-band), #0000 var(--fm-r), #000 calc(var(--fm-r) + 0.5px)) right top / 51% 100% no-repeat; }
+  .fm.is-pass .fm-art::before, .fm.is-pass .fm-art::after { content: ""; position: absolute; bottom: calc(-1 * var(--fm-r) - 1px); width: calc(2 * var(--fm-r) + 2px); height: calc(2 * var(--fm-r) + 2px);
+    border-radius: 50%; box-shadow: inset 0 0 0 var(--line-thin) var(--c-line); pointer-events: none; }
+  .fm.is-pass .fm-art::before { left: calc(-1 * var(--fm-r) - 1px); }
+  .fm.is-pass .fm-art::after { right: calc(-1 * var(--fm-r) - 1px); }
+}
+@media (max-width: 719px) {
+  .fm.is-split .fm-card { display: block; }
+  .fm.is-split .fm-art { height: var(--fm-band, 132px); min-height: 0; box-shadow: inset 0 calc(-1 * var(--line-thin)) 0 var(--c-line); }
+  .fm-xr .fm-x { right: var(--s-3); }
+}
+/* the labs draw a sheet open on the page */
+.fm.is-still, .fm.is-still.is-wide { position: relative; inset: auto; margin: 0; max-height: none; overflow: visible; opacity: 1; transform: none; transition: none; }

@@ -7,6 +7,8 @@ export type Arrival = (typeof ARRIVALS)[number] | 'none';
 export type FoldDir = 'base' | 'plain' | 'line' | 'unroll';
 export type FoldCfg = {
   dir: FoldDir;
+  /* the whole page, or the first screen alone (the wheel at the window's height, no sign in, nothing under it) until the rest is ready */
+  page: 'full' | 'hero';
   /* modes */
   glass: 'fixed' | 'today'; globe: 'docks' | 'leaves'; input: 'hand' | 'globe'; jump: 'roll' | 'smooth' | 'cut';
   cities: 'belt' | 'board' | 'clocks'; ready: 'dry' | 'steps'; questions: 'open' | 'index' | 'reveal';
@@ -54,7 +56,7 @@ export type FoldCfg = {
 };
 
 export const FOLD_DEF: FoldCfg = {
-  dir: 'line',
+  dir: 'line', page: 'full',
   glass: 'fixed', globe: 'docks', input: 'hand', jump: 'roll', cities: 'belt', ready: 'dry', questions: 'open', order: 'prize-first', words: 'lede', arrive: 'tube', arrival: 'tune', back: 'quiet', bar: 'none', topLink: 'none', acct: 'merged', acctTop: 'both',
   peek: 56, firstTop: 28,
   dockSize: 26, dockEnd: 0.62, dockTurn: 0.3,
@@ -92,7 +94,7 @@ export const FOLD_BOUNDS: Record<string, [number, number, number]> = {
 };
 
 export const FOLD_CHOICES: Record<string, string[]> = {
-  dir: ['base', 'plain', 'line', 'unroll'],
+  dir: ['base', 'plain', 'line', 'unroll'], page: ['full', 'hero'],
   glass: ['fixed', 'today'], globe: ['docks', 'leaves'], input: ['hand', 'globe'], jump: ['roll', 'smooth', 'cut'],
   cities: ['belt', 'board', 'clocks'], ready: ['dry', 'steps'], questions: ['open', 'index', 'reveal'], order: ['prize-first', 'cities-first', 'how-first'], words: ['lede', 'none'], arrive: ['tube', 'none'], arrival: [...ARRIVALS, 'none'], back: ['quiet', 'same'], bar: ['none', 'cells'], topLink: ['none', 'how'], acct: ['merged', 'beside'], acctTop: ['link', 'both'],
 };

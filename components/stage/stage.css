@@ -89,6 +89,15 @@
 .st-speaker-p { width: calc(520 * var(--px)); height: calc(520 * var(--px)); object-fit: cover; }
 .st-speaker-i { display: grid; place-items: center; border: 1px solid var(--cell); font: 500 calc(160 * var(--px))/1 var(--bd-face); color: var(--ink-2); }
 
+/* ---------- a host's product slide: the name and its line, the link's QR, a picture ---------- */
+.st-product { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: calc(80 * var(--px)); padding-bottom: calc(60 * var(--px)); }
+.st-product-t { display: grid; gap: calc(28 * var(--px)); max-width: calc(1100 * var(--px)); }
+.st-product-t .st-h { text-wrap: pretty; }
+.st-product-pic { grid-template-columns: minmax(0, 1fr) calc(860 * var(--px)); }
+.st-product-l { display: grid; gap: calc(56 * var(--px)); align-content: center; }
+/* the picture is glass, contained in a 16:9 frame so a logo or a screenshot is never cropped */
+.st-product-p { position: relative; z-index: 6; text-shadow: none; display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: contain; background: #1a1b1b; }
+
 /* ---------- 5. A handful of things ---------- */
 .st-needs-h { max-width: calc(1700 * var(--px)); font-size: calc(72 * var(--px)); padding-top: calc(10 * var(--px)); }
 .st-needs-a, .st-needs-b { position: absolute; top: calc(270 * var(--px) - var(--sy)); }
@@ -194,6 +203,9 @@
 .st-row-v { font-size: calc(56 * var(--px)); text-align: right; }
 /* the cut under third: a green line with its words on it (the line breaks where it meets lettering) */
 .st-row:nth-child(3) { margin-bottom: calc(48 * var(--px)); }
+/* another event's ranking: the gap sits under its own cut, or nowhere when it has no final */
+.st-rank[data-ev] .st-row:nth-child(3) { margin-bottom: 0; }
+.st-rank[data-ev] .st-row[data-cut] { margin-bottom: calc(48 * var(--px)); }
 .st-cut { position: absolute; left: 0; right: 0; top: calc((3 * 74 + 23) * var(--px)); height: calc(3 * var(--px)); background: var(--g); z-index: 1; }
 .st-cut > span { position: absolute; left: calc(80 * var(--px)); top: 50%; transform: translateY(-50%); padding: 0 calc(16 * var(--px)); background: var(--ground); color: var(--g); font-size: calc(40 * var(--px)); line-height: 1; white-space: nowrap; }
 .st-tie { padding-top: calc(10 * var(--px)); }
@@ -210,6 +222,18 @@
 .st-chart-n { fill: var(--ink-2); font: 500 40px var(--font-geist); }
 .st-chart-n[data-place="1"] { fill: var(--g); }
 .st-chart-n[data-place="2"], .st-chart-n[data-place="3"] { fill: var(--ink); }
+
+/* ---------- the showcase: one entry at a time ---------- */
+.st-show { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: calc(36 * var(--px)); }
+.st-show-h { display: flex; justify-content: space-between; align-items: baseline; }
+/* the card keeps its size whatever the entry, so nothing around it moves on a swap */
+.st-show-card { display: grid; grid-template-columns: calc(1000 * var(--px)) minmax(0, 1fr); gap: calc(64 * var(--px)); align-items: center; min-height: 0; }
+.st-show-pic { width: 100%; }
+.st-show-t { display: grid; gap: calc(24 * var(--px)); align-content: center; min-width: 0; }
+.st-show-n { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.st-show-pitch { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; text-wrap: pretty; }
+/* the next picture, laid out unseen so it has loaded when its turn comes */
+.st-show-next { position: absolute; width: calc(100 * var(--px)); left: 0; bottom: 0; opacity: 0; pointer-events: none; }
 
 /* ---------- 16. The top 3 ---------- */
 .st-top3 { display: grid; grid-template-rows: auto 1fr; gap: calc(40 * var(--px)); }

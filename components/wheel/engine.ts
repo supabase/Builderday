@@ -466,16 +466,22 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
       const nameStart = view.x - cfg.labelFrom * view.radius - cfg.labelPush * view.radius - (ems[i] || 0) * size;
       /* on the rings the active name stands up on the left of the outer ring, so the cells end just before its letters */
       const end = ringsOn() ? (view.x - cfg.labelFrom * view.radius - size) / view.ratio : (nameStart - size * 0.6) / view.ratio;
-      const stacked = end - cellsWidth.row < 20, docked = end - cellsWidth.column < 20;
-      const key = `${stacked}|${docked}|${end}|${view.y}|${ls}`;
+      /* column: the cells are one column with the page's words and the Luma pill, on the left margin (the CSS gutter,
+         clamp(20px, 4.6vw, 88px)) and on the active name's line. They stack when a row would reach the name, and with no
+         room even then (a phone) the column docks at the foot of the first screen. */
+      const column = cfg.layout === 'column', gutter = Math.max(20, Math.min(88, 0.046 * view.width / view.ratio));
+      const room = column ? end - gutter : end;
+      const stacked = room - cellsWidth.row < 20, docked = room - cellsWidth.column < 20;
+      const key = `${column}|${stacked}|${docked}|${end}|${view.y}|${ls}`;
       if (key !== lastCells) {
         lastCells = key;
         cells.classList.toggle('is-stacked', stacked && !docked); cells.classList.toggle('is-docked', docked);
-        cells.style.translate = docked ? (ls ? `0 ${-ls}px` : '') : `${end}px ${view.y / view.ratio - ls}px`;
+        cells.style.translate = docked ? (ls ? `0 ${-ls}px` : '') : column ? `0 ${view.y / view.ratio - ls}px` : `${end}px ${view.y / view.ratio - ls}px`;
         /* in a page the cells wait unseen until this first placing, so it is not a layout shift */
         if (flow && !cells.hasAttribute('data-placed')) cells.setAttribute('data-placed', '');
       }
-      const op = settled.toFixed(3);
+      /* in the column the words and the pill around the cells stay, so the cells stay too and only their words change */
+      const op = cfg.layout === 'column' ? '1' : settled.toFixed(3);
       if (op !== lastOpacity) { lastOpacity = op; cells.style.opacity = op; }
     }
     if (settled > 0.98 && settledOn !== i) { settledOn = i; if (cfg.sound) settle(city.status); }

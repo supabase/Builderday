@@ -4,20 +4,22 @@
 
 export type SceneKind =
   | 'doors' | 'welcome' | 'speaker' | 'question' | 'needs' | 'tour' | 'say' | 'line' | 'deadline' | 'rules' | 'prizes' | 'submit' | 'questions'
-  | 'building' | 'voting' | 'top3' | 'tombola' | 'final'
-  /* a host's own slides: words (a heading and up to three lines) and a link (opens in a new tab while the wall holds a card) */
-  | 'words' | 'link';
+  | 'building' | 'voting' | 'showcase' | 'top3' | 'tombola' | 'final'
+  /* a host's own slides: words (a heading and up to three lines), a link (opens in a new tab while the wall holds a
+     card), and a product (a Supabase product's name, one line, a picture, and its link as a QR) */
+  | 'words' | 'link' | 'product';
 
 /* the event's scenes: these can be hidden, never deleted */
-export const EVENT_KINDS: SceneKind[] = ['doors', 'welcome', 'question', 'needs', 'tour', 'say', 'line', 'deadline', 'rules', 'prizes', 'submit', 'questions', 'building', 'voting', 'top3', 'tombola', 'final'];
+export const EVENT_KINDS: SceneKind[] = ['doors', 'welcome', 'question', 'needs', 'tour', 'say', 'line', 'deadline', 'rules', 'prizes', 'submit', 'questions', 'building', 'voting', 'showcase', 'top3', 'tombola', 'final'];
 /* the scenes drawn from the city's live numbers */
-export const LIVE_KINDS: SceneKind[] = ['doors', 'building', 'voting', 'top3', 'tombola', 'final'];
+export const LIVE_KINDS: SceneKind[] = ['doors', 'building', 'voting', 'showcase', 'top3', 'tombola', 'final'];
 
 export type SceneData = {
   /* welcome: the hosts' names */ hosts?: string[];
   /* speaker */ name?: string; role?: string; line?: string; picture?: string;
   /* words */ heading?: string; lines?: string[];
   /* link */ url?: string; label?: string;
+  /* product: heading (its name), line, picture, and url (shown as a QR on the wall) */
   /* a city may name the tool on the wall ("your editor" when unset) */ editor?: string;
 };
 
@@ -42,6 +44,8 @@ export type CityLive = {
   room_code: string | null; submissions_paused: boolean; voting_paused: boolean;
   /* the door's two counts for Doors ("142 on the list, 61 here"); null where the backend has none */
   listed: number | null; here: number | null;
+  /* the place's time zone from its row (IANA); Builder Day's cities also have theirs in the code (lib/places.ts) */
+  zone?: string | null;
 };
 
 /* what a screen or a remote is told: the deck, the row, the city, and how the link is doing */

@@ -1,11 +1,16 @@
 'use client';
 /* Today: where the city is, its one next thing as one large key, and the counts. */
-import { clockText, nextThing, phaseLine, type DeskAct, type DeskCity, type DeskState } from '@/lib/event/desk';
+import { clockText, nextThing, phaseLine, type DayWords, type DeskAct, type DeskCity, type DeskState } from '@/lib/event/desk';
+import { BUILDER_DAY, hasVotes } from '@/lib/event/format';
+import { EVENT } from '@/lib/day-data';
 import { IconGo, IconOut, Status, usePress, type Ask } from './parts';
 
 export function Today({ s, c, now, act, ask, go }: { s: DeskState; c: DeskCity; now: number; act: DeskAct; ask: (a: Ask) => void; go: (tab: string) => void }) {
   const { busy, said, run } = usePress(act);
-  const ph = phaseLine(c, now), next = nextThing(c, now);
+  const ev = s.events.find((x) => x.id === s.event), f = ev?.f || BUILDER_DAY, ours = s.event === EVENT.id;
+  const many = (ev?.places ?? 1) > 1, final = f.finalOn && many;
+  const words: DayWords = { vote: f.decide === 'judges' ? 'Judging' : 'Voting', top: final ? 'the top ' + f.finalists : f.decide === 'votes' ? 'the winner' : 'the result', final };
+  const ph = phaseLine(c, now, words), next = nextThing(c, now, words);
   const host = s.can.host;
   const press = () => {
     if (next.key === 'door') return go('door');
@@ -16,7 +21,7 @@ export function Today({ s, c, now, act, ask, go }: { s: DeskState; c: DeskCity; 
     });
     if (next.key === 'add5') return ask({
       title: 'Add 5 minutes to building in ' + c.name + '?',
-      text: 'Building then ends at ' + clockText((c.buildEnd ?? now) + 5 * 60000, c.offset) + ', and voting moves with it. Minutes cannot be taken back off.',
+      text: 'Building then ends at ' + clockText((c.buildEnd ?? now) + 5 * 60000, c.offset) + ', and ' + words.vote.toLowerCase() + ' moves with it. Minutes cannot be taken back off.',
       yes: 'Add 5 minutes', run: () => run('next', 'clock.add', { city: c.id, what: 'build', mins: 5 }, () => 'Five minutes added. Building ends at ' + clockText((c.buildEnd ?? now) + 5 * 60000, c.offset) + '.'),
     });
   };
@@ -41,8 +46,13 @@ export function Today({ s, c, now, act, ask, go }: { s: DeskState; c: DeskCity; 
             <div className="dk-links">
               <a className="dk-t" href={remote}>Open the remote</a>
               <a className="dk-t" href={'/city/' + c.id + '/stage'} target="_blank" rel="noreferrer">Open the stage</a>
-              <a className="dk-t" href={'/city/' + c.id} target="_blank" rel="noreferrer">Open the city page</a>
+              {ours ? <a className="dk-t" href={'/city/' + c.id} target="_blank" rel="noreferrer">Open the city page</a> : null}
             </div>
+          </div>
+        ) : s.can.judge && !ours ? (
+          <div className="dk-next">
+            <button type="button" className="dk-key is-plain" onClick={() => go('entries')}>Judge the entries<IconGo /></button>
+            <p className="dk-note">{f.judging === 'scores' ? 'Score every project 1 to 5 on each criterion, under Entries.' : 'Your votes are under Entries: several on one project if it earns them.'} Flags on entries are there too.</p>
           </div>
         ) : s.can.judge ? (
           <div className="dk-next">
@@ -54,14 +64,14 @@ export function Today({ s, c, now, act, ask, go }: { s: DeskState; c: DeskCity; 
       {s.counts ? (
         <section className="dk-sec" aria-labelledby="dk-counts">
           <h2 className="dk-h2" id="dk-counts">{c.name} so far</h2>
-          <dl className="dk-cells" data-n={s.counts.editors != null ? 7 : 6}>
+          <dl className="dk-cells" data-n={(s.counts.editors != null ? 7 : 6) - (hasVotes(f) ? 0 : 1)}>
             <div className="dk-cell"><dt>On the list</dt><dd>{s.counts.listed}</dd></div>
             <div className="dk-cell"><dt>Opened their link</dt><dd>{s.counts.opened}</dd></div>
             <div className="dk-cell"><dt>Signed in</dt><dd>{s.counts.signedIn}</dd></div>
             {s.counts.editors != null ? <div className="dk-cell"><dt>Editors connected</dt><dd>{s.counts.editors}</dd></div> : null}
             <div className="dk-cell"><dt>In the room</dt><dd>{s.counts.inRoom}</dd></div>
             <div className="dk-cell"><dt>Entries</dt><dd>{s.counts.entries}</dd></div>
-            <div className="dk-cell"><dt>Votes</dt><dd>{s.counts.votes}</dd></div>
+            {hasVotes(f) ? <div className="dk-cell"><dt>Votes</dt><dd>{s.counts.votes}</dd></div> : null}
           </dl>
         </section>
       ) : null}

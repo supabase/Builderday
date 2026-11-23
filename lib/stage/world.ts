@@ -9,7 +9,7 @@
    that count first). Pure. */
 
 import {
-  CITIES, CITY_IDS, EPOCH, EVENT, LONG_NAME, SCHED, all, arriveAt, cityState, inAt, minOfVote, sched, seedData, votesAtMin, judgeAtMin,
+  CITIES, CITY_IDS, EPOCH, EVENT, LONG_NAME, SCHED, all, arriveAt, cityState, hiddenAt, hideMin, inAt, minOfVote, sched, seedData, votesAtMin, judgeAtMin,
   type CitySched, type Entry, type SeedCity,
 } from '@/lib/day-data';
 import type { Project } from '@/lib/data';
@@ -38,6 +38,11 @@ export type World = {
   others: Other[];
   /* the tombola's pool: every entry outside the top 3 */
   pool: Project[];
+  /* every entry in so far, oldest first (the showcase walks them in turn) */
+  all: Project[];
+  /* the counts are hidden (from the event's hideAt until voting closes): the ranking is the order frozen then, with
+     later entries under it, and the wall prints no count */
+  hidden: boolean;
 };
 
 const CACHE = new Map<string, SeedCity>();
@@ -79,14 +84,16 @@ export function worldAt(o: { seed: number; content: Content; city: CityLive; now
   const { city, now } = o, sd = seedCity(o.seed, city.id, o.content), x = liveSched(city), m = toMin(now), phase = phaseOf(city, now);
   const total = sd.entries, inNow = phase === 'before' ? 0 : inAt(sd, x, Math.min(m, x.buildEnd));
   const left = phase === 'build' ? (city.build_end! - now) / 1000 : phase === 'vote' ? (city.vote_end! - now) / 1000 : phase === 'before' ? city.build_min * 60 : 0;
-  const mm = Math.min(m, x.end);
+  /* while hidden, the counts are read at the freeze and the later entries sit under them, in the order they came */
+  const hidden = hiddenAt(x, m), mm = hidden ? hideMin(x)! : Math.min(m, x.end);
   /* arrivals: the latest in, newest first */
   const arrived = phase === 'before' ? [] : all(sd).filter((r) => r.a < inNow).map((r) => ({ p: r.p, at: arriveAt(r, x) })).sort((a, b) => b.at - a.at);
-  const now10 = rankAt(sd, x, mm), ago = rankAt(sd, x, mm - 10), wasOf = new Map(ago.map((t, i) => [t.r.p.id, i + 1]));
-  const ranking: Ranked[] = now10.slice(0, o.rows).map((t, i) => ({ p: t.r.p, v: t.v, j: judgeAtMin(t.r, x, mm), place: i + 1, was: wasOf.get(t.r.p.id) ?? null, tie: false, r: t.r }));
+  const late = hidden ? all(sd).filter((r) => r.a >= inAt(sd, x, mm) && r.a < inNow).sort((a, b) => a.a - b.a).map((r) => ({ r, v: 0, at: arriveAt(r, x) })) : [];
+  const now10 = rankAt(sd, x, mm).concat(late), ago = hidden ? now10 : rankAt(sd, x, mm - 10), wasOf = new Map(ago.map((t, i) => [t.r.p.id, i + 1]));
+  const ranking: Ranked[] = now10.slice(0, o.rows).map((t, i) => ({ p: t.r.p, v: t.v, j: t.v ? judgeAtMin(t.r, x, mm) : 0, place: i + 1, was: wasOf.get(t.r.p.id) ?? null, tie: false, r: t.r }));
   let tieNote: string | null = null;
   const third = now10[2], fourth = now10[3];
-  if (third && fourth && third.v === fourth.v && third.v > 0) {
+  if (!hidden && third && fourth && third.v === fourth.v && third.v > 0) {
     if (ranking[2]) ranking[2].tie = true;
     if (ranking[3]) ranking[3].tie = true;
     tieNote = 'Level on ' + third.v + '. 3rd reached it first.';
@@ -109,7 +116,8 @@ export function worldAt(o: { seed: number; content: Content; city: CityLive; now
   });
   const top3 = new Set(now10.slice(0, EVENT.finalists).map((t) => t.r.p.id));
   const pool = phase === 'before' ? [] : all(sd).filter((r) => r.a < inNow && !top3.has(r.p.id)).map((r) => r.p);
-  return { phase, now, left, total, inNow, arrivals: arrived.slice(0, o.arrivals), ranking, chart: { series, span, max }, tieNote, others, pool };
+  const every = arrived.slice().reverse().map((x) => x.p);
+  return { phase, now, left, total, inNow, arrivals: arrived.slice(0, o.arrivals), ranking, chart: { series, span, max }, tieNote, others, pool, all: every, hidden };
 }
 
 /* "3 h", "40 min" */

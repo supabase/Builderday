@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { CITIES, EVENT, CITY_WORD, CITY_WORD_CAP, USUAL_START } from '@/lib/day-data';
+import { CITIES, EVENT, CITY_WORD, CITY_WORD_CAP } from '@/lib/day-data';
 import type { HomeCity, HomeWorld } from '@/lib/home';
 import { dur, fmtN, hhmm, ord, tz } from '@/lib/format';
 import { StateChip } from '@/components/screen/chip';
@@ -60,10 +60,13 @@ function PickSegment({ clock, first, at }: { clock: DayClock; first: number; at:
   const s = useSecond(clock, first), secs = at * 60 - s;
   return <Segment secs={secs} lit="CLOSED" label={'The pick is in ' + Math.max(1, Math.round(secs / 60)) + ' minutes.'} withSecs />;
 }
-export function Hero({ W, day, clock, first, href, segSecs, globe, children }: {
-  W: HomeWorld; day: Day; clock: DayClock; first: number; href: Href; segSecs: boolean; globe?: 'edge' | 'none'; children?: ReactNode;
+export function Hero({ W, day, clock, first, href, segSecs, globe, mine, children }: {
+  W: HomeWorld; day: Day; clock: DayClock; first: number; href: Href; segSecs: boolean; globe?: 'edge' | 'none';
+  /* the visitor's own city (a place on its list): its builders vote from the start, everyone else from publicAt */
+  mine?: string | null; children?: ReactNode;
 }) {
   const fx = focusCity(W), n = nextOf(fx, W);
+  const early = (fx.state === 'build' || fx.state === 'vote') && fx.publicAt != null && W.now < fx.publicAt && mine !== fx.id;
   const now = W.picked ? null : W.allDone ? { k: 'The final', t: 'The pick is at ' + hhmm(W.S.pickAt) + ' UTC' }
     : { k: fx.name, t: n.what + ' at ' + hhmm(n.at) + ' local' };
   return (
@@ -71,13 +74,14 @@ export function Hero({ W, day, clock, first, href, segSecs, globe, children }: {
       <div className="dh-text">
         <p className="bd-k dh-k"><span className="dh-kp">{DATE}</span> <span className="dh-kp"><span className="dh-dot">· </span>{CITY_WORD} cities, east to west</span></p>
         {W.picked ? <><p className="dh-hk">Picked</p><h1 id="dh-h" className="dh-h dh-hp">{W.final.p.name}</h1></> : <h1 id="dh-h" className="dh-h">{EVENT.name}</h1>}
-        {W.picked ? null : <p className="dh-sub">Each city builds for {day.buildMin} minutes from its own start, most at {hhmm(USUAL_START)} local, and votes from the start until {dur(day.voteAfter)} after. The top 3 in each city go to the final, and {EVENT.pickers} pick one of them.</p>}
+        {W.picked ? null : <p className="dh-sub">Each city builds for {day.buildMin} minutes from its own start and votes from the start until {dur(day.voteAfter)} after. The top 3 in each city go to the final, and {EVENT.pickers} pick one of them.</p>}
         {now ? (
           <div className="dh-now">
             <p className="dh-nk"><span className="bd-k">{W.allDone || fx.state === 'next' ? 'Next' : 'Now'}</span> {now.k} <span className="dh-nt"><span className="dh-dot">· </span>{now.t}</span></p>
             {W.allDone ? <PickSegment clock={clock} first={first} at={W.S.pickAt} /> : <LiveSegment clock={clock} first={first} x={fx} withSecs={segSecs} name={fx.name} />}
             {W.allDone ? <p className="dh-go"><a className="dh-btn" href="#final">See the {W.finalists.length} finalists<span aria-hidden="true">→</span></a></p> : (
-              <p className="dh-go"><Link className="dh-btn" href={href(fx.id)}>{fx.state === 'next' ? 'See ' + fx.name : 'Vote in ' + fx.name}<span aria-hidden="true">→</span></Link>
+              <p className="dh-go"><Link className="dh-btn" href={href(fx.id)}>{fx.state === 'next' ? 'See ' + fx.name : early ? 'Watch ' + fx.name : 'Vote in ' + fx.name}<span aria-hidden="true">→</span></Link>
+                {early ? <span className="bd-k">Everyone votes from {hhmm(fx.publicAt! + fx.city.offset)} local</span> : null}
                 {W.live.length > 1 ? <span className="bd-k">{W.live.length} cities are live</span> : null}</p>
             )}
           </div>

@@ -1,5 +1,6 @@
 /* POST /api/vote { city, entry (its number), on }: a public vote, or taking it back. The rules are the database's
-   (cast_vote, take_back_vote): one per project per email, never your own, only while voting is open. */
+   (cast_vote, take_back_vote): one per project per email, never your own, only while voting is open. While the city's
+   counts are hidden the answer carries no count. */
 import { body, no, offline, ok, said, str } from '@/lib/server/http';
 import { asUser } from '@/lib/server/supabase';
 import { entryIdOf } from '@/lib/server/entry-id';
@@ -17,5 +18,6 @@ export async function POST(req: Request) {
   if (!(await sb.auth.getSession()).data.session) return no('Sign in to vote.', 401);
   const r = on ? await sb.rpc('cast_vote', { entry_id: id, from_ip: ipOf(req) }) : await sb.rpc('take_back_vote', { entry_id: id });
   if (r.error) return no(said(r.error), r.error.code === '28000' || /^PGRST30/.test(r.error.code || '') ? 401 : 409);
-  return ok({ votes: (r.data as { votes: number }).votes });
+  /* the count after the press; null while the city's counts are hidden (the database leaves it out) */
+  return ok({ votes: (r.data as { votes: number | null }).votes ?? null });
 }

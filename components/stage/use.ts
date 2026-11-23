@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useState, useSyncExternalStore } 
 import type { StageDriver } from '@/lib/stage/driver';
 import type { StageCfg } from '@/lib/stage/config';
 import type { StageSnap } from '@/lib/stage/types';
+import type { WallEvent } from '@/lib/stage/event';
 
 /* The hooks the wall and the remote share: the driver's snapshot, its clock to the second, and reduced motion. */
 
@@ -36,8 +37,8 @@ export function useArrival(scene: string, step: number): number {
   return s.base;
 }
 
-/* what every scene can read: the look, the city's name, the page's address, and when its steps appeared */
-export type WallCtx = { cfg: StageCfg; name: string; fresh: (i: number) => boolean; reduced: boolean; now: () => number };
+/* what every scene can read: the look, the city's name, the place's event, and when its steps appeared */
+export type WallCtx = { cfg: StageCfg; name: string; ev: WallEvent; fresh: (i: number) => boolean; reduced: boolean; now: () => number };
 export const Wall = createContext<WallCtx | null>(null);
 export const useWall = () => useContext(Wall)!;
 

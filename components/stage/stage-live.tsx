@@ -6,6 +6,7 @@ import { createRealtimeDriver } from '@/lib/stage/realtime';
 import { worldFromSnap } from '@/lib/stage/live-world';
 import type { CityLive, StageRow, SceneRow, StageSnap } from '@/lib/stage/types';
 import type { World } from '@/lib/stage/world';
+import { BD_WALL, rankBy, type WallEvent } from '@/lib/stage/event';
 import type { CitySnap, DaySnap } from '@/lib/event/snapshot';
 import { stageCity, stageDrive } from '@/app/desk/[city]/remote/actions';
 import { StageWall } from './wall';
@@ -16,7 +17,7 @@ import { StageRemote } from './remote';
    Without it the wall runs the local driver on the seeded day and says so in a corner; the remote does not run. */
 
 export type Live = { stage: { deck: SceneRow[]; row: StageRow; city: CityLive }; can: StageSnap['can']; url: string; anon: string; talkMin: number };
-export type WallStart = { city: string; name: string; url: string; cfg: StageCfg; first: number; seed: number; live: Live | null; local: { deck: SceneRow[]; row: StageRow; city: CityLive } | null; note: string };
+export type WallStart = { city: string; name: string; url: string; cfg: StageCfg; first: number; seed: number; live: Live | null; local: { deck: SceneRow[]; row: StageRow; city: CityLive } | null; note: string; event?: WallEvent };
 
 const realtime = (id: string, l: Live): StageDriver => createRealtimeDriver({
   url: l.url, anon: l.anon, start: l.stage, can: l.can, talkMin: l.talkMin,
@@ -51,7 +52,10 @@ export function StageLive({ start }: { start: WallStart }) {
   const [driver] = useState<StageDriver>(() => start.live ? realtime(start.city, start.live) : createLocalDriver({ ...start.local!, talkMin: start.cfg.talkMin }));
   useEffect(() => () => driver.close(), [driver]);
   const { snap, day } = useNumbers(start.city, !!start.live);
-  const source = useCallback((o: { city: CityLive; now: number; rows: number; arrivals: number }): World => worldFromSnap({ snap, day, ...o }), [snap, day]);
+  /* the ranking counts what the place's event says (Builder Day: every vote, as always) */
+  const ev = start.event ?? BD_WALL;
+  const by = useCallback((done: boolean) => rankBy(ev, done), [ev]);
+  const source = useCallback((o: { city: CityLive; now: number; rows: number; arrivals: number }): World => worldFromSnap({ snap, day, ...o, by }), [snap, day, by]);
   /* the pointer hides after two seconds without moving */
   const [idle, setIdle] = useState(false);
   useEffect(() => {
@@ -62,14 +66,14 @@ export function StageLive({ start }: { start: WallStart }) {
   }, []);
   return (
     <main className="sp" data-idle={idle ? '' : undefined}>
-      <StageWall driver={driver} cfg={start.cfg} name={start.name} url={start.url} seed={start.seed} content="seeded" first={start.first} keys source={start.live ? source : undefined} />
+      <StageWall driver={driver} cfg={start.cfg} name={start.name} url={start.url} seed={start.seed} content="seeded" first={start.first} keys source={start.live ? source : undefined} event={ev} />
       {start.note ? <p className="sp-note" role="status">{start.note}</p> : null}
     </main>
   );
 }
 
-export function RemoteLive({ city, name, first, live }: { city: string; name: string; first: number; live: Live }) {
+export function RemoteLive({ city, name, first, live, event = BD_WALL }: { city: string; name: string; first: number; live: Live; event?: WallEvent }) {
   const [driver] = useState<StageDriver>(() => realtime(city, live));
   useEffect(() => () => driver.close(), [driver]);
-  return <main className="sp-rm"><StageRemote driver={driver} name={name} first={first} /></main>;
+  return <main className="sp-rm"><StageRemote driver={driver} name={name} first={first} event={event} /></main>;
 }

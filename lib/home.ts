@@ -77,7 +77,7 @@ export function world(c: HomeCfg): HomeWorld {
   const picked = now >= S.pickAt, pc = cs[SD.pick]; pc.win = { p: pc.list[0].p, v: pc.list[0].votes };
   const finalists = done.flatMap((x) => x.top.map((t) => ({ ...t, city: x })));
   const fc = cs[SD.final.city], ft = cityState(S.cs[fc.i], SD.cities[fc.i], S.cs[fc.i].end).top[SD.final.place - 1];
-  return { S, now, cs, live, done, allDone: done.length === 10, picked, archived, early: now < S.winStart, pick: pc as HomeWorld['pick'], total: cs.reduce((a, x) => a + x.entries, 0), finalists, final: { ...ft, city: fc } };
+  return { S, now, cs, live, done, allDone: done.length === cs.length, picked, archived, early: now < S.winStart, pick: pc as HomeWorld['pick'], total: cs.reduce((a, x) => a + x.entries, 0), finalists, final: { ...ft, city: fc } };
 }
 
 /* ---------------- links (they carry the preview parameters) ---------------- */
@@ -131,6 +131,8 @@ export function action(W: HomeWorld, c: HomeCfg, href: (x: HomeCity) => string):
 export function slotText(x: HomeCity, W: HomeWorld): { k: string; a: string; b: string } {
   if (x.state === 'next') return { k: 'Starts in', a: dur(x.wait!, true), b: 'Entries open then' };
   if (!x.lead) return x.state === 'done' ? { k: 'Closed', a: 'No entries', b: '' } : { k: 'Building', a: 'No entries yet', b: '' };
+  /* while the counts are hidden the leader is the one at the freeze, said as such, with no count */
+  if (x.hidden && (x.state === 'build' || x.state === 'vote')) return { k: 'Leading at ' + (x.hideAt! - x.start) + ' min', a: x.lead!.p.name, b: 'Votes hidden · ' + (x.state === 'build' ? plural(x.n!, 'project') : dur(x.left!, true) + ' left') };
   if (x.state === 'build') return { k: 'Leading', a: x.lead!.p.name, b: plural(x.lead!.v, 'vote') + ' · ' + plural(x.n!, 'project') };
   if (x.state === 'vote') return { k: 'Leading', a: x.lead!.p.name, b: plural(x.lead!.v, 'vote') + ' · ' + dur(x.left!, true) + ' left' };
   const pk = W.picked && W.pick === x;

@@ -15,11 +15,12 @@
    Minutes are UTC minutes from 10 December 00:00, as everywhere in the model. The pages' project id is the entry's
    number (votes are keyed by it on the server too). Pure, except useSnapshots at the end. */
 import { useEffect, useRef, useState } from 'react';
-import { CITIES, EPOCH, EVENT, arriveAt, type CitySched, type CityState, type Entry, type JudgeVote, type Sched, type SeedCity, type SeedDay, type Top } from './day-data';
+import { CITIES, EPOCH, EVENT, arriveAt, hiddenAt, hideMin, publicMin, type CitySched, type CityState, type Entry, type JudgeVote, type Sched, type SeedCity, type SeedDay, type Top } from './day-data';
 import type { Project } from './data';
 import type { CityWorld, Row, Votes } from './city';
 import type { HomeCity, HomeWorld } from './home';
-import { rankOrder, type CitySnap, type DaySnap, type SnapCity, type SnapEntry, type SnapStep } from './event/snapshot';
+import { publicSnap, rankOrder, type CitySnap, type DaySnap, type SnapCity, type SnapEntry, type SnapStep } from './event/snapshot';
+import { topTies } from './event/format';
 
 const minOf = (ms: number) => (ms - EPOCH) / 60000;
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
@@ -28,9 +29,15 @@ const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 /* a city's schedule: the live times once the host has started the clock; before that, the planned start (pushed to
    just after now if the planned minute has passed and the room has not started, so the page still says "next") */
 export function schedOf(c: SnapCity, nowMin: number): Omit<CitySched, 'city'> {
-  if (c.buildStart != null) return { start: minOf(c.buildStart), buildEnd: minOf(c.buildEnd!), end: minOf(c.voteEnd!) };
+  /* hideAt: an older answer without it keeps the event's default (hide left out) */
+  const hide = (start: number) => ({
+    ...(c.hideAt === undefined ? {} : { hide: c.hideAt == null ? null : start + c.hideAt }),
+    /* publicAt: likewise; null opens to everyone at the start */
+    ...(c.publicAt === undefined ? {} : { pub: start + (c.publicAt ?? 0) }),
+  });
+  if (c.buildStart != null) { const start = minOf(c.buildStart); return { start, buildEnd: minOf(c.buildEnd!), end: minOf(c.voteEnd!), ...hide(start) }; }
   const start = Math.max(minOf(c.planned), Math.ceil(nowMin) + 1);
-  return { start, buildEnd: start + c.buildMin, end: start + c.buildMin + c.voteAfter };
+  return { start, buildEnd: start + c.buildMin, end: start + c.buildMin + c.voteAfter, ...hide(start) };
 }
 /* the day's schedule with every city's own times; cities without a snapshot keep the seeded schedule */
 export function liveSched(base: Sched, cities: SnapCity[], nowMin: number, pickAfter = 60): Sched {
@@ -70,7 +77,10 @@ function fit(T: number, a: number, x: Omit<CitySched, 'city'>, nowMin: number, h
 export type LiveCity = { sd: SeedCity; x: Omit<CitySched, 'city'>; ranked: SnapEntry[]; byNo: Map<number, Entry>; snap: CitySnap };
 /* One city's shapes from its snapshot: every entry at its real arrival minute, with its real presses when the
    snapshot has them (a city's own snapshot), else its count now on a fitted curve (the day snapshot). */
-export function liveCity(snap: CitySnap, nowMin: number): LiveCity {
+export function liveCity(snap0: CitySnap, nowMin: number): LiveCity {
+  /* the server freezes what it sends; a snapshot read a moment before the freeze is frozen here by the visitor's clock,
+     when it has the steps to do it (a city's own); the day's, without them, is shown as it came until the next read */
+  const snap = snap0.steps.length ? publicSnap(snap0, EPOCH + nowMin * 60000) : snap0;
   const c = snap.city, i = CITIES.findIndex((y) => y.id === c.id), x = schedOf(c, nowMin);
   const ents = snap.entries.slice().sort((a, b) => a.created - b.created || a.no - b.no);
   const N = ents.length, span = Math.max(1e-6, x.buildEnd - x.start);
@@ -100,6 +110,8 @@ export function liveState(L: LiveCity, city: CitySched['city'], nowMin: number):
   else if (nowMin < x.end) { o.state = 'vote'; o.f = (nowMin - x.buildEnd) / (x.end - x.buildEnd); o.n = N; o.left = x.end - nowMin; }
   else { o.state = 'done'; o.n = N; }
   if (o.state !== 'next' && ranked.length && (o.state !== 'done' || N)) o.lead = { p: byNo.get(ranked[0].no)!.p, v: ranked[0].votes };
+  /* hidden: the snapshot's counts are the frozen ones (the server's freeze), so lead and top are as they stood then */
+  o.hideAt = hideMin(x); o.hidden = hiddenAt(x, nowMin); o.publicAt = publicMin(x);
   return o;
 }
 
@@ -131,18 +143,27 @@ export function liveCityWorld(base: CityWorld, snap: CitySnap, H: HomeWorld, now
   const l = liveCity(snap, nowMin), i = l.sd.i, x: CitySched = { city: base.city, ...l.x }, S = H.S;
   const st = liveState(l, base.city, nowMin);
   const votesOn = st.state !== 'next', voting = st.state === 'build' || st.state === 'vote', f = st.state === 'vote' ? st.f! : st.state === 'done' ? 1 : 0;
+  /* hidden: every count is the one at the freeze (liveCity froze the snapshot), your presses since move nothing, and the
+     order is the frozen one with the late entries under it */
+  const hidden = !!st.hidden, hideAt = hideMin(x);
   /* an earlier minute (the pylon's ten minutes ago) is read from the steps; now is the tally itself */
   const past = nowMin < minOf(snap.at) - 0.05;
   const count = (no: number) => { let n = 0, j = 0; for (const [k, ms, d, judge] of snap.steps) { if (k !== no) continue; if (minOf(ms) > nowMin) break; n += d; if (judge) j += d; } return { n, j }; };
   const rows: Row[] = l.ranked.filter((e) => !past || minOf(e.created) <= nowMin).map((e) => {
     const r = l.byNo.get(e.no)!, id = String(e.no), c = past ? count(e.no) : { n: e.votes, j: e.judge };
     /* a press of yours the snapshot does not show yet (adj: +1 or -1 until the next snapshot) */
-    const yours = voting && voted[id] ? 1 : 0, pending = voting && !past && adj ? adj[id] || 0 : 0, jm = voting && judged ? judged[id] || 0 : 0;
-    return { r, p: r.p, k: r.k, a: r.a, arrive: arriveAt(r, x), v: Math.max(0, (votesOn ? c.n : 0) + pending), mine: yours + jm, rank: 0, j: c.j };
+    const yours = voting && voted[id] ? 1 : 0, pending = voting && !past && !hidden && adj ? adj[id] || 0 : 0, jm = voting && judged ? judged[id] || 0 : 0;
+    const v = Math.max(0, (votesOn ? c.n : 0) + pending), late = hidden && hideAt != null && minOf(e.created) > hideAt;
+    return { r, p: r.p, k: r.k, a: r.a, arrive: arriveAt(r, x), v, mine: yours + jm, rank: 0, j: c.j, votes: hidden ? null : v, judges: hidden ? null : c.j, late, tie: null as Row['tie'] };
   });
   const arrived = st.state === 'next' ? [] : rows;
   const ranked = votesOn ? arrived.slice().sort((a, b) => b.v - a.v || order(l, a) - order(l, b)) : arrived.slice().sort((a, b) => b.a - a.a);
   ranked.forEach((o, j) => { o.rank = j + 1; });
+  /* ties at the top, once voting has closed: the host settles them at the desk (the snapshot's tie order) */
+  if (st.state === 'done' && !past) {
+    const tieOf = new Map(l.ranked.map((e) => [String(e.no), e.tie ?? null]));
+    topTies(ranked, EVENT.finalists, (o) => o.v, (o) => tieOf.get(String(o.p.id)), (o) => String(o.p.id)).forEach((t, id) => { const o = ranked.find((y) => String(y.p.id) === id); if (o) o.tie = t; });
+  }
   const lead = votesOn && ranked.length ? ranked[0] : null;
   const pickHere = H.picked && H.final.city.i === i;
   const SD: SeedDay = { cities: H.cs.map((c) => c.sd), pick: H.final.city.i, final: { city: H.final.city.i, place: H.final.place || 1 } };
@@ -155,6 +176,8 @@ export function liveCityWorld(base: CityWorld, snap: CitySnap, H: HomeWorld, now
     last: st.state === 'vote' && st.left! <= Math.max(3, Math.round((x.end - x.buildEnd) * 0.1)) + 0.01,
     inDay: nowMin >= S.winStart && nowMin <= S.winEnd,
     day: H.cs,
+    hidden, hideAt,
+    publicAt: publicMin(x), publicOpen: voting && nowMin >= publicMin(x), judgeWeight: snap.city.judgeWeight ?? EVENT.judgeWeight,
   };
 }
 /* the tie rule: who reached that count first, then who arrived first (the snapshot's order) */

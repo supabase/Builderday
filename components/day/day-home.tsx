@@ -35,6 +35,18 @@ import './day-home.css';
 import './rank-pictures.css';
 import './explain.css';
 import { EVENT } from '@/lib/day-data';
+import { HomeHero } from '@/components/air/home-hero';
+import { AirHome, AIR_HOME_CHOICES, AIR_HOME_DEF, type AirHomeCfg, type BoardMix } from '@/components/air/home';
+import type { SpinCfg } from '@/components/air/spin-globe';
+import { focusCity } from '@/components/board/day-model';
+import { meNow } from '@/components/forms/store';
+import { clampAir, type AirParts } from '@/components/air/devices';
+import { clampWheel } from '@/components/wheel/config';
+import wheelSaved from '@/saved/wheel.config.json';
+import partsSaved from '@/saved/parts.config.json';
+
+const WHEEL = clampWheel(wheelSaved);
+const AIR = clampAir((partsSaved as { air?: Partial<AirParts> }).air);
 
 /* The home on the day: the header row, the wire, the opening, the departures board, the final, how it works and the
    prizes. One component for the real home (/) and its tuning page (/lab/day-home):
@@ -44,13 +56,16 @@ import { EVENT } from '@/lib/day-data';
    Every number is the home's world at the board's minute, the same world a city page draws, so the two agree. The
    look comes from saved/day-home.config.json and saved/parts.config.json. Keys with the panel: \ panel, S save. */
 
-export type HomeDir = 'base' | 'board' | 'wall' | 'strips';
-export type DayHomeCfg = { dir: HomeDir; final: 'thirty' | 'diagram'; fastext: number; leaderPic: number; how: number };
-type State = DayHomeCfg & { t: number; live: number; speed: number; worst: number };
-const DIRS_ALL: [string, string][] = [['base', 'Baseline'], ['board', 'Departures board'], ['wall', 'Control wall'], ['strips', 'Board and strips']];
+export type HomeDir = 'base' | 'mix' | 'flat' | 'board' | 'wall' | 'strips';
+export type DayHomeCfg = { dir: HomeDir; mix: BoardMix['mode']; list: BoardMix['list']; gMode: SpinCfg['mode']; gSpeed: number; gDwell: number; gTurn: number; gWake: number; gSize: number; gBleed: number; final: 'print' | 'thirty' | 'diagram'; fastext: number; leaderPic: number; how: number }
+  & Pick<AirHomeCfg, 'order' | 'marks' | 'startLine' | 'wire' | 'night'> & { howFeed: AirHomeCfg['how'] };
+type State = DayHomeCfg & { t: number; live: number; speed: number; worst: number; hidden: 'auto' | 'on' | 'off' };
+const DIRS_ALL: [string, string][] = [['base', 'Baseline'], ['mix', 'Board and map'], ['flat', 'Opened flat'], ['board', 'Departures board'], ['wall', 'Control wall'], ['strips', 'Board and strips']];
 const GROUPS: Group[] = [
   { name: 'Time', knobs: [{ k: 't', kind: 'range', label: 'Time' }, { k: 'live', kind: 'toggle', label: 'Clock runs' }, { k: 'speed', kind: 'range', label: 'Seconds a second' }, { k: 'worst', kind: 'toggle', label: 'Worst content' }] },
-  { name: 'Direction', knobs: [{ k: 'dir', kind: 'select', label: 'Direction' }, { k: 'final', kind: 'select', label: 'The final' }, { k: 'fastext', kind: 'toggle', label: 'Fastext row' }, { k: 'leaderPic', kind: 'toggle', label: 'Leader’s picture on the board' }, { k: 'how', kind: 'toggle', label: 'How it works and the prize block' }] },
+  { name: 'Direction', knobs: [{ k: 'dir', kind: 'select', label: 'First screen' }, { k: 'mix', kind: 'select', label: 'Board and map: beside the opening' }, { k: 'list', kind: 'select', label: 'Board and map: the cities list' }, { k: 'final', kind: 'select', label: 'The final' }, { k: 'fastext', kind: 'toggle', label: 'Fastext row (board)' }, { k: 'leaderPic', kind: 'toggle', label: 'Leader’s picture on the board' }, { k: 'how', kind: 'toggle', label: 'How it works and the prize block (board)' }] },
+  { name: 'The globe (Board and map)', knobs: [{ k: 'gMode', kind: 'select', label: 'How it turns' }, { k: 'gSpeed', kind: 'range', label: 'Spin, degrees a second' }, { k: 'gTurn', kind: 'range', label: 'Tour, a turn (ms)' }, { k: 'gDwell', kind: 'range', label: 'Tour, the hold (s)' }, { k: 'gWake', kind: 'range', label: 'Wake (steps)' }, { k: 'gSize', kind: 'range', label: 'Size (share of the screen’s height)' }, { k: 'gBleed', kind: 'range', label: 'Off the right edge (share of the globe)' }] },
+  { name: 'On air (Opened flat)', knobs: [{ k: 'order', kind: 'select', label: 'Order of the parts' }, { k: 'marks', kind: 'select', label: 'Marks on the map' }, { k: 'startLine', kind: 'select', label: 'Start line' }, { k: 'night', kind: 'select', label: 'Night on the map' }, { k: 'wire', kind: 'select', label: 'The wire' }, { k: 'howFeed', kind: 'select', label: 'How it works fed' }, { k: 'hidden', kind: 'select', label: 'Votes hidden (lab)' }] },
 ];
 const L = lookCfg as { finRh: number; curve: number };
 
@@ -64,11 +79,22 @@ export function DayHome({ saved, parts, q, page, base, foot, live }: {
   live?: { day: DaySnap | null };
 }) {
   const P = clampParts(parts), real = !!page, admin = !real || q.admin !== undefined;
-  const DIRS = real ? DIRS_ALL.slice(1) : DIRS_ALL, CHOICES: Record<string, string[]> = { dir: DIRS.map(([d]) => d), final: ['thirty', 'diagram'] };
-  const LABELS: Record<string, string> = { ...Object.fromEntries(DIRS_ALL), thirty: 'Thirty board', diagram: 'One diagram (today’s)' };
+  const DIRS = real ? DIRS_ALL.slice(1) : DIRS_ALL, CHOICES: Record<string, string[]> = { dir: DIRS.map(([d]) => d), mix: ['globe', 'side', 'band', 'flat'], list: ['flat', 'board'], gMode: ['tour', 'spin', 'face'], final: AIR_HOME_CHOICES.final, order: AIR_HOME_CHOICES.order, marks: AIR_HOME_CHOICES.marks, startLine: AIR_HOME_CHOICES.startLine, night: AIR_HOME_CHOICES.night, wire: ['typed', 'off'], howFeed: AIR_HOME_CHOICES.how, hidden: ['auto', 'on', 'off'] };
+  const MIXL: Record<string, string> = { globe: 'The text globe', side: 'The map beside it', band: 'The map under it', flat: 'Opened flat (no opening)' };
+  const GML: Record<string, string> = { tour: 'Tour: city to city', spin: 'Spin at one speed', face: 'Face the opening’s city' };
+  const LISTL: Record<string, string> = { flat: 'Opened flat’s list, the board’s chips', board: 'The departures board' };
+  const LABELS: Record<string, string> = { ...Object.fromEntries(DIRS_ALL), print: 'The printout', thirty: 'Thirty board', diagram: 'One diagram (today’s)', live: 'Live (the final moves up)', fixed: 'Fixed', state: 'States', plain: 'Plain +', on: 'On', off: 'Off', typed: 'Typed', real: 'The real day', sample: 'The sample', auto: 'From the model' };
   const [cfg, setCfg] = useState<State>(() => {
-    const c: State = { dir: 'board', final: 'thirty', fastext: P.fastext, leaderPic: 1, how: 1, ...saved, t: 0, live: 1, speed: 1, worst: real ? 0 : 1 };
-    if (!CHOICES.dir.includes(c.dir)) c.dir = 'board';
+    const c: State = { dir: 'mix', mix: 'globe', list: 'flat', gMode: 'spin', gSpeed: 6, gDwell: 4, gTurn: 1400, gWake: 3, gSize: 1.15, gBleed: 0.24, final: 'print', fastext: P.fastext, leaderPic: 1, how: 1, order: AIR_HOME_DEF.order, marks: AIR_HOME_DEF.marks, startLine: AIR_HOME_DEF.startLine, wire: AIR_HOME_DEF.wire, night: AIR_HOME_DEF.night, howFeed: AIR_HOME_DEF.how, ...saved, t: 0, live: 1, speed: 1, worst: real ? 0 : 1, hidden: 'auto' };
+    if (!CHOICES.dir.includes(c.dir)) c.dir = 'mix';
+    if (!CHOICES.mix.includes(c.mix)) c.mix = 'globe';
+    if (!CHOICES.list.includes(c.list)) c.list = 'flat';
+    if (!CHOICES.gMode.includes(c.gMode)) c.gMode = 'spin';
+    if (q.gMode && CHOICES.gMode.includes(q.gMode)) c.gMode = q.gMode as SpinCfg['mode'];
+    if (q.list && CHOICES.list.includes(q.list)) c.list = q.list as BoardMix['list'];
+    if (q.mix && CHOICES.mix.includes(q.mix)) c.mix = q.mix as BoardMix['mode'];
+    if (q.hidden === '1') c.hidden = 'on'; else if (q.hidden === '0') c.hidden = 'off';
+    for (const k of ['order', 'marks', 'startLine', 'night', 'wire'] as const) if (q[k] && CHOICES[k].includes(q[k]!)) (c as Record<string, unknown>)[k] = q[k];
     if (q.dir && CHOICES.dir.includes(q.dir)) c.dir = q.dir as HomeDir;
     if (q.final && CHOICES.final.includes(q.final)) c.final = q.final as State['final'];
     if (q.worst === '0') c.worst = 0; else if (q.worst === '1') c.worst = 1;
@@ -90,7 +116,7 @@ export function DayHome({ saved, parts, q, page, base, foot, live }: {
   const W = live && dSnap ? liveHome(W0, dSnap, bm) : W0, dayFinal = dayFinalOf(W);
   const moved = useRealClock(clock, real, q);
   const { save, msg, rail } = useLabSave('day-home', 'lab-day-home-saved');
-  const doSave = useCallback(() => save({ dir: cfg.dir, final: cfg.final, fastext: cfg.fastext, leaderPic: cfg.leaderPic, how: cfg.how }), [cfg, save]);
+  const doSave = useCallback(() => save({ dir: cfg.dir, mix: cfg.mix, list: cfg.list, gMode: cfg.gMode, gSpeed: cfg.gSpeed, gDwell: cfg.gDwell, gTurn: cfg.gTurn, gWake: cfg.gWake, gSize: cfg.gSize, gBleed: cfg.gBleed, final: cfg.final, fastext: cfg.fastext, leaderPic: cfg.leaderPic, how: cfg.how, order: cfg.order, marks: cfg.marks, startLine: cfg.startLine, wire: cfg.wire, night: cfg.night, howFeed: cfg.howFeed }), [cfg, save]);
   const [res, setRes] = useState<Contrast | null>(null);
 
   useEffect(() => { if (bare && !real) document.documentElement.classList.add('lab-closed', 'no-lab'); }, [bare, real]);
@@ -112,19 +138,29 @@ export function DayHome({ saved, parts, q, page, base, foot, live }: {
   const href: Href = (id) => real ? '/city/' + id + carry(bm) : '/lab/day-city?city=' + id + carry(bm);
   const flap = { flipMs: P.flipMs, flaps: P.flaps, stagger: P.stagger, mode: P.flap, onStep: () => step(P.sound === 'steps') };
   const look: Look = { mark: P.mark, cardBars: P.cardBars, cardPalette: P.cardPalette, cards: P.cards, segSecs: P.segSecs, bugCorner: P.bugCorner, flap };
+  const mine = meNow()?.pass?.city ?? null;
   let cur = -1; ms.forEach((m, i) => { if (Math.abs(cfg.t - m[2]) < 0.6) cur = i; });
   const out = (k: string) => k === 't' ? hhmm(cfg.t) + ' UTC' + (cfg.t > S.winEnd ? ' (+7 d)' : '') : k === 'speed' ? cfg.speed + '×' : String((cfg as Record<string, unknown>)[k]);
-  const bounds = { t: [Math.min(S.winStart, Math.floor(cfg.t)), Math.max(S.winEnd + 7 * 1440, Math.ceil(cfg.t)), 1] as [number, number, number], speed: [1, 120, 1] as [number, number, number] };
+  const bounds = { t: [Math.min(S.winStart, Math.floor(cfg.t)), Math.max(S.winEnd + 7 * 1440, Math.ceil(cfg.t)), 1] as [number, number, number], speed: [1, 120, 1] as [number, number, number], gSpeed: [1, 30, 1] as [number, number, number], gTurn: [400, 4000, 100] as [number, number, number], gDwell: [1, 12, 0.5] as [number, number, number], gWake: [0, 8, 1] as [number, number, number], gSize: [0.5, 1.6, 0.05] as [number, number, number], gBleed: [0, 0.45, 0.01] as [number, number, number] };
   const meter = cfg.dir === 'base' ? { text: 'Baseline: today’s home on the kit, framed.', bad: false }
     : res ? { text: `Small text: ${res.n} pieces, lowest ${res.min.toFixed(1)}:1, ${res.under} under 7:1 with the lines on${res.under ? ': ' + res.worst.filter((w) => w.ratio < 7).slice(0, 4).map((w) => '“' + w.text.slice(0, 24) + '” ' + w.ratio.toFixed(1)).join(', ') : ''}.`, bad: res.under > 0 } : { text: 'Measuring…', bad: false };
 
   const final = cfg.final === 'diagram'
     ? <div className={'dl-diagram ' + FRAME} data-mode="sheet"><div className="dl-page" style={pageVars({ ...HOME_DEF, ...day } as HomeCfg) as CSSProperties}><DayProvider cfg={{ ...HOME_DEF, ...day, now: bm } as HomeCfg} clock={{ at: bm, preview: true, still: true }} carry={{ preview: true, still: true }} live={false}><Diagram finRh={L.finRh} curve={L.curve} /></DayProvider></div></div>
     : <Thirty W={W} href={href} />;
+  /* today's board directions keep the thirty board for the printout, which only the flat page draws */
 
   return (
     <>
-      {cfg.dir === 'base' && base ? base(cfg.t > S.winEnd ? 0.97 : tOf(cfg.t, S), cfg.worst) : (
+      {cfg.dir === 'flat' || cfg.dir === 'mix' ? (
+        <AirHome W={W} day={day} clock={clock} first={cfg.t} bm={bm} href={href} wheel={WHEEL} air={AIR} live={!!cfg.live} forceHidden={cfg.hidden === 'on' ? true : cfg.hidden === 'off' ? false : null} wire={wireItems(W, 12)}
+          board={cfg.dir === 'mix' ? {
+            mode: cfg.mix, list: cfg.list, focus: focusCity(W).id, spin: { mode: cfg.gMode, speed: cfg.gSpeed, dwell: cfg.gDwell, turn: cfg.gTurn, wake: cfg.gWake, size: cfg.gSize, bleed: cfg.gBleed },
+            hero: <HomeHero W={W} clock={clock} first={cfg.t} href={href} segSecs={!!P.segSecs} mine={mine} />,
+            table: <div className="bd dl dl-mix" style={partsVars(P) as CSSProperties} data-face={P.face}><Board W={W} day={day} look={look} href={href} tick={P.tick} pic={!!cfg.leaderPic} /></div>,
+          } : null}
+          cfg={{ first: 'flat', order: cfg.order, marks: cfg.marks, startLine: cfg.startLine, final: cfg.final, how: cfg.howFeed, wire: cfg.wire, night: cfg.night }} />
+      ) : cfg.dir === 'base' && base ? base(cfg.t > S.winEnd ? 0.97 : tOf(cfg.t, S), cfg.worst) : (
         <>
           <DayScreen />
           <main className="bd dl" style={partsVars(P) as CSSProperties} data-face={P.face} data-dir={cfg.dir} data-fastext={cfg.fastext ? '' : undefined}>
@@ -143,7 +179,7 @@ export function DayHome({ saved, parts, q, page, base, foot, live }: {
       {bare ? null : (
         <>
           <LabPanel tab={real ? 'Admin' : 'Lab'} title={real ? 'Home: admin' : 'Day home lab'} cfg={{ ...cfg, seed: day.seed }} bounds={bounds} choices={CHOICES} groups={GROUPS} set={set} moments={ms} momentIdx={cur} out={out}
-            optionLabel={(_k, v) => LABELS[v] || v} meter={meter} msg={msg} rail={rail} railLabel={(s) => LABELS[String(s.dir)] + ', ' + String(s.final)}
+            optionLabel={(k, v) => (k === 'mix' ? MIXL[v] : k === 'gMode' ? GML[v] : k === 'list' ? LISTL[v] : LABELS[v]) || v} meter={meter} msg={msg} rail={rail} railLabel={(s) => LABELS[String(s.dir)] + ', ' + String(s.final)}
             apply={(s) => setCfg((c) => ({ ...c, ...(s as Partial<DayHomeCfg>) }))} buttons={real ? [['Now', () => set('t', realMinute(Date.now()))], ['Save', doSave, true]] : [['Save', doSave, true]]} />
           <LayoutPicker modes={DIRS} mode={cfg.dir} setMode={(m) => set('dir', m)} replay={() => clock.set(cfg.t)} />
         </>

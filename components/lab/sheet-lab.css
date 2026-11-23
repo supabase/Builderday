@@ -1,0 +1,9 @@
+/* the sheets lab: the sheets drawn open on the site's ground, side by side at their real widths */
+.sl { min-height: 100vh; padding: 32px 20px 64px; background: var(--c-ground); color: var(--c-ink); font-family: var(--font-sans); max-width: 1280px; }
+.sl-h { margin: 0; font-size: 20px; font-weight: 500; }
+.sl-p { margin: 6px 0 16px; color: var(--c-ink-2); font-size: 14px; }
+.sl-open { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+.sl-grid { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 40px 32px; }
+.sl-grid figure { margin: 0; max-width: 100%; }
+.sl-grid figcaption { margin-bottom: 10px; color: var(--c-ink-3); font: 500 12px/1 var(--font-mono); }
+.sl-grid .fm-art { cursor: pointer; }

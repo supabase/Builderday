@@ -59,7 +59,7 @@ export const CITY_WORD_CAP = CITY_WORD[0].toUpperCase() + CITY_WORD.slice(1);
 export const EVENT = {
   /* the event's row in the database (events.id): one event per site; a later event is a new row */
   id: 'builder-day-2026',
-  date: 'Dec 10, 2026',
+  date: '10 December 2026',
   year: 2026, month: 12, day: 10,
   /* the name where it stands alone (tab title, share text, an email's subject), and where Supabase is already beside it */
   name: 'Supabase Builder Day',
@@ -67,9 +67,18 @@ export const EVENT = {
   pickers: 'Ant and Copple',
   /* the top this many in each city go to the final */
   finalists: 3,
-  /* PLACEHOLDER: judges per city and each judge's votes. Not confirmed: whether the 50 is per city or for the day. */
+  /* judges per city (PLACEHOLDER), each judge's votes and what one counts (owner, 2026-11-23: "judges only have 10 votes
+     and each vote is 5 normal votes worth") */
   judges: 2,
-  judgeVotes: 50,
+  judgeVotes: 10,
+  judgeWeight: 5,
+  /* builders on a city's list vote from its start; everyone else, and the judges, from this many minutes after it
+     (owner, 2026-11-23: "peer votting happens from minute 0 untill end puublic can start voting from minute 60 same for
+     judges"). null: everyone from the start */
+  publicAt: 60 as number | null,
+  /* votes are hidden from this many minutes after a city starts until its voting closes (owner, 2026-11-23: "yeah from
+     minute 70 votes are hidden"; counted from the start is the planner's reading, not yet confirmed). null: never */
+  hideAt: 70 as number | null,
 } as const;
 /* how many go to the final: the top few in every city */
 export const FINALIST_COUNT = EVENT.finalists * CITIES.length;
@@ -83,11 +92,24 @@ export function pastEvents(): PastEvent[] { return PAST; }
 /* luma: each city at its own Luma start, local; sun: every city at startHour local; same: every city at startHour UTC.
    startHour is also the usual local start (18:00, ten of the fourteen), which the drawings show as one line. */
 export type ScheduleKind = 'luma' | 'sun' | 'same';
-export type SchedCfg = { schedule: ScheduleKind | string; startHour: number; buildMin: number; voteAfter: number; pickAfter: number };
+/* hideAt: minutes after a city's start when its counts and order freeze until its voting closes; null never; absent,
+   the event's (EVENT.hideAt) */
+export type SchedCfg = { schedule: ScheduleKind | string; startHour: number; buildMin: number; voteAfter: number; pickAfter: number; hideAt?: number | null };
 /* the schedule knobs both pages share, with the home's defaults */
-export const SCHED: SchedCfg = { schedule: 'luma', startHour: 18, buildMin: 90, voteAfter: 30, pickAfter: 60 };
+export const SCHED: SchedCfg = { schedule: 'luma', startHour: 18, buildMin: 90, voteAfter: 30, pickAfter: 60, hideAt: EVENT.hideAt };
 
-export type CitySched = { city: City; start: number; buildEnd: number; end: number };
+/* hide: the minute the counts freeze (start + hideAt), null when they never do; absent, start + EVENT.hideAt */
+/* pub: the minute anyone may vote (and the judges); before it only the city's builders. Absent, start + EVENT.publicAt */
+export type CitySched = { city: City; start: number; buildEnd: number; end: number; hide?: number | null; pub?: number };
+/* the minute a city's counts freeze, or null */
+export function publicMin(x: { start: number; pub?: number }): number { return x.pub !== undefined ? x.pub : x.start + (EVENT.publicAt ?? 0); }
+export function hideMin(x: { start: number; hide?: number | null }): number | null { return x.hide !== undefined ? x.hide : EVENT.hideAt == null ? null : x.start + EVENT.hideAt; }
+/* whether a city's counts and order are hidden at minute m: from the freeze until voting closes */
+export function hiddenAt(x: { start: number; end: number; hide?: number | null }, m: number): boolean { const h = hideMin(x); return h != null && m >= h && m < x.end; }
+/* the minute a city's counts are read at: the freeze while hidden, else m */
+export function countMin(x: { start: number; end: number; hide?: number | null }, m: number): number { return hiddenAt(x, m) ? hideMin(x)! : m; }
+/* a config's hideAt: its own when it says (null: never), else the event's */
+export function hideAtOf(c: { hideAt?: number | null }): number | null { return c.hideAt === undefined ? EVENT.hideAt : c.hideAt == null ? null : Math.max(0, +c.hideAt); }
 export type Sched = { cs: CitySched[]; first: number; last: number; pickAt: number; winStart: number; winEnd: number };
 
 export const TA = 0.94;   /* home clock: t from 0 to TA runs the day's strip; from TA to 1 is the day after (archived) */
@@ -100,9 +122,10 @@ const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 /* Minutes are UTC minutes from Dec 10, 00:00. Voting opens when building opens and stays open voteAfter minutes after
    building closes. */
 export function sched(c: SchedCfg): Sched {
+  const h = hideAtOf(c);
   const cs = CITIES.map((city) => {
     const start = c.schedule === 'same' ? c.startHour * 60 : (c.schedule === 'sun' ? c.startHour * 60 : city.start) - city.offset;
-    return { city, start, buildEnd: start + c.buildMin, end: start + c.buildMin + c.voteAfter };
+    return { city, start, buildEnd: start + c.buildMin, end: start + c.buildMin + c.voteAfter, hide: h == null ? null : start + h, pub: start + (EVENT.publicAt ?? 0) };
   });
   const first = Math.min(...cs.map((x) => x.start)), last = Math.max(...cs.map((x) => x.end));
   const pickAt = Math.ceil((last + c.pickAfter) / 15) * 15, winStart = Math.floor((first - 60) / 60) * 60;
@@ -224,16 +247,17 @@ export function all(sd: SeedCity): Entry[] {
 function judge(full: Entry[], sd: SeedCity) {
   const Rj = mulberry32(sd.seed * 1000 + sd.i * 104729 + 424243), pool = full.slice().sort((a, b) => b.votes - a.votes || a.k - b.k).slice(0, 24);
   for (let j = 0; j < EVENT.judges; j++) {
+    /* left counts the judge's own votes; c is what a press adds to the count (each of the judge's votes at its weight) */
     let left = EVENT.judgeVotes;
     for (let g = 0; g < 40 && left > 0; g++) {
-      const r = pool[Math.floor(Math.pow(Rj(), 1.6) * pool.length)], c = Math.min(left, 1 + Math.floor(Rj() * 6));
+      const r = pool[Math.floor(Math.pow(Rj(), 1.6) * pool.length)], press = Math.min(left, 1 + Math.floor(Rj() * 2)), c = press * EVENT.judgeWeight;
       const taken = r.jv.reduce((a, v) => a + v.c, 0), free = r.votes - taken;
       if (free < c + 2) continue;
       /* the press lands somewhere in the second half of the entry's votes, on a vote no other press holds */
       let n = Math.round(r.votes * (0.45 + Rj() * 0.55));
       n = Math.min(r.votes, Math.max(c, n));
       if (r.jv.some((v) => n - c < v.n && v.n - v.c < n)) continue;
-      r.jv.push({ n, c }); left -= c;
+      r.jv.push({ n, c }); left -= press;
     }
   }
   full.forEach((r) => r.jv.sort((a, b) => a.n - b.n));
@@ -282,11 +306,31 @@ export function topAt(sd: SeedCity, x: CitySched, m: number, n: number = EVENT.f
   return out.slice(0, n).map((t, i) => ({ ...t, place: i + 1 }));
 }
 export function top3(sd: SeedCity, x: CitySched, m: number): Top[] { return topAt(sd, x, m, EVENT.finalists); }
+/* While a city's counts are hidden: every entry in by minute m, in the order frozen at the freeze (votes at the freeze,
+   ties to the earlier entry), then the ones that came in after it, in the order they came. v and j are the counts at
+   the freeze (none for a late one). Outside the hidden stretch it is the plain order at m. */
+export function frozenOrder(sd: SeedCity, x: CitySched, m: number): Top[] {
+  if (m < x.start) return [];
+  const cm = countMin(x, m), k = inAt(sd, x, m), kf = inAt(sd, x, cm), early: Top[] = [], late: Top[] = [];
+  all(sd).forEach((r) => {
+    if (r.a >= k) return;
+    if (r.a < kf) early.push({ p: r.p, v: votesAtMin(r, x, cm), j: judgeAtMin(r, x, cm), r, place: 0 });
+    else late.push({ p: r.p, v: 0, j: 0, r, place: 0 });
+  });
+  early.sort((a, b) => b.v - a.v || a.r.k - b.r.k);
+  late.sort((a, b) => arriveAt(a.r, x) - arriveAt(b.r, x) || a.r.a - b.r.a);
+  return early.concat(late).map((t, i) => ({ ...t, place: i + 1 }));
+}
 
 export type CityStateName = 'next' | 'build' | 'vote' | 'done';
 export type CityState = {
   i: number; id: string; name: string; city: City; start: number; buildEnd: number; end: number; entries: number; list: TopEntry[]; sd: SeedCity;
   state: CityStateName; wait?: number; f?: number; n?: number; left?: number; lead?: { p: Project; v: number };
+  /* the counts and order are hidden (from hideAt until voting closes): lead and top are as they stood at hideAt, their
+     v the counts then; hideAt is the minute they froze (null: this city never hides) */
+  hidden?: boolean; hideAt?: number | null;
+  /* the minute anyone may vote, and the judges (before it only the city's builders) */
+  publicAt?: number;
   /* the top 3 now: the contenders while live, the finalists once voting has closed; empty before the city starts */
   top: Top[];
 };
@@ -298,7 +342,11 @@ export function cityState(x: CitySched, sd: SeedCity, now: number): CityState {
   else if (now < x.buildEnd) { o.state = 'build'; o.f = (now - x.start) / (x.buildEnd - x.start); o.n = inAt(sd, x, now); o.left = x.buildEnd - now; }
   else if (now < x.end) { o.state = 'vote'; o.f = (now - x.buildEnd) / (x.end - x.buildEnd); o.n = sd.entries; o.left = x.end - now; }
   else { o.state = 'done'; o.n = sd.entries; if (sd.entries) o.lead = { p: sd.list[0].p, v: sd.list[0].votes }; }
-  if (o.state === 'build' || o.state === 'vote') { const b = leader(sd, x, now); if (b) o.lead = { p: b.p, v: b.v }; }
+  o.hideAt = hideMin(x); o.hidden = hiddenAt(x, now); o.publicAt = publicMin(x);
+  if (o.hidden) {
+    const f = frozenOrder(sd, x, now); o.top = f.slice(0, EVENT.finalists);
+    if (f.length) o.lead = { p: f[0].p, v: f[0].v };
+  } else if (o.state === 'build' || o.state === 'vote') { const b = leader(sd, x, now); if (b) o.lead = { p: b.p, v: b.v }; }
   return o;
 }
 

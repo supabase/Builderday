@@ -18,10 +18,13 @@ export function usePress(act: DeskAct) {
   const [busy, setBusy] = useState<string | null>(null);
   const [said, setSaid] = useState<{ key: string; text: string; error: boolean } | null>(null);
   const run = useCallback(async (key: string, action: string, p: Record<string, unknown>, done?: (r: DeskResult) => string | void): Promise<DeskResult> => {
+    /* the pressed key is disabled while it works, which drops focus to the page; it gets focus back after */
+    const from = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
     setBusy(key); setSaid(null);
     let r: DeskResult;
     try { r = await act(action, p); } catch { r = { ok: false, error: 'The desk could not be reached. Check the connection and try again.' }; }
     setBusy(null);
+    if (from) requestAnimationFrame(() => { if (from.isConnected && (document.activeElement === document.body || document.activeElement == null)) from.focus({ preventScroll: true }); });
     if (!r.ok) { const t = r.error || 'That did not work. Try again.'; setSaid({ key, text: t, error: true }); speak(t); }
     else { const t = done?.(r); if (t) { setSaid({ key, text: t, error: false }); speak(t); } }
     return r;
@@ -99,4 +102,20 @@ export function ago(ms: number | null, now: number): string {
   const h = Math.round(m / 60);
   if (h < 24) return h + ' h ago';
   return Math.round(h / 24) + ' d ago';
+}
+
+/* Unsaved work on a form (Format, a place's settings): the form says so while it has edits, and the desk asks before
+   another tab or level would throw them away. One form at a time is open, so one name is enough. */
+let unsavedName: string | null = null;
+export const unsavedNow = () => unsavedName;
+/* a form that has just saved lets go at once, before the move it makes next */
+export const clearUnsaved = () => { unsavedName = null; };
+export function useUnsaved(name: string, changed: boolean) {
+  useEffect(() => {
+    if (!changed) return;
+    unsavedName = name;
+    const stay = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener('beforeunload', stay);
+    return () => { if (unsavedName === name) unsavedName = null; window.removeEventListener('beforeunload', stay); };
+  }, [name, changed]);
 }

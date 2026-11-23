@@ -1,7 +1,7 @@
 /* entries.ts: the one submit, for both doors (the form on a city's page and the editor's MCP tool), with the checks of
    lib/hackday-server.ts really run:
    - the clock: only while building runs in the entry's city, and not while a super admin has paused submissions;
-   - one entry per person: a second submit edits the first;
+   - one entry per person, or per team: a second submit, by them or a teammate, edits the first;
    - the repository (required): GitHub must be able to read it, and it must be made on the day (a block); a fork is a
      flag for the hosts;
    - the demo link: fetched once, guarded; no answer is a flag, never a block.
@@ -15,12 +15,14 @@ import { githubOK, slugOf, urlOK, withScheme, PIC_TYPES, MAX_PIC } from '@/lib/f
 import { CHECKS } from '@/lib/hackday-server';
 import { atCity } from '@/lib/forms';
 import { admin } from './supabase';
-import { type Person } from './people';
+import { EVENT_ID, type Person } from './people';
+import { eventById } from './events';
 import { mayBuild } from './room';
 import { entryOf, type MyEntry } from './me';
 import { forget } from './snapshot';
 import { guardKey } from './repo-key';
 import { whenLocal } from './time';
+import { entryRowOf } from './teams';
 
 export type SubmitInput = { name: string; pitch: string; repo: string; demo?: string; video?: string; by?: string };
 export type Upload = { bytes: Uint8Array; type: string };
@@ -109,12 +111,16 @@ function clockSays(c: Row, now: number): string | null {
   return null;
 }
 
-export async function submitEntry(p: Person, input: SubmitInput, o: { via: 'web' | 'editor'; upload?: Upload | null; keepPicture?: boolean }): Promise<SubmitResult> {
-  const db = admin(), now = Date.now();
-  const { data: old } = await db.from('entries').select('id, city, slug, picture, picture_from').eq('owner', p.id).maybeSingle();
+/* event: the event the entry is in (Builder Day unless named; the editor server names the one of the person's key).
+   The event's own rules decide what is asked: the room code, a repository, one made on the day, a demo link. */
+export async function submitEntry(p: Person, input: SubmitInput, o: { via: 'web' | 'editor'; upload?: Upload | null; keepPicture?: boolean; event?: string }): Promise<SubmitResult> {
+  const db = admin(), now = Date.now(), ev = o.event || EVENT_ID;
+  const rules = (await eventById(ev))?.f;
+  /* the person's entry, or their team's: any member edits the one entry */
+  const old = await entryRowOf(p.id, ev, 'id, city, slug, picture, picture_from');
   /* rule 7c: on the city's list, then the clock, then checked in with the room code (so a late press reads "closed",
      not "type the code") */
-  const gate = await mayBuild(p, (old?.city as string) || null);
+  const gate = await mayBuild(p, (old?.city as string) || null, ev);
   if (!gate.ok && gate.field === 'list') return { ok: false, status: gate.status, error: gate.error, field: 'list' };
   const cityId = (old?.city as string) || (gate.ok ? gate.pass.city : gate.city!);
   const { data: c } = await db.from('cities').select('*').eq('id', cityId).single();
@@ -131,29 +137,42 @@ export async function submitEntry(p: Person, input: SubmitInput, o: { via: 'web'
 
   const d: Draft = { name: String(input.name || '').trim().slice(0, 40), pitch: String(input.pitch || '').trim().slice(0, 140), repo: withScheme(String(input.repo || '').trim()), demo: input.demo ? withScheme(String(input.demo).trim()) : '', video: input.video ? withScheme(String(input.video).trim()) : '', city: cityId, cityName: c.name, deadline: c.build_end };
   if (!d.name) return { ok: false, error: 'Give your project a name.', field: 'name' };
-  if (!githubOK(d.repo)) return { ok: false, error: CHECKS.find((x) => x.id === 'repo')!.say!({ repo: d.repo || 'the repository' }), field: 'repo' };
+  const needRepo = rules?.repoRequired !== false;
+  if ((needRepo || d.repo) && !githubOK(d.repo)) return { ok: false, error: CHECKS.find((x) => x.id === 'repo')!.say!({ repo: d.repo || 'the repository' }), field: 'repo' };
+  if (rules?.demoRequired && !d.demo) return { ok: false, error: 'Add the link to your demo, where the judges can try it.', field: 'demo' };
+  if (!d.repo && !d.demo) return { ok: false, error: 'Add a link to your demo or your repository.', field: 'demo' };
   if (d.demo && !urlOK(d.demo)) return { ok: false, error: 'Check the demo link. It needs to be a full web address.', field: 'demo' };
   if (d.video && !urlOK(d.video)) return { ok: false, error: 'Check the video link. It needs to be a full web address.', field: 'video' };
 
-  const [facts, answers] = await Promise.all([repoFacts(d.repo, c.build_start as string), d.demo ? demoAnswers(d.demo) : Promise.resolve(true)]);
-  const verdict = verify(d, { now: new Date(now), hasEntry: !!old, off: c.offset_min as number, repo: facts || undefined });
+  const [facts, answers] = await Promise.all([d.repo ? repoFacts(d.repo, c.build_start as string) : Promise.resolve({ readable: true } as RepoFacts), d.demo ? demoAnswers(d.demo) : Promise.resolve(true)]);
+  const verdict = verify(d, { now: new Date(now), hasEntry: !!old, off: c.offset_min as number, repo: facts || undefined, noRepo: !d.repo });
   if (!facts) verdict.later = ['age', 'fork', 'push', 'dates', 'supabase'];
+  /* an event that allows older repositories: made before the day is a flag for the hosts, not a block */
+  if (rules && !rules.repoNew && verdict.refused.some((r) => r.check === 'age')) { verdict.refused = verdict.refused.filter((r) => r.check !== 'age'); verdict.flags.push('age'); verdict.ok = verdict.refused.length === 0; }
   if (!answers) verdict.flags.push('demo');
   if (!verdict.ok) { const r = verdict.refused[0]; return { ok: false, error: r.say, field: r.check === 'closed' ? 'closed' : 'repo', verdict }; }
   /* the editor key in the repository: replaced, the entry still taken, the hosts told by a flag */
-  const leak = await guardKey(gate.pass, d.repo);
+  const leak = d.repo ? await guardKey(gate.pass, d.repo) : null;
   if (leak) verdict.flags.push('key');
 
   /* the slug: from the name, unique in the city; kept when the name has not changed */
   let slug = old?.slug as string | undefined;
   if (!slug || slugOf(d.name) !== String(slug).replace(/-\d+$/, '')) {
     const base = slugOf(d.name); slug = base;
-    const { data: taken } = await db.from('entries').select('slug').eq('city', cityId).like('slug', base + '%').neq('owner', p.id);
+    let q = db.from('entries').select('slug').eq('city', cityId).like('slug', base + '%');
+    if (old) q = q.neq('id', old.id as string);
+    const { data: taken } = await q;
     const set = new Set((taken || []).map((t) => t.slug)); for (let k = 2; set.has(slug); k++) slug = base + '-' + k;
   }
-  const row = { city: cityId, owner: p.id, slug, name: d.name, pitch: d.pitch, url: d.demo || d.repo, repo: d.repo, video: d.video || null, via: o.via, flags: verdict.flags, updated_at: new Date().toISOString() };
-  const w = old ? await db.from('entries').update(row).eq('id', old.id).select('id').single() : await db.from('entries').insert(row).select('id').single();
-  if (w.error || !w.data) return { ok: false, error: w.error?.code === '23505' ? 'You already have an entry. Reload the page to edit it.' : 'Your entry was not saved. Try again.' };
+  const row = { city: cityId, slug, name: d.name, pitch: d.pitch, url: d.demo || d.repo, repo: d.repo || null, video: d.video || null, via: o.via, flags: verdict.flags, updated_at: new Date().toISOString() };
+  /* a first entry is the submitter's, and their team's when they are in one; an edit keeps its owner */
+  let w;
+  if (old) w = await db.from('entries').update(row).eq('id', old.id as string).select('id').single();
+  else {
+    const { data: m } = await db.from('team_members').select('team').eq('person', p.id).eq('event', ev).maybeSingle();
+    w = await db.from('entries').insert({ ...row, owner: p.id, team: m?.team || null }).select('id').single();
+  }
+  if (w.error || !w.data) return { ok: false, error: w.error?.code === '23505' ? 'You or your team already have an entry. Reload the page to edit it.' : 'Your entry was not saved. Try again.' };
   const id = w.data.id as string;
 
   /* the picture: an upload replaces; no upload keeps the old one when asked; otherwise the demo's share image */
@@ -164,20 +183,20 @@ export async function submitEntry(p: Person, input: SubmitInput, o: { via: 'web'
   else if (!o.keepPicture && old?.picture && !o.upload) await db.from('entries').update({ picture: null, picture_from: null }).eq('id', id);
 
   forget(cityId);
-  return { ok: true, entry: (await entryOf(p.id))!, verdict, ...(leak ? { keyFound: leak.say } : {}) };
+  return { ok: true, entry: (await entryOf(p.id, ev))!, verdict, ...(leak ? { keyFound: leak.say } : {}) };
 }
 
 /* Delete: the person's own entry, until building closes in its city */
-export async function deleteEntry(p: Person): Promise<{ ok: true } | { ok: false; error: string; status?: number; field?: string }> {
+export async function deleteEntry(p: Person, event: string = EVENT_ID): Promise<{ ok: true } | { ok: false; error: string; status?: number; field?: string }> {
   const db = admin();
-  const { data: e } = await db.from('entries').select('id, city, cities(*)').eq('owner', p.id).maybeSingle();
+  const e = await entryRowOf(p.id, event, 'id, city, cities(*)');
   if (!e) return { ok: false, status: 404, error: 'You have no entry to delete.' };
   const c = e.cities as unknown as Row;
-  const gate = await mayBuild(p, e.city as string);
+  const gate = await mayBuild(p, e.city as string, event);
   if (!gate.ok && gate.field === 'list') return { ok: false, status: gate.status, error: gate.error, field: 'list' };
   if (c.build_end && Date.now() >= new Date(c.build_end as string).getTime()) return { ok: false, status: 409, error: closedSay(c.name as string, c.build_end as string, c.offset_min as number) };
   if (!gate.ok) return { ok: false, status: gate.status, error: gate.error, field: 'room' };
-  await db.from('entries').delete().eq('id', e.id);
+  await db.from('entries').delete().eq('id', e.id as string);
   forget(e.city as string);
   return { ok: true };
 }

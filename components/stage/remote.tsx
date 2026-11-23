@@ -4,7 +4,8 @@ import { nextWords, stepsOf, visible } from '@/lib/stage/deck';
 import { started } from '@/lib/stage/act';
 import type { StageDriver } from '@/lib/stage/driver';
 import type { StageAction } from '@/lib/stage/types';
-import { localTime } from '@/lib/places';
+import { placeTime } from '@/lib/stage/rows';
+import { BD_WALL, hasVote, type WallEvent } from '@/lib/stage/event';
 import { mmss } from './parts';
 import { useAwake, useSecond, useSnap } from './use';
 import './remote.css';
@@ -17,7 +18,7 @@ import './remote.css';
 
 type Ctl = { label: string; a: StageAction; on?: boolean; pri?: boolean; off?: boolean; time?: string };
 
-export function StageRemote({ driver, name, first }: { driver: StageDriver; name: string; first: number }) {
+export function StageRemote({ driver, name, first, event = BD_WALL }: { driver: StageDriver; name: string; first: number; event?: WallEvent }) {
   const snap = useSnap(driver), now = useSecond(driver, first);
   const deck = visible(snap.deck), i = Math.max(0, deck.findIndex((s) => s.id === snap.row.scene)), s = deck[i];
   const steps = s ? stepsOf(s) : 1, step = snap.row.step, c = snap.city, go = snap.link === 'local' || snap.link === 'live';
@@ -46,13 +47,13 @@ export function StageRemote({ driver, name, first }: { driver: StageDriver; name
   };
   const press = (a: StageAction, t = 0) => {
     if (!go) return;
-    const q = driver.ask(a, name, (ms) => localTime(c.id, ms));
+    const q = driver.ask(a, name, (ms) => placeTime(c, ms));
     if (q) setAsk({ q, a, at: t }); else send(a);
   };
 
   /* the time line: before the clock, the planned start; then what is left of building or voting */
-  const time = localTime(c.id, now);
-  const [lw, lt] = !started(c) ? ['Starts', localTime(c.id, c.planned_start)]
+  const time = placeTime(c, now);
+  const [lw, lt] = !started(c) ? ['Starts', placeTime(c, c.planned_start)]
     : c.build_end && now < c.build_end ? ['Building ends in', mmss((c.build_end - now) / 1000)]
     : c.vote_end && now < c.vote_end ? ['Voting closes in', mmss((c.vote_end - now) / 1000)] : ['Voting has closed', ''];
   const talk = snap.row.timer.ends_at && snap.row.timer.ends_at > now ? snap.row.timer.ends_at - now : 0;
@@ -63,11 +64,15 @@ export function StageRemote({ driver, name, first }: { driver: StageDriver; name
   const building = !!c.build_end && now < c.build_end, voting = !!c.vote_end && now < c.vote_end;
   if (s?.kind === 'building') {
     if (!started(c)) ctl.push({ label: 'Start building', a: { t: 'start' }, pri: true });
-    else ctl.push({ label: '+1 min', a: { t: 'add', min: 1 }, off: !building }, { label: '+5 min', a: { t: 'add', min: 5 }, off: !building }, { label: 'Chart', a: { t: 'chart' }, on: snap.row.chart_on });
+    else {
+      ctl.push({ label: '+1 min', a: { t: 'add', min: 1 }, off: !building }, { label: '+5 min', a: { t: 'add', min: 5 }, off: !building });
+      /* the chart is votes over time: none where the judges decide alone */
+      if (hasVote(event)) ctl.push({ label: 'Chart', a: { t: 'chart' }, on: snap.row.chart_on });
+    }
   }
   if (s?.kind === 'voting') {
     ctl.push({ label: '+1 min', a: { t: 'add', min: 1 }, off: !voting }, { label: '+5 min', a: { t: 'add', min: 5 }, off: !voting });
-    ctl.push({ label: 'Chart', a: { t: 'chart' }, on: snap.row.chart_on });
+    if (hasVote(event)) ctl.push({ label: 'Chart', a: { t: 'chart' }, on: snap.row.chart_on });
     ctl.push({ label: snap.can.super ? 'Close voting' : 'Close voting (super admin)', a: { t: 'close' }, off: !voting || !snap.can.super });
   }
   if (s?.kind === 'top3') {

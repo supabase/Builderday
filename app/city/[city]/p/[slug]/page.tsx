@@ -7,7 +7,7 @@ import { pageMeta } from '@/lib/meta';
 import type { PartsCfg } from '@/components/board/config';
 import { FormsProvider } from '@/components/forms/forms-provider';
 import { backendOn } from '@/lib/server/env';
-import { citySnapshot, pageSnaps } from '@/lib/server/snapshot';
+import { pageSnaps, publicCity } from '@/lib/server/snapshot';
 import { rankOrder } from '@/lib/event/snapshot';
 import { DayCity, type DayCityCfg } from '@/components/day/day-city';
 import { flatQuery as flat, projectOnDay } from '@/components/day/day';
@@ -22,17 +22,17 @@ export async function generateMetadata({ params, searchParams }: Props) {
   if (!c) return {};
   if (backendOn()) {
     /* live: the entry from the city's snapshot */
-    const snap = await citySnapshot(city), s = decodeURIComponent(slug);
+    const snap = await publicCity(city), s = decodeURIComponent(slug);
     const ranked = (snap?.entries || []).slice().sort(rankOrder), k = ranked.findIndex((e) => e.slug === s);
     if (k < 0) return {};
     const e = ranked[k], pitch = !e.pitch ? '' : /[.!?…]$/.test(e.pitch) ? e.pitch : e.pitch + '.';
-    return pageMeta(e.name + ' · ' + c.name + ' · ' + EVENT.name, (pitch ? pitch + ' ' : '') + (snap!.city.buildStart ? ord(k + 1) + ' in ' + c.name + ' with ' + plural(e.votes, 'vote') + '.' : 'In ' + c.name + '.'));
+    return pageMeta(e.name + ' · ' + c.name + ' · ' + EVENT.name, (pitch ? pitch + ' ' : '') + (snap!.hidden ? 'In ' + c.name + '. Votes are hidden until voting closes.' : snap!.city.buildStart ? ord(k + 1) + ' in ' + c.name + ' with ' + plural(e.votes, 'vote') + '.' : 'In ' + c.name + '.'));
   }
   const { W, row, listed } = projectOnDay(city, decodeURIComponent(slug), flat(await searchParams), Date.now());
   if (!row) return {};
   const pitch = /[.!?…]$/.test(row.p.pitch) ? row.p.pitch : row.p.pitch + '.';
   const done = W.state === 'done', finalist = done && listed && row.rank <= EVENT.finalists;
-  const where = listed && W.votesOn ? ord(row.rank) + ' in ' + c.name + ' with ' + plural(row.v, 'vote') + (finalist ? ', in the final.' : '.') : 'In ' + c.name + '.';
+  const where = listed && W.hidden ? 'In ' + c.name + '. Votes are hidden until voting closes.' : listed && W.votesOn ? ord(row.rank) + ' in ' + c.name + ' with ' + plural(row.v, 'vote') + (finalist ? ', in the final.' : '.') : 'In ' + c.name + '.';
   return pageMeta(row.p.name + ' · ' + c.name + ' · ' + EVENT.name, pitch + ' ' + where + (W.voting ? ' Anyone with the link can vote.' : ''));
 }
 

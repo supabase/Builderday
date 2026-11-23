@@ -4,7 +4,8 @@
    new room code later does not undo it. Both doors (the web form and the editor server) go through mayBuild, from
    lib/server/entries.ts; the pages only ask. */
 import { admin } from './supabase';
-import { PASS_COLS, passOf, type Pass, type Person } from './people';
+import { EVENT_ID, PASS_COLS, passOf, type Pass, type Person } from './people';
+import { eventById } from './events';
 import { notInRoom, notListed, notListedAnywhere, wrongCode } from '@/lib/event/rule';
 
 /* the last code still works for a few minutes after the host makes a new one, for people typing it as it changes */
@@ -24,7 +25,7 @@ export async function checkIn(pass: Pass, how: 'room' | 'host', by: string | nul
   const { data } = await db.from('passes').update({ checked_in_at: new Date().toISOString(), checked_in_how: how, checked_in_by: how === 'host' ? by : null })
     .eq('id', pass.id).is('checked_in_at', null).select(PASS_COLS).maybeSingle();
   await db.from('log').insert({ who: by || pass.person, what: how === 'room' ? 'in the room (room code)' : 'marked in the room', city: pass.city, target: pass.person });
-  return (data as Pass | null) || (await passOf(pass.person)) || pass;
+  return (data as Pass | null) || pass;
 }
 
 /* a host takes the mark back (a guest marked by mistake); the next submit asks for the room code again */
@@ -36,18 +37,20 @@ export async function uncheck(pass: Pass, by: string): Promise<void> {
 
 /* may this person change an entry in this city? field says which step is missing: 'list' or 'room' */
 export type Gate = { ok: true; pass: Pass } | { ok: false; status: number; error: string; field: 'list' | 'room'; city?: string };
-export async function mayBuild(p: Person, city: string | null): Promise<Gate> {
+/* event: the event the entry is in (Builder Day unless named). An event that does not ask for the room code lets
+   everyone on a place's list submit. */
+export async function mayBuild(p: Person, city: string | null, event: string = EVENT_ID): Promise<Gate> {
   const cityName = nameOfCity;
-  const pass = await passOf(p.id);
+  const pass = await passOf(p.id, event);
   if (!pass) return { ok: false, status: 403, field: 'list', error: city ? notListed(await cityName(city)) : notListedAnywhere };
   if (city && pass.city !== city) return { ok: false, status: 403, field: 'list', error: notListed(await cityName(city)) };
-  if (!pass.checked_in_at) return { ok: false, status: 403, field: 'room', city: pass.city, error: notInRoom(await cityName(pass.city)) };
+  if (!pass.checked_in_at && (await eventById(event))?.f.roomCode !== false) return { ok: false, status: 403, field: 'room', city: pass.city, error: notInRoom(await cityName(pass.city)) };
   return { ok: true, pass };
 }
 
 /* a signed-in person (the submit sheet, the editor server) types the code: checked against their own city's room */
-export async function checkInWithCode(p: Person, code: string): Promise<{ ok: true; pass: Pass; already: boolean } | { ok: false; error: string; field: 'list' | 'code' }> {
-  const pass = await passOf(p.id);
+export async function checkInWithCode(p: Person, code: string, event: string = EVENT_ID): Promise<{ ok: true; pass: Pass; already: boolean } | { ok: false; error: string; field: 'list' | 'code' }> {
+  const pass = await passOf(p.id, event);
   if (!pass) return { ok: false, field: 'list', error: notListedAnywhere };
   if (pass.checked_in_at) return { ok: true, pass, already: true };
   const { data: row } = await admin().from('cities').select('name, room_code, room_code_prev, room_code_at').eq('id', pass.city).maybeSingle();

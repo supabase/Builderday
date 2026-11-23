@@ -45,3 +45,19 @@
 .ac-st[data-on] { color: var(--c-ink, #f4f4f2); }
 .ac-code { letter-spacing: 0.3em; font-variant-numeric: tabular-nums; }
 .ac-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 16px; margin-top: var(--s-6, 32px); padding-top: var(--s-4, 16px); border-top: 1px solid var(--c-line, #2b2c2c); }
+
+/* ---------- the team (components/account/team.tsx) ---------- */
+/* the seats, as characters: the whole row fits the sheet, at most the look's size (--max) */
+.tm-wrap { container-type: inline-size; min-width: 0; }
+.tm-art { margin: 0; font: 400 min(var(--max, 12px), calc(100cqw / var(--cols, 60) / 0.6)) / 1.08 var(--font-mono, ui-monospace, monospace);
+  color: var(--c-ink, #f4f4f2); white-space: pre; overflow: hidden; user-select: none; }
+.tm-row { display: block; }
+.tm-2 { color: var(--c-ink-3, #6f706d); }
+.tm-3 { color: var(--c-tint-3, #5a5b5a); }
+.tm-4 { color: var(--c-accent, #3ecf8e); }
+.tm-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.tm-join, .tm-share, .tm-leave { display: grid; gap: 12px; }
+.tm-in { max-width: 14ch; font-family: var(--font-mono, ui-monospace, monospace); letter-spacing: 0.08em; text-transform: uppercase; }
+.tm-code pre { font-size: 20px; letter-spacing: 0.12em; }
+.tm-list { display: flex; flex-wrap: wrap; gap: 4px 20px; margin: 0; padding: 0; list-style: none; font-size: 15px; color: var(--c-ink, #f4f4f2); }
+.tm-list span { color: var(--c-ink-2, #a3a39f); }

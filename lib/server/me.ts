@@ -3,8 +3,10 @@
 import { SERVER } from '@/lib/hackday-server';
 import { admin } from './supabase';
 import { siteUrl } from './env';
-import { editorKeyFor, passOf, rolesOf, type Person, type Role } from './people';
+import { EVENT_ID, editorKeyFor, passOf, rolesOf, type Person, type Role } from './people';
 import { dayGate } from './gate';
+import { entryRowOf, teamOf, type MyTeam } from './teams';
+import { eventById } from './events';
 
 export type MyEntry = {
   id: string; no: number; handle: string; slug: string; name: string; pitch: string; url: string; repo: string; demo: string; video: string;
@@ -22,28 +24,34 @@ export type Me = {
   editor: { url: string } | null;
   /* the day pages are open (lib/server/gate.ts): before then the account sheet points nowhere but the preview page */
   open: boolean;
+  /* the person's team (lib/server/teams.ts), and whether the event has teams and how many may be in one */
+  team: MyTeam | null;
+  teams: { on: boolean; max: number };
 };
 
+type EntryRow = { id: string; no: number; slug: string; name: string; pitch: string; url: string; repo: string | null; video: string | null; picture: string | null; picture_from: string | null;
+  city: string; created_at: string; updated_at: string; hidden_at: string | null; with_names: string | null; cities: unknown; people: unknown };
 const iso = (v: string | null) => (v ? new Date(v).toISOString() : '');
 
-export async function entryOf(person: string): Promise<MyEntry | null> {
-  const { data: e } = await admin().from('entries').select('id, no, slug, name, pitch, url, repo, video, picture, picture_from, city, created_at, updated_at, hidden_at, cities(name, build_end, planned_start, build_min), people!entries_owner_fkey(name)').eq('owner', person).maybeSingle();
+export async function entryOf(person: string, event: string = EVENT_ID): Promise<MyEntry | null> {
+  /* their own entry, or their team's */
+  const e = await entryRowOf(person, event, 'id, no, slug, name, pitch, url, repo, video, picture, picture_from, city, created_at, updated_at, hidden_at, with_names, cities(name, build_end, planned_start, build_min), people!entries_owner_fkey(name)') as unknown as EntryRow | null;
   if (!e) return null;
   const c = e.cities as unknown as { name: string; build_end: string | null; planned_start: string; build_min: number };
   const by = e.people as unknown as { name: string | null } | null;
   const deadline = c.build_end || new Date(new Date(c.planned_start).getTime() + c.build_min * 60000).toISOString();
   return {
-    id: e.id, no: e.no, handle: by?.name || '', slug: e.slug, name: e.name, pitch: e.pitch, url: e.url, repo: e.repo || '', demo: e.url, video: e.video || '',
+    id: e.id, no: e.no, handle: e.with_names || by?.name || '', slug: e.slug, name: e.name, pitch: e.pitch, url: e.url, repo: e.repo || '', demo: e.url, video: e.video || '',
     city: e.city, cityName: c.name, deadline: iso(deadline), picture: e.picture, pictureFrom: e.picture_from, createdAt: iso(e.created_at), updatedAt: iso(e.updated_at), hidden: !!e.hidden_at,
   };
 }
 
 export async function meOf(p: Person, req?: Request): Promise<Me> {
   const db = admin();
-  const [pass, roles, entry, votes, gate] = await Promise.all([
+  const [pass, roles, entry, votes, gate, team, ev] = await Promise.all([
     passOf(p.id), rolesOf(p.id), entryOf(p.id),
     db.from('votes').select('n, kind, entries(no, city)').eq('person', p.id),
-    dayGate(),
+    dayGate(), teamOf(p, EVENT_ID, req), eventById(EVENT_ID),
   ]);
   let passOut: Me['pass'] = null;
   if (pass) {
@@ -73,5 +81,6 @@ export async function meOf(p: Person, req?: Request): Promise<Me> {
     votes: mine, judging,
     editor: pass && mcp ? { url: mcp + '/' + editorKeyFor(pass) } : null,
     open: gate.open,
+    team, teams: { on: ev ? ev.f.teams : true, max: ev?.f.teamMax || 4 },
   };
 }

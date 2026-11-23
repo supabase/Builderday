@@ -58,5 +58,6 @@
   "rowTotal": 360,
   "arrival": "dial",
   "dialSweep": 3,
-  "back": "quiet"
+  "back": "quiet",
+  "page": "hero"
 }

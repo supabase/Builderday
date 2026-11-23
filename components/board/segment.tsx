@@ -47,7 +47,7 @@ export function Segment({ secs, lit, also, label, withSecs, className }: { secs:
     <div className={'sg' + (className ? ' ' + className : '')} role="timer" aria-live="off" aria-label={label}>
       <svg className="sg-digits" viewBox={`-1 -1 ${vw + 2} ${H + 2}`} aria-hidden="true">{g}</svg>
       <div className="sg-legends" aria-hidden="true">
-        {LEGENDS.map((l) => <span key={l} className={l === lit || (also && l === also) ? 'sg-lit' : undefined}>{l}</span>)}
+        {LEGENDS.map((l) => <span key={l} className={l === lit || (also && l === also) ? 'sg-lit' : undefined}>{l[0] + l.slice(1).toLowerCase()}</span>)}
       </div>
     </div>
   );

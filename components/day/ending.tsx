@@ -48,7 +48,7 @@ function gridFor(cfg: EndCfg, phone: boolean, width: number): MapGrid {
   return { rows: Math.max(8, Math.round((cols * (cfg.north - cfg.south)) / 360)), cols, north: cfg.north, south: cfg.south };
 }
 
-export function Ending({ cfg: given, wheel, cities, start, last, date, sound, links, style, face, board, markMode, play = 0, onMapPress, onPick }: {
+export function Ending({ cfg: given, wheel, cities, start, last, date, sound, links, style, face, board, markMode, play = 0, onMapPress, onPick, map = true, states, label = 'Register for a city' }: {
   cfg: EndCfg; wheel: WheelCfg; cities: EndCity[];
   /* the page's city (the nearest, or the one chosen on the page): the green mark until the visitor points at another */
   start: number;
@@ -62,6 +62,9 @@ export function Ending({ cfg: given, wheel, cities, start, last, date, sound, li
   play?: number; onMapPress?: () => void;
   /* a press on a city key also makes it the page's city, so every Register on the page agrees */
   onPick?: (i: number) => void;
+  /* the day pages: map={false} leaves the map out (the home already opens on it); states draws each city's mark as its
+     state; label names the list of marks (on the day they open the city pages, not Register) */
+  map?: boolean; states?: { mark: string; ink: number }[]; label?: string;
 }) {
   const cfg = clampEnd(given), phone = usePhone(), reduced = useReduced(), loaded = useLoaded();
   /* the city pointed at, while the page's city is the one it was pointed from (a new page city starts again from it) */
@@ -98,7 +101,7 @@ export function Ending({ cfg: given, wheel, cities, start, last, date, sound, li
       onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) letGo(); }} style={{ ...style, '--en-cell': cfg.cell + 'px', '--en-tpl': `minmax(0, ${cfg.reg}fr) repeat(3, minmax(0, 1fr))`, '--en-tag': cfg.tag } as CSSProperties}>
       {telex ? <p className="en-tx" aria-hidden="true">ZCZC</p> : null}
       {cfg.mark === 'big' ? <div className="en-big" aria-hidden="true"><BuilderLogo /></div> : null}
-      {cfg.end === 'flat' ? <FlatMap cfg={cfg} wheel={wheel} cities={cities} aim={aim} point={point} phone={phone} reduced={reduced} play={play} onPress={onMapPress} /> : null}
+      {cfg.end === 'flat' && map ? <FlatMap cfg={cfg} wheel={wheel} cities={cities} aim={aim} point={point} phone={phone} reduced={reduced} play={play} onPress={onMapPress} states={states} label={label} /> : null}
       {cfg.end === 'ident' ? <Ident cfg={cfg} wheel={wheel} cities={cities} aim={aim} cells={cells} /> : null}
       {cfg.end === 'cities' ? (
         <nav className="en-names" aria-label="Register for a city">
@@ -110,7 +113,7 @@ export function Ending({ cfg: given, wheel, cities, start, last, date, sound, li
         </nav>
       ) : null}
       {/* on a phone the city keys come before the Register cell they change */}
-      {cfg.end === 'flat' ? keys : null}
+      {cfg.end === 'flat' && map ? keys : null}
       {cfg.end === 'ident' ? keys : cells}
       <div className="en-links">
         <nav aria-label="On this page and Supabase">
@@ -139,8 +142,9 @@ export function Ending({ cfg: given, wheel, cities, start, last, date, sound, li
 }
 
 /* ---------- the world opened flat ---------- */
-function FlatMap({ cfg, wheel, cities, aim, point, phone, reduced, play, onPress }: {
+function FlatMap({ cfg, wheel, cities, aim, point, phone, reduced, play, onPress, states, label = 'Register for a city' }: {
   cfg: EndCfg; wheel: WheelCfg; cities: EndCity[]; aim: number; point: (i: number) => void; phone: boolean; reduced: boolean; play: number; onPress?: () => void;
+  states?: { mark: string; ink: number }[]; label?: string;
 }) {
   const host = useRef<HTMLDivElement>(null), cv = useRef<HTMLCanvasElement>(null);
   const [land, setLand] = useState<LandMap | null>(null);
@@ -195,7 +199,7 @@ function FlatMap({ cfg, wheel, cities, aim, point, phone, reduced, play, onPress
       const p = prog.current < 0 ? 0 : prog.current;
       const unroll = cfg.open === 'unroll' && opens && p < 1 ? { t: p, facing: cities[aim]?.lon ?? 0, r: h * 0.46 } : null;
       const printed = cfg.open === 'print' && opens ? printedAt(g, p, cfg.seed) : Infinity;
-      drawMap(ctx, { w, h, g, lines, marks, active: aim, look: { ink: look.ink, grid: look.grid, markInk: look.markInk, green: look.green, font: look.font }, printed, unroll, dots: phone, ratio });
+      drawMap(ctx, { w, h, g, lines, marks, active: aim, look: { ink: look.ink, grid: look.grid, markInk: look.markInk, green: look.green, font: look.font }, printed, unroll, dots: phone, ratio, states });
       /* a code shows once the print has passed its cell */
       if (printed !== Infinity || unroll) labels.forEach((lb, k) => { const m = marks[k]; lb.toggleAttribute('data-wait', !!unroll || !m || m.code.r * g.cols + m.code.c >= printed); });
       else labels.forEach((lb) => lb.removeAttribute('data-wait'));
@@ -203,7 +207,7 @@ function FlatMap({ cfg, wheel, cities, aim, point, phone, reduced, play, onPress
     drawRef.current();
     const ro = new ResizeObserver(() => drawRef.current()); ro.observe(el);
     return () => ro.disconnect();
-  }, [lines, g, marks, aim, wheel, phone, cfg.open, cfg.seed, opens, cities]);
+  }, [lines, g, marks, aim, wheel, phone, cfg.open, cfg.seed, opens, cities, states]);
 
   const { colW, lineH } = cellSize({ w: 100, h: 100, g });
   return (
@@ -211,7 +215,7 @@ function FlatMap({ cfg, wheel, cities, aim, point, phone, reduced, play, onPress
       <div ref={host} className="en-map-in" onClick={(e) => { if (onPress && !(e.target as HTMLElement).closest('a, button')) onPress(); }}>
         <canvas ref={cv} role="img" aria-label={`A map of the world drawn in characters, with the ${cities.length} cities marked`} />
         {/* the cities: each mark and its code is the link to register there */}
-        <ul className="en-mks" aria-label="Register for a city">
+        <ul className="en-mks" aria-label={label}>
           {marks.map((m) => {
             const x = cities[m.i];
             /* the target: the mark with its brackets and the code */
