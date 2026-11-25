@@ -73,7 +73,7 @@ function NameSlot({ name, names, dir, hand, fixed }: { name: string; names: stri
     if (shown !== name) { setRoll({ old: shown, dir, quick: true, n: n + 1 }); setN(n + 1); setShown(name); } else setRoll(null);
   };
   return (
-    <span className={'wh-reg-city' + (roll?.quick ? ' is-quick' : '')} data-dir={(roll?.dir ?? dir) > 0 ? 'up' : 'down'}>
+    <span className={'wh-reg-city' + (roll?.quick ? ' is-quick' : '')} data-hug={fixed ? undefined : ''} data-dir={(roll?.dir ?? dir) > 0 ? 'up' : 'down'}>
       {fixed ? names.map((x) => <span key={'g' + x} className="wh-reg-ghost" aria-hidden="true">{x}</span>) : null}
       {roll ? <span key={'o' + roll.n} className="wh-reg-name is-out" aria-hidden="true">{roll.old}</span> : null}
       <span key={'n' + (roll?.n ?? n)} className={'wh-reg-name' + (roll ? ' is-in' : '')} onAnimationEnd={roll ? end : undefined}>{shown}</span>
@@ -81,9 +81,9 @@ function NameSlot({ name, names, dir, hand, fixed }: { name: string; names: stri
   );
 }
 
-/* the verb before the name: a slot as wide as the longest verb, set against the name, so the name starts in one place */
-function VerbSlot({ verb, fixed }: { verb: string; fixed: boolean }) {
-  if (!fixed) return <>{verb} </>;
+/* the verb before the name: a slot as wide as the longest verb, set against the name, so the name starts in one place
+   (in either width: where the name starts sets the hero's size, so a change of state must never move it) */
+function VerbSlot({ verb }: { verb: string }) {
   const all = VERBS.includes(verb) ? VERBS : [...VERBS, verb];
   return (
     <span className="wh-reg-verb">
@@ -94,24 +94,49 @@ function VerbSlot({ verb, fixed }: { verb: string; fixed: boolean }) {
 
 /* The Luma link as the ending's register box (ending.css), with the city's small globe of dots. When its words end
    with the city's name, the name is the wheel's own: the engine sets the box so its name lies where the wheel draws the
-   active name (data-lands); with the fade hand-over (data-hand) it hands the name over from the wheel at rest. In hug
-   width the box eases from its old width to the new one. */
+   active name (data-lands); with the fade hand-over (data-hand) it hands the name over from the wheel at rest.
+   In hug width the paper ends just after the name. A new name never resizes anything by the frame: the layout takes
+   the wider of the two widths at once, and the paper's right edge glides from the old end to the new one by a clip
+   (paint only), on the name's own clock; then the layout settles on the new width under the clip. A change mid-glide
+   starts from where the edge is. Reduced motion, or a docked row (always full width): it simply changes. */
 function Pill({ ref, href, press, text, name, names, dot, dir, hero, hatch, lands: landsOn }: { ref: RefObject<(HTMLAnchorElement & HTMLButtonElement) | null>; href: string; press?: () => void; text: string; name: string; names: string[]; dot: { lat: number; lon: number }; dir: number; hero: HeroCfg; hatch?: string; lands?: boolean }) {
   const lands = !!landsOn && text.endsWith(name), fixed = hero.width === 'fixed';
-  const was = useRef(0);
+  /* the paper's visible width as last settled, and the glide under way */
+  const vis = useRef(0), glide = useRef<Animation | null>(null);
+  /* the paper: the whole ticket when there is one, else the box */
+  const paper = (a: HTMLElement) => (a.closest('.wh-ticket') as HTMLElement | null) ?? a;
+  /* keep the settled width when the size changes for any other reason (a resize, the fonts arriving) */
+  useEffect(() => {
+    const a = ref.current; if (!a || fixed) return;
+    const p = paper(a), ro = new ResizeObserver(() => { if (!glide.current) vis.current = p.offsetWidth; });
+    ro.observe(p); return () => ro.disconnect();
+  }, [ref, fixed]);
   useLayoutEffect(() => {
-    const a = ref.current; if (!a || fixed) { was.current = 0; return; }
-    const to = a.offsetWidth, from = was.current; was.current = to;
-    if (!from || from === to || !hero.widthMs || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const a = ref.current; if (!a || fixed) return;
+    const p = paper(a);
+    /* where the edge is now: mid-glide, read off the running clip; else the settled width */
+    let from = vis.current;
+    if (glide.current) {
+      const m = /calc\(100% - ([\d.]+)px\)/.exec(getComputedStyle(p).clipPath);
+      if (m) from = parseFloat(m[1]);
+      glide.current.cancel(); glide.current = null;
+    }
+    a.style.minWidth = '';
+    const to = p.offsetWidth; vis.current = to;
+    if (!from || Math.abs(from - to) < 1 || !hero.widthMs || p.closest('.wh-pin')?.hasAttribute('data-dock') || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    /* the layout holds the wider width while the edge travels, so the old name has room to leave */
+    if (from > to) a.style.minWidth = a.offsetWidth + (from - to) + 'px';
+    const edge = (w: number) => `inset(-4px calc(100% - ${w}px) -4px -4px)`;
     const ease = getComputedStyle(document.documentElement).getPropertyValue('--ease-out').trim() || 'cubic-bezier(.23, 1, .32, 1)';
-    const run = a.animate([{ width: from + 'px' }, { width: to + 'px' }], { duration: hero.widthMs, easing: ease });
-    return () => run.cancel();
+    const run = p.animate([{ clipPath: edge(from) }, { clipPath: edge(to) }], { duration: hero.widthMs, easing: ease });
+    glide.current = run;
+    run.onfinish = () => { if (glide.current !== run) return; glide.current = null; a.style.minWidth = ''; run.cancel(); vis.current = p.offsetWidth; };
   }, [ref, text, fixed, hero.widthMs]);
   const words = (
     <>
       {hatch ? <span className="wh-hatch" aria-hidden="true"><span>{hatch}</span></span> : null}
       <span className="en-lens" data-dot="" data-lat={dot.lat} data-lon={dot.lon} aria-hidden="true" />
-      <span className="en-reg-t">{lands ? <><VerbSlot verb={text.slice(0, -name.length).trimEnd()} fixed={fixed} /><NameSlot name={name} names={names} dir={dir} hand={hero.hand} fixed={fixed} /></> : text}</span>
+      <span className="en-reg-t">{lands ? <><VerbSlot verb={text.slice(0, -name.length).trimEnd()} /><NameSlot name={name} names={names} dir={dir} hand={hero.hand} fixed={fixed} /></> : text}</span>
     </>
   );
   const cls = 'en-reg wh-reg', data = { 'data-lands': lands ? '' : undefined, 'data-hand': hero.hand };

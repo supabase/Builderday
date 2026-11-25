@@ -264,6 +264,10 @@ button.wh-cta { appearance: none; margin: 0; padding: 0; border: 0; background: 
 .wh-reg-city { display: inline-grid; vertical-align: top; overflow: clip; overflow-clip-margin: 0.12em; }
 .wh-reg-city > * { grid-area: 1 / 1; white-space: nowrap; }
 .wh-reg-ghost { visibility: hidden; }
+/* hug: the slot is the new name's width; the old one leaves over the line (the paper's clip cuts it at the edge), and
+   only the rows above and below are cut */
+.wh-reg-city[data-hug] { position: relative; overflow: visible; overflow-y: clip; }
+.wh-reg-city[data-hug] > .is-out { position: absolute; left: 0; top: 0; }
 /* the verb before it: every verb stacked, set against the name, so a change of state never moves the name */
 .wh-reg-verb { display: inline-grid; justify-items: end; vertical-align: top; }
 .wh-reg-verb > * { grid-area: 1 / 1; white-space: pre; }
