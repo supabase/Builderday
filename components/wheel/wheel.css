@@ -148,18 +148,23 @@ button.wh-cta { appearance: none; margin: 0; padding: 0; border: 0; background: 
    The page's words, the cells and a Luma pill as one column on the left margin. The engine places the column (it
    moves it to the active name's line); the words sit over the cells and the pill under them, so the cells stay put
    whatever the words say. */
-.wh-col { position: absolute; top: 0; left: var(--wh-gutter); z-index: 3; transform: translateY(-50%); }
+/* the column is placed here alone, in the middle of the first screen on the left margin: the wheel never moves it */
+.wh-col { position: absolute; top: 50%; left: var(--wh-gutter); z-index: 3; transform: translateY(-50%); }
 .wh-fixed .wh-col { position: fixed; }
 .wh-fixed.wh-rides .wh-col { position: absolute; }
 .wh-flow .wh-col:not([data-placed]) { visibility: hidden; }
 .wh-pin .wh-col .wh-cells { position: static; transform: none; translate: none; }
+/* in the row the cells sit in its flow, before the Luma box, whatever the page's scroll rules say */
+.wh-row.wh-reg-at > .wh-cells { position: static; transform: none; translate: none; }
 .wh-col.is-stacked .wh-cells { display: inline-flex; flex-direction: column; align-items: stretch; }
 .wh-col.is-stacked .wh-face { width: auto !important; }
-.wh-col .wh-cells > div:not(.sr-only) { padding: 0; border: 0; background: none; margin: 0 -1px -1px 0; }
-.wh-col .wh-cells > div:not(.sr-only) > dd { flex: 1; }
+:is(.wh-col, .wh-reg-at) .wh-cells > div:not(.sr-only) { padding: 0; border: 0; background: none; margin: 0 -1px -1px 0; }
+:is(.wh-col, .wh-reg-at) .wh-cells > div:not(.sr-only) > dd { flex: 1; }
 .wh-lead { position: absolute; left: 0; bottom: calc(100% + 48px); display: flex; flex-direction: column; gap: 56px; width: max-content; }
-.wh-lead :is(p, h1) { margin: 0; font: 400 20px/1.6 var(--wh-sans); letter-spacing: -0.01em; color: var(--wh-ink); }
+.wh-lead :is(p, h1) { margin: 0; font: 400 28px/1.5 var(--wh-sans); letter-spacing: -0.01em; color: var(--wh-ink); }
 .wh-lead .wh-lead-muted { color: var(--wh-muted); }
+/* the headline is set like the city names on the wheel: medium weight, the same tracking */
+.wh-lead h1 { margin-bottom: 20px; font-weight: 500; font-size: 44px; line-height: 1.15; letter-spacing: -0.03em; }
 .wh-supabase { display: inline-flex; align-items: center; gap: 6px; margin-left: 4px; vertical-align: -3px; color: var(--wh-ink); font-weight: 600; letter-spacing: -0.03em; }
 .wh-supabase svg { width: 19px; height: 20px; }
 .wh-col-foot { position: absolute; left: 0; top: calc(100% + 40px); display: flex; flex-direction: column; align-items: flex-start; gap: 16px; }
@@ -168,7 +173,7 @@ button.wh-cta { appearance: none; margin: 0; padding: 0; border: 0; background: 
 
 /* a face is one whole cell; two cells share a border line, so the colour must not be see-through */
 .wh-face {
-  box-sizing: border-box; display: flex; align-items: center; gap: 7px; height: 33px; padding: 0 12px;
+  box-sizing: border-box; display: flex; align-items: center; gap: 10px; height: var(--wh-cell, 64px); padding: 0 22px; font-size: 24px;
   border: 1px solid var(--wh-rule); background: var(--wh-paper); backface-visibility: hidden;
 }
 /* dark text on a light cell, at 7 to 1 or more */
@@ -179,7 +184,7 @@ button.wh-cta { appearance: none; margin: 0; padding: 0; border: 0; background: 
    the bottom (forward) or the top (back); the drum turns a quarter about its centre, and each face darkens as it
    turns away from the light. */
 .wh-prism { display: block; perspective: 420px; }
-.wh-drum { --h: 33px; --wh-turn: var(--dur-slide, 220ms); display: block; position: relative; transform-style: preserve-3d; }
+.wh-drum { --h: var(--wh-cell, 64px); --wh-turn: var(--dur-slide, 220ms); display: block; position: relative; transform-style: preserve-3d; }
 .wh-drum.is-quick { --wh-turn: calc(var(--dur-slide, 220ms) / 2); }
 .wh-drum.is-turning .wh-face { position: absolute; inset: 0 auto auto 0; }
 .wh-drum.is-turning .wh-face.is-new { position: relative; }
@@ -199,6 +204,20 @@ button.wh-cta { appearance: none; margin: 0; padding: 0; border: 0; background: 
 }
 
 /* the Luma link: a white pill with brown words */
+/* the register box takes the ending's look (ending.css) on the wheel's ground: the same height as the cells above it */
+/* the row of cells and the Luma box on the active name's line: the engine sets translate so the box's name starts
+   where the wheel's names start, and this puts the row's middle on the line */
+/* the hero's one size: the cells' and the Luma box's height */
+.wh-col, .wh-reg-at { --wh-cell: 88px; }
+.wh-reg-at .wh-cells svg { width: 16px; height: 16px; }
+/* the column keeps a row's height, so the page's words above it stand where they did */
+.wh-col { min-height: var(--wh-cell); }
+.wh-reg-at { position: absolute; top: 0; left: 0; z-index: 3; display: flex; align-items: stretch; transform: translateY(-50%); }
+.wh-fixed .wh-reg-at { position: fixed; }
+.wh-fixed.wh-rides .wh-reg-at { position: absolute; }
+.wh-flow .wh-reg-at:not([data-placed]) { visibility: hidden; }
+.wh-reg { --en-ink: var(--wh-ink); --bd-sans: var(--wh-sans); box-sizing: border-box; min-height: var(--wh-cell, 64px); padding: 0 28px; gap: 20px; font-size: clamp(28px, 2.8vw, 40px); border: 1px solid var(--wh-rule); color: #0c0d0d; white-space: nowrap; }
+.wh-reg .en-lens { width: 52px; height: 52px; }
 .wh-pill {
   appearance: none; margin: 0; border: 0; cursor: pointer; box-sizing: border-box; overflow: hidden;
   display: inline-flex; align-items: center; height: 40px; padding: 0 20px; border-radius: 999px;

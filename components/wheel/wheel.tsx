@@ -5,15 +5,13 @@ import { createWheel, type WheelCity, type WheelEngine, type WheelFlow } from '.
 import { mountDotGlobes } from './dot-globes';
 import { HackMark } from './mark';
 import familySaved from '@/saved/family.config.json';
-import { clampFamily, showPeople } from '@/lib/family';
+import { clampFamily } from '@/lib/family';
 const FAMILY = clampFamily(familySaved);
-/* the first screen's one Key: the family's square primary (rule 2), or the Luma pill it was (the lab's other mode) */
-const PILL = FAMILY.key === 'pill' ? 'wh-pill' : 'wh-pill k-key';
 import { BuilderLogo } from './builder-logo';
 import { EVENT } from '@/lib/day-data';
 import { SupabaseMark } from '@/components/shared/supabase-mark';
-import { tokEase, tokMs } from '@/components/shared/motion';
 import type { WheelStatus } from './click';
+import '@/components/day/ending.css';
 import './wheel.css';
 
 /* The city wheel as a page: the canvas, the mark, the link with its small globe, and the facts of the active city as
@@ -46,23 +44,21 @@ export function StatusIcon({ status }: { status: WheelStatus }) {
   );
 }
 
-/* The Luma link as a pill. When its words change they fade in and the pill eases from its old width to the new one,
-   so nothing is stretched. With reduced motion both just change. */
-function Pill({ ref, href, press, text }: { ref: RefObject<(HTMLAnchorElement & HTMLButtonElement) | null>; href: string; press?: () => void; text: string }) {
-  const [seen, setSeen] = useState({ text, n: 0 }), was = useRef(0);
-  if (seen.text !== text) setSeen({ text, n: seen.n + 1 });
-  useLayoutEffect(() => {
-    const a = ref.current; if (!a) return;
-    const to = a.offsetWidth, from = was.current; was.current = to;
-    if (!from || from === to) return;
-    const ms = tokMs('--dur-slide'); if (!ms) return;
-    const run = a.animate([{ width: from + 'px' }, { width: to + 'px' }], { duration: ms, easing: tokEase('--ease-out') });
-    return () => run.cancel();
-  }, [ref, seen.n]);
-  const words = <span key={seen.n} className={'wh-pill-text' + (seen.n ? ' is-fresh' : '')}>{text}</span>;
+/* The Luma link as the ending's register box (ending.css), with the city's small globe of dots. When its words end
+   with the city's name, the name is the wheel's own: the engine sets the box so its name lies where the wheel draws the
+   active name, and at rest hands the name over from the wheel to the box (data-lands; the name's span fades in). */
+function Pill({ ref, href, press, text, name, dot, at }: { ref: RefObject<(HTMLAnchorElement & HTMLButtonElement) | null>; href: string; press?: () => void; text: string; name: string; dot: { lat: number; lon: number }; at?: boolean }) {
+  const lands = !!at && text.endsWith(name);
+  const words = (
+    <>
+      <span className="en-lens" data-dot="" data-lat={dot.lat} data-lon={dot.lon} aria-hidden="true" />
+      <span className="en-reg-t">{lands ? <>{text.slice(0, -name.length)}<span className="wh-reg-city">{name}</span></> : text}</span>
+    </>
+  );
+  const cls = 'en-reg wh-reg';
   return press
-    ? <button ref={ref} type="button" className={PILL} aria-haspopup="dialog" onClick={press}>{words}</button>
-    : <a ref={ref} className={PILL} href={href}>{words}</a>;
+    ? <button ref={ref} type="button" className={cls} data-lands={lands ? '' : undefined} aria-haspopup="dialog" onClick={press}>{words}</button>
+    : <a ref={ref} className={cls} data-lands={lands ? '' : undefined} href={href}>{words}</a>;
 }
 
 /* A cell as a block that turns on its long axis when `k` changes, like a drum of cards: the face that was there rolls
@@ -145,7 +141,7 @@ export function Wheel({ cities, cfg, start = 0, noGl = false, cells = true, mark
     setDir(d > 0 ? -1 : 1); setLast(cur);
   }
   /* each cell is as wide as its longest words in any city, so the column keeps one width */
-  const widest = (f: (c: WheelFact) => string, icon = false) => `calc(${cities.reduce((a, c) => Math.max(a, f(c).length), 0)}ch + ${icon ? 45 : 26}px)`;
+  const widest = (f: (c: WheelFact) => string, icon = false) => `calc(${cities.reduce((a, c) => Math.max(a, f(c).length), 0)}ch + ${icon ? 72 : 46}px)`;
   const dot = text ? { 'data-dot': '', 'data-lat': city.lat, 'data-lon': city.lon } : {};
   /* the cells' and the link's words changed: measure them again before the next frame */
   useLayoutEffect(() => { eng.current?.measure(); }, [cur, cities, cells, cfg.font, cfg.layout, mark, foot, lead]);
@@ -162,23 +158,24 @@ export function Wheel({ cities, cfg, start = 0, noGl = false, cells = true, mark
       {flow ? null : <h1 className="wh-wordmark" data-mark={mark}><MarkFace mark={mark} /></h1>}
       {flow ? <span ref={grip} className="wh-grip" role="slider" tabIndex={0} aria-label="City wheel: the left and right arrows turn it" aria-valuemin={1} aria-valuemax={cities.length} aria-valuenow={cur + 1} aria-valuetext={city.name} /> : null}
       {column ? (
-        /* the column: the page's words, the cells on the active name's line, then the Luma pill. The engine moves the
-           whole column (it is the element it places), so the words and the pill keep to the cells. */
-        <div ref={cellsEl} className="wh-col">
-          {lead ? <div className="wh-lead">{lead}</div> : null}
-          {cells ? (
-            <dl className="wh-cells" data-placed="">
-              <div className="sr-only"><dt>City</dt><dd>{city.name}</dd></div>
-              <div><dt className="sr-only">Session, local time</dt><dd><Prism k={city.id} dir={dir} width={widest((c) => c.session)}>{city.session}</Prism></dd></div>
-              {city.people == null || showPeople(FAMILY, city.people) ? <div><dt className="sr-only">People</dt><dd><Prism k={city.id} dir={dir} width={widest((c) => c.count)}>{city.count}</Prism></dd></div> : null}
-              <div className="wh-status"><dt className="sr-only">Status</dt><dd><Prism k={city.id} dir={dir} status={city.status} width={widest((c) => STATUS_LABEL[c.status], true)}><StatusIcon status={city.status} /><span>{STATUS_LABEL[city.status]}</span></Prism></dd></div>
-            </dl>
-          ) : null}
-          <div className="wh-col-foot">
-            <Pill ref={cta} href={city.href} press={city.press} text={city.press ? city.action : city.status === 'full' ? 'Join the waiting list on Luma' : city.status === 'soon' ? 'Opens soon on Luma' : 'Register on Luma'} />
-            {foot}
+        /* the column: the page's words, on the left margin (wheel.css places it). The cells and the Luma box are one row
+           apart from it: the engine puts the row on the active name's line, the box's name on the wheel's own. */
+        <>
+          <div ref={cellsEl} className="wh-col">
+            {lead ? <div className="wh-lead">{lead}</div> : null}
+            {foot ? <div className="wh-col-foot">{foot}</div> : null}
           </div>
-        </div>
+          <div className="wh-row wh-reg-at">
+            {cells ? (
+              <dl className="wh-cells" data-placed="">
+                <div className="sr-only"><dt>City</dt><dd>{city.name}</dd></div>
+                <div><dt className="sr-only">Session, local time</dt><dd><Prism k={city.id} dir={dir} width={widest((c) => c.session)}>{city.session}</Prism></dd></div>
+                <div className="wh-status"><dt className="sr-only">Status</dt><dd><Prism k={city.id} dir={dir} status={city.status} width={widest((c) => STATUS_LABEL[c.status], true)}><StatusIcon status={city.status} /><span>{STATUS_LABEL[city.status]}</span></Prism></dd></div>
+              </dl>
+            ) : null}
+            <Pill ref={cta} at href={city.href} press={city.press} dot={city} name={city.name} text={city.press ? city.action : `Register for ${city.name}`} />
+          </div>
+        </>
       ) : (
         <>
           <div ref={footEl} className="wh-foot">
@@ -200,7 +197,6 @@ export function Wheel({ cities, cfg, start = 0, noGl = false, cells = true, mark
             <dl ref={cellsEl} className="wh-cells" data-status={city.status}>
               <div className="sr-only"><dt>City</dt><dd>{city.name}</dd></div>
               <div><dt className="sr-only">Session, local time</dt><dd>{city.session}</dd></div>
-              {city.people == null || showPeople(FAMILY, city.people) ? <div><dt className="sr-only">People</dt><dd>{city.count}</dd></div> : null}
               {city.soon ? <div className="wh-soon"><dt className="sr-only">Opens</dt><dd>{city.soon}</dd></div> : null}
               <div className="wh-status"><dt className="sr-only">Status</dt><StatusIcon status={city.status} /><dd>{STATUS_LABEL[city.status]}</dd></div>
             </dl>

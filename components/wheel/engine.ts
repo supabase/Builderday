@@ -122,7 +122,7 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
   let target = first.start, position = first.start, clicked = Math.round(first.start), previous = -1;
   let wheelSum = 0, drag: { x: number; y: number; from: number; moved: boolean; axis: 'x' | 'y' | null; touch: boolean; grip: boolean } | null = null;
   let shown = -1, settledOn = idx(first.start), ems: number[] = [];
-  let drawnAt = NaN, dirty = true, lastGl = '', lastCells = '', lastOpacity = '';
+  let drawnAt = NaN, dirty = true, lastGl = '', lastCells = '', lastOpacity = '', lastLand = '';
   let land: HTMLImageElement | null = null, tinted: HTMLCanvasElement | null = null;
   let raf = 0, running = false, onScreen = true, holes = '';
   /* the names' arrival: their share of ink, when the fade began and how long it takes, and no clicks while they turn in */
@@ -143,9 +143,37 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
   /* the globe starts facing its city, as the study's does after its first turn */
   turn.yaw = cfg.face - rad(cityAt(target).lon);
 
-  const font = () => canvasFont(SANS[cfg.font]);
+  /* the names on the wheel are set like the words in the Luma box beside them (ending.css): its size, face and
+     tracking, read off the page so the two stay one at every width. Without the box, the knobs. */
+  let ctaPx = 0, ctaFace = '', ctaTrack = 0, ctaLands = false, ctaLead = 0, ctaGutter = 0;
+  const measureName = () => {
+    const c = els.cta ? getComputedStyle(els.cta) : null;
+    ctaPx = c ? parseFloat(c.fontSize) || 0 : 0;
+    ctaFace = ctaPx && c ? c.fontFamily : '';
+    ctaTrack = ctaPx && c ? (parseFloat(c.letterSpacing) || 0) / ctaPx : 0;
+    /* a box whose words end with the city's name takes the name from the wheel: what lies after the name in it */
+    ctaLands = !!els.cta?.hasAttribute('data-lands');
+    /* where the name starts in the row the box ends (the cells, the globe and the words before it) */
+    const nm = els.cta?.querySelector('.wh-reg-city'), row = els.cta?.closest('.wh-reg-at');
+    ctaLead = nm && row ? nm.getBoundingClientRect().left - row.getBoundingClientRect().left : 0;
+    /* the row starts on the left margin, under the page's words (the column's own left, wheel.css) */
+    ctaGutter = els.cells ? parseFloat(getComputedStyle(els.cells).left) || 0 : 0;
+  };
+  /* the active name stands out from the others by the push; in the column it stays in line with them, and the Luma box
+     takes it where it stands */
+  const push = () => cfg.layout === 'column' ? 0 : cfg.labelPush;
+  /* in the column the names are left-aligned: they start on one line and run in towards the globe. With a Luma box that
+     takes the name, the line is where the box's name starts, the row starting on the left margin; else it is the outer
+     end of the longest name. Either way the row never moves; only the box's right end follows the name. */
+  const startAligned = () => cfg.layout === 'column' && !ringsOn();
+  const nameOuter = () => ctaLands && ctaLead ? view.x - (ctaGutter + ctaLead) * view.ratio : cfg.labelFrom * view.radius + Math.max(0, ...ems) * nameSize();
+  /* how far the name has landed in the box: none while the wheel turns, all of it at rest */
+  const landed = () => ctaLands && cfg.layout === 'column' ? 1 - smoothstep(cfg.settleFrom, cfg.settleTo, Math.abs(target - position)) : 0;
+  const nameSize = () => ctaPx ? ctaPx * view.ratio : cfg.labelSize * view.radius;
+  const track = () => ctaPx ? ctaTrack : cfg.track;
+  const font = () => ctaFace || canvasFont(SANS[cfg.font]);
   const measureEms = () => {
-    ctx.font = `500 100px ${font()}`; ctx.letterSpacing = `${cfg.track * 100}px`;
+    ctx.font = `500 100px ${font()}`; ctx.letterSpacing = `${track() * 100}px`;
     ems = cities.map((c) => ctx.measureText(c.name).width / 100);
     let run = 0;
     ringNames = cities.map((c) => {
@@ -172,10 +200,13 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
   const measureCells = () => {
     const c = els.cells; if (!c) return;
     c.classList.remove('is-docked', 'is-stacked'); cellsWidth.row = c.offsetWidth;
+    /* the column is never stacked or docked, so it is never measured that way either */
+    if (cfg.layout === 'column') { lastCells = ''; return; }
     c.classList.add('is-stacked'); cellsWidth.column = c.offsetWidth; lastCells = '';
   };
 
   const resize = () => {
+    measureName();
     /* in a page's flow the wheel's own height (the window less the peek) plus the peek sizes the wheel, and a fixed
        canvas is the window's size */
     if (flow) { pin.classList.toggle('wh-rides', rides()); fl.key = ''; }
@@ -201,7 +232,7 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
   const ringAt = (slot: number) => ringNames[idx(slot)];
   const middleOf = (slot: number) => Math.floor(slot / n()) * lap + ringAt(slot).middle;
   const along = (at: number) => { const s0 = Math.floor(at); return middleOf(s0) + (middleOf(s0 + 1) - middleOf(s0)) * (at - s0); };
-  const ballOf = () => { const size = cfg.labelSize * view.radius, outer = cfg.labelFrom * view.radius; return { size, outer, ball: outer + size * 0.6 }; };
+  const ballOf = () => { const size = nameSize(), outer = cfg.labelFrom * view.radius; return { size, outer, ball: outer + size * 0.6 }; };
   const lightAt = (x: number, y: number, ball: number) => {
     const nx = x / ball, ny = y / ball, nz = Math.sqrt(Math.max(1 - nx * nx - ny * ny, 0));
     return { lit: Math.max(nx * RING_LIGHT[0] + ny * RING_LIGHT[1] + nz * RING_LIGHT[2], 0), facing: nz };
@@ -255,22 +286,26 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
 
   const drawNames = (behind: number, lift = 0) => {
     if (ringsOn()) { drawRings(behind, lift); return; }
-    const size = cfg.labelSize * view.radius, reach = cfg.labelFrom * view.radius, step = rad(cfg.step);
+    const size = nameSize(), reach = cfg.labelFrom * view.radius, step = rad(cfg.step);
     if (lift) { ctx.save(); ctx.translate(0, -lift); }
     /* with the glass fixed to the window the picture is taller than the wheel: names past its bottom would show through
        the page under it, so they end where the wheel does */
     const clip = fixedGlass();
     if (fl.hide) { if (lift) ctx.restore(); return; }
     if (clip) { ctx.save(); ctx.beginPath(); ctx.rect(0, 0, view.width, fl.geomH * view.ratio); ctx.clip(); }
-    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-    ctx.font = `500 ${size}px ${font()}`; ctx.letterSpacing = `${cfg.track * size}px`;
+    const lefted = startAligned(), outer = lefted ? nameOuter() : 0;
+    ctx.textAlign = lefted ? 'left' : 'right'; ctx.textBaseline = 'middle';
+    ctx.font = `500 ${size}px ${font()}`; ctx.letterSpacing = `${track() * size}px`;
+    /* the name the wheel comes to rest on fades out as it lands in the Luma box */
+    const land = landed(), home = Math.round(target);
     const drawName = (slot: number, at: number, alpha: number) => {
+      if (slot === home) alpha *= 1 - land;
       const angle = (at - slot) * step, near = 1 - clamp01(Math.abs(slot - at));
       const fade = 1 - smoothstep(cfg.fadeFrom, cfg.fadeTo, Math.abs(angle));
       if (fade <= 0) return;
       ctx.save(); ctx.translate(view.x, view.y); ctx.rotate(angle);
       ctx.fillStyle = ink((cfg.dim + (1 - cfg.dim) * smooth(near)) * fade * alpha);
-      ctx.fillText(cityAt(slot).name, -reach - cfg.labelPush * view.radius * smooth(near), 0);
+      ctx.fillText(cityAt(slot).name, lefted ? -outer : -reach - push() * view.radius * smooth(near), 0);
       ctx.restore();
     };
     const from = Math.floor(position) - 14;
@@ -285,7 +320,7 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
     /* the glass shows the start of each name at its rim: a small copy of the names drawn as soft shadow, off canvas.
        In a page they fade as the globe docks, or they would show where the globe was */
     const small = cfg.mirrorSize * view.radius;
-    ctx.font = `500 ${small}px ${font()}`; ctx.letterSpacing = `${cfg.track * small}px`; ctx.textAlign = 'left';
+    ctx.font = `500 ${small}px ${font()}`; ctx.letterSpacing = `${track() * small}px`; ctx.textAlign = 'left';
     ctx.shadowOffsetX = OFF_CANVAS;
     for (let slot = from; slot <= from + 28; slot++) {
       const angle = (position - slot) * step;
@@ -459,27 +494,38 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
     }
 
     /* the cells sit before the active name and show when the wheel is at rest */
-    const size = cfg.labelSize * view.radius;
+    const size = nameSize();
     const settled = 1 - smoothstep(cfg.settleFrom, cfg.settleTo, Math.abs(behind));
     const cells = els.cells;
     if (cells) {
-      const nameStart = view.x - cfg.labelFrom * view.radius - cfg.labelPush * view.radius - (ems[i] || 0) * size;
+      const nameStart = view.x - cfg.labelFrom * view.radius - push() * view.radius - (ems[i] || 0) * size;
       /* on the rings the active name stands up on the left of the outer ring, so the cells end just before its letters */
       const end = ringsOn() ? (view.x - cfg.labelFrom * view.radius - size) / view.ratio : (nameStart - size * 0.6) / view.ratio;
-      /* column: the cells are one column with the page's words and the Luma pill, on the left margin (the CSS gutter,
-         clamp(20px, 4.6vw, 88px)) and on the active name's line. They stack when a row would reach the name, and with no
-         room even then (a phone) the column docks at the foot of the first screen. */
-      const column = cfg.layout === 'column', gutter = Math.max(20, Math.min(88, 0.046 * view.width / view.ratio));
-      const room = column ? end - gutter : end;
-      const stacked = room - cellsWidth.row < 20, docked = room - cellsWidth.column < 20;
-      const key = `${column}|${stacked}|${docked}|${end}|${view.y}|${ls}`;
+      /* column: the page's words and the cells sit on the left margin (the CSS gutter), always on one line: they never
+         stack or dock. The Luma box is apart from them, on the active name's line, ending just before its letters. */
+      const column = cfg.layout === 'column';
+      const stacked = !column && end - cellsWidth.row < 20, docked = !column && end - cellsWidth.column < 20;
+      const key = `${column}|${stacked}|${docked}|${end}|${view.y}|${ls}|${ctaLands}|${ctaLead}`;
       if (key !== lastCells) {
         lastCells = key;
         cells.classList.toggle('is-stacked', stacked && !docked); cells.classList.toggle('is-docked', docked);
-        cells.style.translate = docked ? (ls ? `0 ${-ls}px` : '') : column ? `0 ${view.y / view.ratio - ls}px` : `${end}px ${view.y / view.ratio - ls}px`;
+        /* the column is placed by its CSS alone (wheel.css), and here only follows the page's scroll */
+        cells.style.translate = docked || column ? (ls ? `0 ${-ls}px` : '') : `${end}px ${view.y / view.ratio - ls}px`;
+        const cta = els.cta;
+        if (column && cta) {
+          /* the row (the cells, then the box) starts so the box's name starts where the wheel's names start: it never
+             moves, whatever the city. A box with other words ends just before the names. */
+          const namesStart = (view.x - nameOuter()) / view.ratio;
+          const row = cta.closest<HTMLElement>('.wh-reg-at') ?? cta;
+          row.style.translate = `${ctaLands ? namesStart - ctaLead : namesStart - size * 0.6 / view.ratio - row.offsetWidth}px ${view.y / view.ratio - ls}px`;
+          if (flow && !row.hasAttribute('data-placed')) row.setAttribute('data-placed', '');
+        }
         /* in a page the cells wait unseen until this first placing, so it is not a layout shift */
         if (flow && !cells.hasAttribute('data-placed')) cells.setAttribute('data-placed', '');
       }
+      /* the box's name comes in as the wheel's goes */
+      const land = landed().toFixed(3);
+      if (land !== lastLand) { lastLand = land; const nm = els.cta?.querySelector<HTMLElement>('.wh-reg-city'); if (nm) nm.style.opacity = ctaLands ? land : ''; }
       /* in the column the words and the pill around the cells stay, so the cells stay too and only their words change */
       const op = cfg.layout === 'column' ? '1' : settled.toFixed(3);
       if (op !== lastOpacity) { lastOpacity = op; cells.style.opacity = op; }
@@ -575,11 +621,12 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
       for (let s0 = first; s0 <= first + 16; s0++) if (Math.abs(spot - middleOf(s0)) < ringAt(s0).em / 2 + 0.3) return s0;
       return null;
     }
-    const slot = Math.round(position - angle / step), size = cfg.labelSize * view.radius;
+    const slot = Math.round(position - angle / step), size = nameSize();
     const near = 1 - clamp01(Math.abs(slot - position));
-    const from = (cfg.labelFrom + cfg.labelPush * smooth(near)) * view.radius;
+    const from = (cfg.labelFrom + push() * smooth(near)) * view.radius;
     const onLine = Math.abs(position - angle / step - slot) * step * far < size * 0.7;
-    const onName = far > from - size * 0.3 && far < from + (ems[idx(slot)] || 0) * size + size * 0.3;
+    const w = (ems[idx(slot)] || 0) * size, inner = startAligned() ? nameOuter() - w : from;
+    const onName = far > inner - size * 0.3 && far < inner + w + size * 0.3;
     return onLine && onName && Math.abs(angle) < cfg.fadeTo ? slot : null;
   };
   /* the rings have no ball of glass: the whole ball of rings takes a drag */
@@ -694,9 +741,15 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
   img.src = LAND_URL;
 
   setVolume(cfg.volume); wantAscii();
-  measureEms(); resize(); measureCells(); start();
+  measureName(); measureEms(); resize(); measureCells(); start();
   /* the faces may still be loading: measure the names again once they are in */
-  document.fonts?.ready.then(() => { measureEms(); dirty = true; });
+  document.fonts?.ready.then(() => { if (!alive) return; measureName(); measureEms(); dirty = true; start(true); });
+  /* the names follow the Luma box's words: when its look settles or changes (its stylesheet arriving, a new width), read
+     it again */
+  let ctaSeen: Element | null = null;
+  const ctaRo = new ResizeObserver(() => { if (!alive) return; const was = `${ctaPx}|${ctaFace}|${ctaTrack}`; measureName(); if (`${ctaPx}|${ctaFace}|${ctaTrack}` !== was) { measureEms(); dirty = true; lastCells = ''; start(true); } });
+  const watchCta = () => { const c = els.cta; if (c && c !== ctaSeen) { if (ctaSeen) ctaRo.unobserve(ctaSeen); ctaSeen = c; ctaRo.observe(c); } };
+  watchCta();
 
   return {
     setCfg(c) {
@@ -736,11 +789,12 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
       dirty = true; lastGl = ''; asciiKey = ''; start(true);
     },
     ...(flow ? { geometry: () => ({ x: view.x / view.ratio, y: view.y / view.ratio, r: view.radius / view.ratio, at: position, h: fl.geomH }) } : {}),
-    measure() { measureCells(); measureLens(); lastGl = ''; },
+    measure() { watchCta(); measureName(); measureEms(); measureCells(); lastLand = ''; measureLens(); lastGl = ''; },
     slot: () => idx(target),
     gl: () => !!crt,
     stats: () => ({ ...stats }),
     destroy() {
+      ctaRo.disconnect();
       alive = false; stop(); ro.disconnect(); io.disconnect();
       pin.removeEventListener('wheel', onWheel); if (wakes) window.removeEventListener('scroll', onScroll); pin.removeEventListener('pointerdown', onDown); pin.removeEventListener('pointermove', onMove);
       pin.removeEventListener('pointerup', onUp); pin.removeEventListener('pointercancel', onCancel); pin.removeEventListener('pointerleave', onLeave);
