@@ -95,7 +95,7 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
   /* unroll: the names leave the wheel for the board, so the board comes straight after the bar */
   const unroll = cfg.dir === 'unroll' && fixed, gone = useRef(false), ord = unroll ? 'cities-first' : cfg.order;
   const onCity = useCallback((i: number) => setPick(i), []);
-  const choose = useCallback((i: number) => { setPick(i); eng.current?.go(i); }, []);
+  const choose = useCallback((i: number) => { setPick(i); eng.current?.go(i, true); }, []);
 
   /* the person, drawn after /api/me answers, so the first paint is the signed-out page */
   const forms = useForms(), fs = useFormsState(), me = meNow();
@@ -252,7 +252,7 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
   /* the page's ground, under an overscroll too: in the server's HTML (PaperStyle), so the first paint is already it */
 
   /* arrivals */
-  useConverge(main, line && cfg.arrive === 'tube', ord);
+  useConverge(main, line && cfg.arrive === 'tube' && cfg.convMs > 0, ord);
   /* the bloom on the prize, once, when the amount is well in view */
   useEffect(() => {
     const el = main.current?.querySelector<HTMLElement>('.pf-prize'); if (!el || !line || cfg.arrive !== 'tube' || cfg.bloom <= 0 || cfg.bloomMs <= 0) return;

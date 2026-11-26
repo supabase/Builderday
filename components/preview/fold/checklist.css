@@ -154,8 +154,10 @@
 /* a plus that loses its upright when open */
 .rd-more-x { position: relative; width: 12px; height: 12px; justify-self: end; }
 .rd-more-x::before, .rd-more-x::after { content: ''; position: absolute; left: 0; top: 50%; width: 12px; height: 1px; background: currentColor; }
-.rd-more-x::after { rotate: 90deg; }
-.rd-more[open] .rd-more-x::after { display: none; }
+.rd-more-x::after { rotate: 90deg; transition: rotate var(--dur-panel, 280ms) var(--ease-out, ease-out); }
+.rd-more[open]:not([data-closing]) .rd-more-x::after { rotate: 0deg; }
+/* the body clips only while its height eases (script), so focus rings show at rest */
+.rd-more-b[data-moving] { overflow: hidden; }
 @media (hover: hover) and (pointer: fine) { .rd-more > summary:hover { color: var(--pf-ink); } }
 .rd-extra { list-style: none; margin: 0; padding: 0 0 12px 44px; display: grid; }
 .rd-extra > li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px 32px; padding: 18px 0; border-top: 1px dashed var(--pf-hair); }
@@ -182,4 +184,4 @@
   .rd-extra > li { grid-template-columns: minmax(0, 1fr); }
   .rd-extra .rd-sb { justify-self: start; }
 }
-@media (prefers-reduced-motion: reduce) { .rd-more > summary, .rd-links-t, .rd-away { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .rd-more > summary, .rd-more-x::after, .rd-links-t, .rd-away { transition: none; } }

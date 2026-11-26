@@ -31,7 +31,7 @@
 
 /* ---------- the row of cells ---------- */
 .en-cells { display: grid; grid-template-columns: var(--en-tpl, minmax(0, 2fr) repeat(3, minmax(0, 1fr))); padding: 0 1px 1px 0; }
-.en-cells > * { box-sizing: border-box; min-height: var(--en-cell, 64px); margin: 0 -1px -1px 0; border: 1px solid var(--en-line); }
+.en-cells > * { box-sizing: border-box; min-height: max(var(--en-cell, 64px), 104px); margin: 0 -1px -1px 0; border: 1px solid var(--en-line); }
 /* the labels on one line across the row, whatever is under them */
 .en-cell { display: grid; align-content: start; gap: 4px; padding: 10px 14px; font-size: 15px; line-height: 1.3; }
 .en-sub { color: var(--en-muted); }

@@ -5,6 +5,15 @@ import { EXAMPLES, END_MIN, HISTORY, OPEN_MIN, PEAK, PROJECTS, RECEIPT, SHOW_MIN
 import { COUNTRY, FLAG_H, FLAG_W, flagPaths } from './flags';
 import type { FoldCfg } from './config';
 import { BuildTerm } from './how-panels';
+import { BuildBlocks } from './build-blocks';
+import { clampBuild, type BuildLook } from './build-art';
+import savedBuild from '@/saved/build.config.json';
+import { SubmitWays } from './ways';
+import { clampWays, type WaysLook } from './ways-config';
+import savedWays from '@/saved/ways.config.json';
+
+const BUILD_LOOK = clampBuild(savedBuild as Partial<BuildLook>);
+const WAYS_LOOK = clampWays(savedWays as Partial<WaysLook>);
 
 /* How Builder Day works. The manager's layout: three panels joined edge to edge, each with its tab on the top left,
    under one clock. The drawings are ours, and every one is finished before anything moves:
@@ -28,10 +37,12 @@ export const VOTE_ROW = 32, CUT_GAP = 40;
 type City = { id: string; code: string; name: string };
 type Done = [number, number, number];
 type Way = 'browser' | 'editor';
-/* where each drawing starts when it plays on coming into view */
+/* where each drawing starts when it plays on coming into view (Build as blocks or as the two ways from minute 0, so the
+   reader sees the whole of it) */
 const FROM: Done = [0.28, VOTE_FROM, 0.3];
-/* how far through a drawing the next one starts */
-const HANDOFF = 0.6;
+const FROM_BLOCKS = 0.03;
+/* how far through a drawing the next one starts: almost at once, so the panels in view play together and none waits */
+const HANDOFF = 0.1;
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const TOP = PROJECTS.slice(0, 3);
@@ -41,6 +52,8 @@ const HATCH_SVG = hatchRows(15, 140, 311);
 export function FoldHow({ cfg, cities, mine, finalists, buildMin, date }: { cfg: FoldCfg; cities: City[]; mine: number; finalists: number; buildMin: number; date: string }) {
   const reduced = useReduced(), auto = cfg.howAuto === 'view' && !reduced;
   const durs = [cfg.howBuildMs, cfg.howVoteMs, cfg.howFinalMs];
+  const blocks = cfg.howBuild === 'blocks' || cfg.howBuild === 'ways';
+  const fromOf = useCallback((i: number) => (i === 0 && blocks ? FROM_BLOCKS : FROM[i]), [blocks]);
   const [p, setP] = useState<Done>([1, 1, 1]);
   const [hl, setHl] = useState<number | null>(null);
   const [way, setWay] = useState<Way>('browser');
@@ -79,10 +92,10 @@ export function FoldHow({ cfg, cities, mine, finalists, buildMin, date }: { cfg:
       const i = queue.current.shift()!;
       /* one whose panel has left the window by its turn is not played: it stays finished */
       if (seen(i) < 0.25) { state.current[i] = 'done'; set(i, 1); continue; }
-      busy.current = i; state.current[i] = 'done'; run(i, FROM[i]);
+      busy.current = i; state.current[i] = 'done'; run(i, fromOf(i));
     }
     setWaiting([...queue.current]);
-  }, [run, set]);
+  }, [run, set, fromOf]);
   useEffect(() => { nextRef.current = next; }, [next]);
   const dequeue = useCallback((i: number) => { queue.current = queue.current.filter((x) => x !== i); setWaiting([...queue.current]); }, []);
   /* Replay: plays now from the start and is never played again by the queue */
@@ -92,24 +105,23 @@ export function FoldHow({ cfg, cities, mine, finalists, buildMin, date }: { cfg:
     run(i);
   }, [dequeue, run]);
 
-  /* One watcher per drawing, over the window and a margin below it. On its first report a drawing already in view (a
-     reload, a link to #how) is left finished and never plays; one above the window too. Otherwise it is set to its start
-     frame as it comes near (or into view by a jump), and joins the queue once most of it is in view (most of the window
-     for a tall one). A drawing still waiting its turn when it leaves the window drops out, finished. */
+  /* One watcher per drawing, over the window and a margin below it. A drawing is set to its start frame as it comes near
+     or into view (from below, from above, by a jump or already there on load) and joins the queue once most of it is in
+     view (most of the window for a tall one); it plays once a visit. A drawing still waiting its turn when it leaves the
+     window drops out, finished. */
   useEffect(() => {
     if (!auto) return;
-    const st = state.current, at = (t: Element) => figs.current.indexOf(t as HTMLElement), told = [false, false, false];
+    const st = state.current, at = (t: Element) => figs.current.indexOf(t as HTMLElement);
     const io = new IntersectionObserver((es) => { for (const e of es) {
       const i = at(e.target); if (i < 0) continue;
       const r = e.boundingClientRect, vh = window.innerHeight, shown = Math.min(r.bottom, vh) - Math.max(r.top, 0);
       /* the one the queue waits on has been scrolled past: the next may start */
       if (i === busy.current && shown < Math.min(r.height, vh) * 0.25) next();
-      if (!told[i]) { told[i] = true; if (e.isIntersecting && r.top < vh || r.bottom < 0) { st[i] = 'done'; continue; } }
       if (st[i] === 'done') continue;
       if (st[i] === 'queued') { if (shown <= 0) { st[i] = 'done'; dequeue(i); set(i, 1); } continue; }
       if (!e.isIntersecting) continue;
-      if (st[i] === 'new') { if (r.top < 0) { st[i] = 'done'; continue; } st[i] = 'armed'; set(i, FROM[i]); }
-      if (shown >= Math.min(r.height, vh) * 0.6) { st[i] = 'queued'; queue.current = [...queue.current, i].sort((a, b) => a - b); next(); }
+      if (st[i] === 'new') { st[i] = 'armed'; set(i, fromOf(i)); }
+      if (shown >= Math.min(r.height, vh) * 0.35) { st[i] = 'queued'; queue.current = [...queue.current, i].sort((a, b) => a - b); next(); }
     } }, { rootMargin: '0px 0px 30% 0px', threshold: Array.from({ length: 21 }, (_, k) => k / 20) });
     figs.current.forEach((f) => { if (f) io.observe(f); });
     return () => {
@@ -117,7 +129,7 @@ export function FoldHow({ cfg, cities, mine, finalists, buildMin, date }: { cfg:
       state.current = ['new', 'new', 'new']; queue.current = []; busy.current = -1; playing.current = [];
       setWaiting([]); setOn([]); setP([1, 1, 1]);
     };
-  }, [auto, dequeue, next, set, stop]);
+  }, [auto, dequeue, next, set, stop, fromOf]);
 
   /* the link from the three rows above the cut to your city's three, once the votes have closed. Your city's column
      is lowered so its rows sit level with the top 3 (the lines then run straight); it is never raised. */
@@ -195,7 +207,7 @@ export function FoldHow({ cfg, cities, mine, finalists, buildMin, date }: { cfg:
               <Replay onPress={() => replay(i)} title={titles[i]} />
             </figcaption>
             <div className="how-art" data-wait={waiting.includes(i) ? '' : undefined}>
-              {i === 0 ? (cfg.howBuild === 'chat' ? <ChatArt p={p[0]} /> : cfg.howBuild === 'receipt' ? <ReceiptArt p={p[0]} way={way} setWay={setWay} you={you} /> : <BuildTerm p={p[0]} way={way} setWay={setWay} you={you} />)
+              {i === 0 ? (cfg.howBuild === 'ways' ? <SubmitWays p={p[0]} look={WAYS_LOOK} way={way} setWay={setWay} you={you} /> : cfg.howBuild === 'blocks' ? <BuildBlocks p={p[0]} look={BUILD_LOOK} way={way} setWay={setWay} you={you} /> : cfg.howBuild === 'chat' ? <ChatArt p={p[0]} /> : cfg.howBuild === 'receipt' ? <ReceiptArt p={p[0]} way={way} setWay={setWay} you={you} /> : <BuildTerm p={p[0]} way={way} setWay={setWay} you={you} />)
                 : i === 1 ? <VoteArt p={p[1]} hatch={cfg.howHatch} prize={cfg.howPrize === 'tags'} />
                 : <FinalArt p={p[2]} cities={cities} top={TOP} you={you} total={finalists} colW={cfg.howColW} fade={cfg.howFade} />}
             </div>
@@ -292,7 +304,8 @@ const ChatArt = memo(function ChatArt({ p }: { p: number }) {
 const H = 184, L = 30, T = 22, B = 162, STRIP = 5;
 const xAt = (w: number) => { const R = w - 8; return (m: number) => L + ((m - OPEN_MIN) / (END_MIN - OPEN_MIN)) * (R - L); };
 const Y = (v: number) => B - (v / PEAK) * (B - T);
-const LANE = ['var(--how-1)', 'var(--how-2)', 'var(--how-3)', 'var(--how-4)', 'var(--how-5)'];
+const LANE = ['var(--how-1)', 'var(--how-2)', 'var(--how-3)', 'var(--how-4)', 'var(--how-5)', 'var(--how-6)', 'var(--how-6)', 'var(--how-6)', 'var(--how-6)'];
+const ALL = PROJECTS.map((_, i) => i), N = ALL.length;
 const TICKS = [OPEN_MIN, SHOW_MIN, Math.round((SHOW_MIN + END_MIN) / 2), END_MIN].filter((t, i, a) => a.indexOf(t) === i);
 /* a line from minute a to minute k, then the step towards the next minute at m */
 const path = (X: (m: number) => number, lane: number, a: number, k: number, m: number) => {
@@ -316,9 +329,9 @@ const VoteArt = memo(function VoteArt({ p, hatch, prize }: { p: number; hatch: '
   const lifting = hatch === 'lift' && reveal > 0, lift = hatch === 'lift' ? smooth(reveal / LIFT) : 0;
   const at60 = order(SHOW_MIN), live = reveal >= 1, closed = m >= END_MIN;
   /* where each row stands: the order they came in while hidden, the ranking once the counts have landed */
-  const shown = live ? order(m) : [0, 1, 2, 3, 4];
+  const shown = live ? order(m) : ALL;
   /* a count has landed: lowest at 60 first, the leader last */
-  const landed = (lane: number) => reveal >= 1 || (reveal > LIFT && (reveal - LIFT) / (LAND - LIFT) >= (4 - at60.indexOf(lane)) / 5);
+  const landed = (lane: number) => reveal >= 1 || (reveal > LIFT && (reveal - LIFT) / (LAND - LIFT) >= (N - 1 - at60.indexOf(lane)) / N);
   const state = closed ? 'Closed' : live || reveal > LIFT ? 'Live' : open ? 'Hidden' : 'Not open';
   /* the hatch: grows with the clock while hidden, then (lift) rolls up from the bottom into a strip along the top,
      leaving a faint ground over the hidden stretch so the finished chart still says those minutes were not shown */
@@ -356,7 +369,7 @@ const VoteArt = memo(function VoteArt({ p, hatch, prize }: { p: number; hatch: '
           {open && m < END_MIN ? <path d={`M${X(m)} ${T}V${B}`} className="how-now" /> : null}
         </svg>
       </div>
-      <ol className="how-board" style={{ height: VOTE_ROW * 5 + CUT_GAP }} aria-label="Ranking, an example">
+      <ol className="how-board" style={{ ['--how-rows' as string]: VOTE_ROW * 6 + CUT_GAP + 'px', ['--how-all' as string]: VOTE_ROW * N + CUT_GAP + 'px' }} aria-label="Ranking, an example">
         {PROJECTS.map((name, lane) => {
           const rank = shown.indexOf(lane), up = landed(lane), top3 = rank < 3 && live;
           return (

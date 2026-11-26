@@ -1,0 +1,14 @@
+{
+  "chrome": "window",
+  "checks": "three",
+  "lead": 0.16,
+  "type1": 0.42,
+  "type2": 0.6,
+  "check": 0.64,
+  "checkStep": 0.06,
+  "send": 0.86,
+  "from": 40,
+  "at": 46,
+  "swapMs": 180,
+  "swapRise": 4
+}

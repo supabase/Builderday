@@ -1,5 +1,5 @@
 'use client';
-import { useRef, useState } from 'react';
+import { useRef, useState, type MouseEvent } from 'react';
 import { away } from '@/lib/routes';
 import { RULES } from '@/lib/hackday-server';
 import { LUMA_LIVE, lumaHref } from '@/lib/luma';
@@ -8,6 +8,7 @@ import { SupabaseMark } from '@/components/shared/supabase-mark';
 import { useForms } from '@/components/forms/forms-provider';
 import { meNow, useFormsState } from '@/components/forms/store';
 import { useWrite } from './motion';
+import { stillPage, tokEase, tokMs } from '@/components/shared/motion';
 import { Away, EditorLine, Live } from './checklist';
 import { TOOLS } from './prep';
 import './checklist.css';
@@ -26,6 +27,8 @@ export function FoldShort({ city, cityId, auto, step, more, signin = true }: { c
   const signIn = () => { forms?.signIn({ title: 'Sign in to ' + EVENT.short }); };
   const account = () => { forms?.account('ready'); };
   const wait = auto ? '' : undefined;
+  const more$ = useRef<HTMLDetailsElement>(null), body = useRef<HTMLDivElement>(null);
+  const onMore = (e: MouseEvent<HTMLElement>) => { e.preventDefault(); fold(more$.current, body.current); };
   return (
     <section ref={root} id="ready" className="pf-part rd rd-short" data-part="ready" aria-labelledby="ready-h">
       <h2 id="ready-h" className="pf-h">Get ready</h2>
@@ -58,9 +61,9 @@ export function FoldShort({ city, cityId, auto, step, more, signin = true }: { c
       </ol>
       {/* the heading takes the page's screen and arrival like every section's; the steps under it stay plain (data-sk-skip).
          the head start: closed by default, so the section reads as two lines; native details, so it opens with the keyboard and a reader */}
-      <details className="rd-more" data-sk-skip="" open={more === 'open' || undefined} data-pf-wait={wait}>
-        <summary><span className="rd-more-t">A head start</span><span className="rd-more-k">Optional</span><span className="rd-more-x" aria-hidden="true" /></summary>
-        <ul className="rd-extra">
+      <details ref={more$} className="rd-more" data-sk-skip="" open={more === 'open' || undefined} data-pf-wait={wait}>
+        <summary onClick={onMore}><span className="rd-more-t">A head start</span><span className="rd-more-k">Optional</span><span className="rd-more-x" aria-hidden="true" /></summary>
+        <div ref={body} className="rd-more-b"><ul className="rd-extra">
           {signin ? <li>
             <div><h4>Sign in now</h4><p>{signedIn ? <>Done, as <b>{fs.email}</b>.</> : 'Saves a minute at the door.'}</p></div>
             {!signedIn && forms ? <button type="button" className="rd-sb" onClick={signIn} aria-haspopup="dialog"><span className="rd-sb-mark"><SupabaseMark /></span>Continue with Supabase</button> : null}
@@ -76,8 +79,46 @@ export function FoldShort({ city, cityId, auto, step, more, signin = true }: { c
               {fs.editor ? <Live s={seen ? 'on' : waiting ? 'wait' : 'idle'} seen={seen} city={mine} /> : null}
             </div>
           </li> : null}
-        </ul>
+        </ul></div>
       </details>
     </section>
   );
+}
+
+/* the head start opens and closes: the body's height eases from where it is (so a press mid-way turns it round
+   without a jump), its rows rise a few pixels in a step apart on the way in and fade together on the way out, a
+   little faster. The details element stays native: it is open for the whole opening and only shut once closed. */
+function fold(d: HTMLDetailsElement | null, b: HTMLDivElement | null) {
+  if (!d || !b) return;
+  const opening = !d.open || d.dataset.closing === '1';
+  const enter = tokMs('--dur-panel'), exit = tokMs('--dur-panel-exit');
+  const rows = Array.from(b.querySelectorAll<HTMLElement>(':scope > ul > li'));
+  const from = d.open ? b.getBoundingClientRect().height : 0;
+  const shown = rows.map((r) => (d.open ? parseFloat(getComputedStyle(r).opacity) : 0));
+  b.getAnimations().forEach((a) => a.cancel());
+  rows.forEach((r) => r.getAnimations().forEach((a) => a.cancel()));
+  if (stillPage() || !enter) { delete d.dataset.closing; d.open = opening; return; }
+  if (opening) {
+    delete d.dataset.closing;
+    d.open = true;
+    const to = b.scrollHeight;
+    b.dataset.moving = '1';
+    const a = b.animate([{ height: from + 'px' }, { height: to + 'px' }], { duration: enter, easing: tokEase('--ease-drawer') });
+    a.onfinish = () => { delete b.dataset.moving; };
+    const step = tokMs('--stagger');
+    rows.forEach((r, i) => r.animate([{ opacity: shown[i], transform: shown[i] ? 'none' : 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: enter, delay: shown[i] ? 0 : i * step, easing: tokEase('--ease-out'), fill: 'backwards' }));
+  } else {
+    d.dataset.closing = '1';
+    b.dataset.moving = '1';
+    rows.forEach((r, i) => r.animate([{ opacity: shown[i] }, { opacity: 0 }], { duration: exit * 0.7, easing: tokEase('--ease-exit'), fill: 'forwards' }));
+    const a = b.animate([{ height: from + 'px' }, { height: '0px' }], { duration: exit, easing: tokEase('--ease-drawer'), fill: 'forwards' });
+    a.onfinish = () => {
+      if (d.dataset.closing !== '1') return;
+      delete d.dataset.closing;
+      d.open = false;
+      delete b.dataset.moving;
+      a.cancel();
+      rows.forEach((r) => r.getAnimations().forEach((x) => x.cancel()));
+    };
+  }
 }

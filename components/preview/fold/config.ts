@@ -70,9 +70,9 @@ export type FoldCfg = {
   /* its modes: the clock above the panels (two slim lanes, today's two bars, or none); what Build draws (a receipt
      printing, or the chat in an editor); what joins the top 3 to your city's column (straight hairlines, one bus that
      merges and splits, the filled ribbons, or none); the city prizes on the top 3 at the close; the hatch at minute 60
-     (lifts so the whole chart shows, or stays over the hidden stretch); Build as a terminal session on the clock (term), a receipt
-     or a chat */
-  howBuild: 'term' | 'receipt' | 'chat'; howLink: 'lines' | 'bus' | 'ribbon' | 'none'; howPrize: 'tags' | 'none'; howHatch: 'lift' | 'stay';
+     (lifts so the whole chart shows, or stays over the hidden stretch); Build as the two ways to submit (ways,
+     ways.tsx, tuned at /lab/ways), blocks going up (blocks, /lab/build), a terminal session on the clock (term), a receipt or a chat */
+  howBuild: 'ways' | 'blocks' | 'term' | 'receipt' | 'chat'; howLink: 'lines' | 'bus' | 'ribbon' | 'none'; howPrize: 'tags' | 'none'; howHatch: 'lift' | 'stay';
   /* the final's city columns: how wide each is, and how long the fade at the right edge is */
   howColW: number; howFade: number; howStep: number;
 };
@@ -122,7 +122,7 @@ export const FOLD_CHOICES: Record<string, string[]> = {
   dir: ['base', 'plain', 'line', 'unroll'], page: ['full', 'hero'],
   glass: ['fixed', 'today'], globe: ['docks', 'leaves'], input: ['hand', 'globe'], jump: ['roll', 'smooth', 'cut'], scrollEase: ['brake', 'ease', 'in-out'],
   cities: ['belt', 'board', 'clocks'], ready: ['dry', 'steps', 'list', 'short'], readyMore: ['closed', 'open'], prizes: ['block', 'podium', 'type'], order: ['prize-first', 'cities-first', 'how-first'], words: ['lede', 'none'], arrive: ['tube', 'none'], arrival: [...ARRIVALS, 'none'], back: ['quiet', 'same'], bar: ['none', 'cells'], topLink: ['none', 'how'], acct: ['merged', 'beside'], acctTop: ['link', 'both'], signin: ['on', 'off'], howAuto: ['view', 'off'],
-  howBuild: ['term', 'receipt', 'chat'], howLink: ['lines', 'bus', 'ribbon', 'none'], howPrize: ['tags', 'none'], howHatch: ['lift', 'stay'],
+  howBuild: ['ways', 'blocks', 'term', 'receipt', 'chat'], howLink: ['lines', 'bus', 'ribbon', 'none'], howPrize: ['tags', 'none'], howHatch: ['lift', 'stay'],
 };
 
 export const FOLD_INT = new Set(['peek', 'firstTop', 'gapPhone', 'wordsPhone', 'dockSize', 'barPad', 'cellPad', 'hdrH', 'beltH', 'tickH', 'beltLead', 'beltSpan', 'beltMs', 'beltFade', 'rowH', 'citySize', 'width', 'gutter', 'gap', 'convMs', 'rowStep', 'flapMs', 'flapStagger', 'flaps', 'introMs', 'rowTotal', 'canvasIn', 'wordsMs', 'wordsStep', 'wordsRise', 'printMs', 'cellsAt', 'linkAt', 'linkMs', 'peekAt', 'peekMs', 'eraseStep', 'regMs', 'hoverIn', 'hoverOut', 'lineMs', 'prizeMs', 'prizeGlobeStep', 'prizeCodeStep', 'bloomMs', 'rollMs', 'rollBar', 'scrollMin', 'scrollMax', 'dryStep', 'dryHold', 'writeStep', 'podiumStep', 'typeMs', 'typeStep', 'howBuildMs', 'howVoteMs', 'howFinalMs', 'howColW', 'howFade', 'howStep']);

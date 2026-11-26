@@ -76,3 +76,4 @@ export function settle(status: WheelStatus) {
   if (!ctx || ctx.state !== 'running' || level <= 0) return;
   for (const n of NOTES[status]) note(ctx, n);
 }
+

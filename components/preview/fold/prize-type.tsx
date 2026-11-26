@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useRef } from 'react';
 import { PRIZE_SHEET, credits, specLine } from '@/lib/prizes';
-import { once } from './motion';
 import { reducedMotion } from './flap';
 import './prize-type.css';
 
@@ -29,12 +28,14 @@ export function FoldPrizeType({ cities, finalists, auto, ms, step }: { cities: n
     const lists = Array.from(el.querySelectorAll<HTMLElement>('.pt-list'));
     el.removeAttribute('data-armed'); lists.forEach((l) => l.removeAttribute('data-in'));
     if (!auto || ms <= 0 || reducedMotion()) return;
-    /* each list rises when a fifth of it is in view, so the city prizes are not spent while still below the screen;
+    /* each list rises as it nears the screen, so the city prizes are not spent while far below it;
        a list already on screen (a reload part way down) shows at once */
     const stops = lists.map((l) => {
       const r = l.getBoundingClientRect();
       if (r.top < innerHeight * 0.8 && r.bottom > 0) { l.setAttribute('data-in', ''); return () => {}; }
-      return once(l, 0.2, () => l.setAttribute('data-in', ''));
+      /* a list starts rising a little before it reaches the screen, so it is already there when it arrives */
+      const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { io.disconnect(); l.setAttribute('data-in', ''); } }, { rootMargin: '0px 0px 25% 0px' });
+      io.observe(l); return () => io.disconnect();
     });
     el.setAttribute('data-armed', '');
     return () => stops.forEach((f) => f());

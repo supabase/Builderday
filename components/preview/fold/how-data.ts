@@ -2,7 +2,7 @@ import { EVENT, mulberry32 } from '@/lib/day-data';
 
 /* The numbers behind the three drawings of How Builder Day works (how.tsx). Pure and seeded: the same on the server and
    in the browser, so the section's first paint is the finished picture and a replay draws the same one.
-   The votes are an illustration, not a count: five made-up projects over one city's block. Voting opens at OPEN_MIN,
+   The votes are an illustration, not a count: nine made-up projects over one city's block. Voting opens at OPEN_MIN,
    the counts are hidden until SHOW_MIN and live until END_MIN. "Yours" (Gig map, the project printed in Build) is third
    when the counts are shown and first at the close. The page never says who casts the votes. */
 
@@ -12,7 +12,7 @@ export const SHOW_MIN = EVENT.showAt ?? OPEN_MIN;
 
 /* the project the three drawings follow: printed in Build, a row in the votes, a row in your city's column */
 export const YOURS = 'Gig map';
-export const PROJECTS = [YOURS, 'Field notes', 'Sound map', 'Switchyard', 'Open atlas'] as const;
+export const PROJECTS = [YOURS, 'Field notes', 'Sound map', 'Switchyard', 'Open atlas', 'Night bus', 'Tide table', 'Pocket choir', 'Loose ends'] as const;
 /* cumulative votes at seven checkpoints, evenly spaced from OPEN_MIN to END_MIN */
 const CHECK: number[][] = [
   [0, 4, 9, 22, 36, 48, 61],
@@ -20,6 +20,11 @@ const CHECK: number[][] = [
   [0, 5, 11, 24, 35, 43, 48],
   [0, 3, 7, 14, 22, 29, 36],
   [0, 2, 6, 12, 18, 24, 29],
+  /* the rest of the board, under the cut: a city has more than five, the panel shows as many as fit and fades the rest */
+  [0, 3, 6, 10, 15, 20, 24],
+  [0, 1, 4, 8, 12, 16, 20],
+  [0, 2, 4, 7, 10, 13, 15],
+  [0, 1, 2, 5, 7, 9, 11],
 ];
 export const PEAK = 64;
 

@@ -52,7 +52,7 @@ export type WheelFlow = {
   hold?: boolean; ready?: () => void;
 };
 export type WheelEngine = {
-  setCfg: (c: WheelCfg) => void; setCities: (c: WheelCity[]) => void; go: (slot: number) => void; jump: (slot: number) => void; step: (n: number) => void;
+  setCfg: (c: WheelCfg) => void; setCities: (c: WheelCity[]) => void; go: (slot: number, silent?: boolean) => void; jump: (slot: number) => void; step: (n: number) => void;
   measure: () => void; slot: () => number; gl: () => boolean; stats: () => { frames: number; pictures: number; glDraws: number }; destroy: () => void;
   /* a page's flow: run the loop until it is drawn and still (after the page moved the dock or showed its globe) */
   wake?: () => void;
@@ -122,6 +122,7 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
   const cellsWidth = { row: 0, column: 0 };
   let target = first.start, position = first.start, clicked = Math.round(first.start), previous = -1;
   let wheelSum = 0, drag: { x: number; y: number; from: number; moved: boolean; axis: 'x' | 'y' | null; touch: boolean; grip: boolean } | null = null;
+  let hush = false; /* a city picked from the page (the board, the map) makes its own sound, so the wheel stays quiet on the way */
   let shown = -1, settledOn = idx(first.start), ems: number[] = [];
   let drawnAt = NaN, dirty = true, lastGl = '', lastCells = '', lastOpacity = '', lastLand = '';
   let land: HTMLImageElement | null = null, tinted: HTMLCanvasElement | null = null;
@@ -629,7 +630,7 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
       const op = cfg.layout === 'column' ? '1' : settled.toFixed(3);
       if (op !== lastOpacity) { lastOpacity = op; cells.style.opacity = op; }
     }
-    if (settled > 0.98 && settledOn !== i) { settledOn = i; if (cfg.sound) settle(city.status); }
+    if (settled > 0.98 && settledOn !== i) { settledOn = i; if (cfg.sound && !hush) settle(city.status); hush = false; }
 
     /* docked, the light holds still */
     /* the text globe has no light that breathes: at rest nothing is drawn */
@@ -707,7 +708,7 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
 
   /* ---- input ---- */
   /* the shortest way round to a city */
-  const go = (slot: number) => { const k = n(), cur = idx(target); let d = idx(slot) - cur; if (d > k / 2) d -= k; if (d < -k / 2) d += k; target += d; };
+  const go = (slot: number, silent = false) => { const k = n(), cur = idx(target); let d = idx(slot) - cur; if (d > k / 2) d -= k; if (d < -k / 2) d += k; if (silent && d !== 0) { intro.quiet = true; hush = true; } target += d; };
   const slotAt = (x: number, y: number): number | null => {
     const box = canvas.getBoundingClientRect();
     const dx = (x - box.left) * view.ratio - view.x, dy = (y - box.top) * view.ratio - view.y;
@@ -879,7 +880,7 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
       resize();
     },
     setCities(c) { cities = c; measureEms(); shown = -1; dirty = true; if (flow) start(true); },
-    go(slot) { go(slot); if (flow) start(true); },
+    go(slot, silent) { go(slot, silent); if (flow) start(true); },
     /* straight to a city with no turn: the first city of a visit, once the page knows where the visitor is */
     jump(slot) { target = position = slot; clicked = Math.round(slot); settledOn = idx(slot); turn.yaw = cfg.face - rad(cityAt(slot).lon); clock.reset(); dirty = true; lastGl = ''; if (flow) start(true); },
     step(s) { target += s; if (flow) start(true); },

@@ -154,11 +154,11 @@ button.pf-cell { font: inherit; cursor: pointer; }
    or on a slow start, it shows by itself after 1.6s. The header and the mark are at rest from the first paint and
    play no entrance. Every keyframe fills backwards only: once it ends the element is simply at rest, so hover and the
    engine's own placing are never held by it. --pf-after moves the rest later (print: after the globe). */
-.pf[data-intro='hold'] :is(.wh-foot, .wh-col-foot, .pf-main) { opacity: 0; animation: pf-show 0s var(--pf-hold-max, 1.6s) forwards; }
+.pf[data-intro='hold'] :is(.wh-foot, .wh-col-foot) { opacity: 0; animation: pf-show 0s var(--pf-hold-max, 1.6s) forwards; }
 .pf[data-intro='hold'] .wh-cells { visibility: hidden; animation: pf-vis 0s var(--pf-hold-max, 1.6s) forwards; }
 @keyframes pf-show { to { opacity: 1; } }
 @keyframes pf-vis { to { visibility: visible; } }
-@media (scripting: none) { .pf[data-intro='hold'] :is(.wh-foot, .wh-col-foot, .pf-main) { opacity: 1; animation: none; } .pf[data-intro='hold'] .wh-cells { visibility: visible; animation: none; } }
+@media (scripting: none) { .pf[data-intro='hold'] :is(.wh-foot, .wh-col-foot) { opacity: 1; animation: none; } .pf[data-intro='hold'] .wh-cells { visibility: visible; animation: none; } }
 
 /* the words: each line rises a few pixels from a little ink (never 0: the headline is the largest paint) while its red
    and blue copies close onto it and fade, a step apart. The copies are pseudo-elements moved by translate (compositor
@@ -201,17 +201,16 @@ button.pf-cell { font: inherit; cursor: pointer; }
 .pf[data-intro='in'] .wh-cells > div:not(.sr-only) { animation: pf-cut 0s linear calc(var(--pf-after, 0ms) + var(--pf-cells-at) + var(--pf-n, 0) * var(--pf-write-step)) backwards; }
 .pf[data-intro='in'] .wh-lens { animation: pf-lens var(--pf-link-ms) var(--ease-out) calc(var(--pf-after, 0ms) + var(--pf-link-at)) backwards; }
 .pf[data-intro='in'] .wh-cta-text > span { animation: pf-up var(--pf-link-ms) var(--ease-out) calc(var(--pf-after, 0ms) + var(--pf-link-at) + var(--pf-k, 0) * var(--pf-w-step)) backwards; }
-.pf[data-intro='in'] .pf-main { animation: pf-fade var(--pf-peek-ms) var(--ease-out) calc(var(--pf-after, 0ms) + var(--pf-peek-at)) backwards; }
 @keyframes pf-cut { from { opacity: 0; } }
 @keyframes pf-lens { from { opacity: 0; transform: scale(0.92); } }
 @keyframes pf-up { from { opacity: 0; translate: 0 var(--pf-w-rise); } }
 @keyframes pf-fade { from { opacity: 0; } }
 /* the ones where the rest is simply there at t0: scan (behind its line), register (and closes), east (the cells flip
    through the cities the wheel passes), quiet. Dial keeps the ordered tail above: cells, link, peek */
-.pf[data-intro='in']:is([data-arrival='scan'], [data-arrival='east'], [data-arrival='quiet'], [data-arrival='register']) :is(.wh-cells > div, .wh-lens, .wh-cta-text > span, .pf-main) { animation: none; }
-.pf[data-intro='in'][data-arrival='quiet'] :is(.wh-foot, .wh-cells, .pf-main) { animation: pf-fade var(--wh-canvas-in) var(--ease-out) backwards; }
+.pf[data-intro='in']:is([data-arrival='scan'], [data-arrival='east'], [data-arrival='quiet'], [data-arrival='register']) :is(.wh-cells > div, .wh-lens, .wh-cta-text > span) { animation: none; }
+.pf[data-intro='in'][data-arrival='quiet'] :is(.wh-foot, .wh-cells) { animation: pf-fade var(--wh-canvas-in) var(--ease-out) backwards; }
 /* sweep (before): everything fades up together */
-.pf[data-intro='in'][data-arrival='sweep'] :is(.wh-cells > div, .wh-lens, .wh-cta-text > span, .pf-main) { animation: pf-rise var(--pf-w-ms) var(--ease-out) calc(var(--pf-w-step) * 2) backwards; }
+.pf[data-intro='in'][data-arrival='sweep'] :is(.wh-cells > div, .wh-lens, .wh-cta-text > span) { animation: pf-rise var(--pf-w-ms) var(--ease-out) calc(var(--pf-w-step) * 2) backwards; }
 /* register: what is there closes from red and blue apart (a filter, on the few elements, once) */
 .pf[data-intro='in'][data-arrival='register'] :is(.wh-canvas, .wh-foot, .wh-cells, .pf-words-2) { animation: pf-split calc(var(--pf-w-ms) * 1.4) var(--ease-out) backwards; }
 @keyframes pf-split { from { filter: drop-shadow(var(--pf-w-edge-r, 10px) 0 rgb(255 70 70 / 0.6)) drop-shadow(calc(-1 * var(--pf-w-edge-r, 10px)) 0 rgb(70 130 255 / 0.6)); } to { filter: drop-shadow(0 0 rgb(255 70 70 / 0)) drop-shadow(0 0 rgb(70 130 255 / 0)); } }
@@ -344,7 +343,7 @@ button.pf-cell { font: inherit; cursor: pointer; }
 /* the wide table: the tag stands beside its name, so every name sits in the middle of its row and never moves when a
    tag comes or goes (a stacked row puts it under the name, below) */
 /* a narrower table (701 to 1000) keeps the tag under the name, so the name column stays as wide as the longest name */
-.pf-board tbody th > .pf-you[data-none] { display: none; }
+.pf-board tbody th > .pf-you[data-none] { visibility: hidden; }
 @media (min-width: 1001px) {
   .pf-board tbody th { white-space: nowrap; }
   .pf-board tbody th > :is(.pf-city, .pf-you) { vertical-align: middle; }
@@ -383,7 +382,7 @@ button.pf-go { padding: 0; border: 0; background: none; font: inherit; cursor: p
   .pf-board td:not(:last-child) { grid-column: 1 / -1; }
   .pf-city { text-wrap: balance; }
   /* a stacked row has no line to keep: only a row with a tag shows one */
-  .pf-you[data-none] { display: none; }
+  .pf-you[data-none] { visibility: hidden; }
   .pf-you { margin: 2px 0 6px; }
   .pf-for { min-width: 0; }
   .pf-board td:nth-child(3)::before { content: 'For you: '; color: var(--pf-muted); }
@@ -474,7 +473,7 @@ button.pf-go { padding: 0; border: 0; background: none; font: inherit; cursor: p
 .pf[data-unrolling] .pf-board tbody .pf-city { visibility: hidden; }
 
 /* ---------- how Builder Day works (how.tsx) ---------- */
-.pf-how { --how-1: #3ecf8e; --how-2: #8da4e1; --how-3: #d8d8d2; --how-4: #8b8c88; --how-5: #6d6e6b; --how-line: #3a3b3b; --how-ink: #0d0e0e; --how-hx: #8a8b88; --how-panel: color-mix(in oklch, var(--pf-ink) 3.5%, var(--bd-ground, #0b0c0c)); }
+.pf-how { --how-1: #3ecf8e; --how-2: #8da4e1; --how-3: #d8d8d2; --how-4: #8b8c88; --how-5: #6d6e6b; --how-6: #4a4b49; --how-line: #3a3b3b; --how-ink: #0d0e0e; --how-hx: #8a8b88; --how-panel: color-mix(in oklch, var(--pf-ink) 3.5%, var(--bd-ground, #0b0c0c)); }
 .how-vh { display: flex; justify-content: space-between; gap: 12px; font: 500 11px/1.2 var(--wh-mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--pf-muted); }
 
 /* the panels */
@@ -601,7 +600,7 @@ button.pf-go { padding: 0; border: 0; background: none; font: inherit; cursor: p
 .how-key { display: inline-grid; place-items: center; min-width: 74px; height: 30px; padding: 0 12px; background: var(--pf-ink); color: #0b0c0c; font: 500 12px/1 var(--wh-mono); }
 
 /* 2 votes */
-.how-vote { display: flex; flex-direction: column; gap: 10px; }
+.how-vote { flex: 1; display: flex; flex-direction: column; gap: 10px; }
 .how-st { color: var(--pf-muted); } .how-st[data-s='live'] { color: var(--how-1); } .how-st[data-s='hidden'] { color: var(--pf-soft); }
 .how-chart-box { width: 100%; min-width: 0; }
 .how-chart { display: block; max-width: 100%; overflow: visible; }
@@ -619,6 +618,10 @@ button.pf-go { padding: 0; border: 0; background: none; font: inherit; cursor: p
 .how-line[data-lane='0'] { stroke-width: 2.2; } .how-line[data-lane='1'], .how-line[data-lane='2'] { stroke-width: 1.6; }
 .how-now { stroke: var(--pf-ink); stroke-width: 0.8; opacity: 0.6; fill: none; }
 .how-board { position: relative; list-style: none; margin: 8px 0 0; padding: 0; font: 400 13px/1 var(--wh-mono); }
+/* the board takes the panel's height down to the foot, so its bottom meets the other two panels'; rows under the cut
+   carry on and fade out at the bottom edge, the way the finalists' cities fade out at the right: there is no scrolling.
+   It always shows a sixth row, faded, so a short panel still says the list goes on */
+.how-board { flex: 1 1 0; min-height: var(--how-rows, 232px); max-height: var(--how-all, 328px); overflow: hidden; -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 64px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 64px), transparent); }
 .how-row { position: absolute; left: 0; right: 0; top: 0; display: grid; grid-template-columns: 3ch 8px minmax(0, 1fr) auto 3ch; align-items: center; gap: 10px; height: 32px; padding: 0 4px; box-sizing: border-box; color: var(--pf-muted); transition: transform var(--dur-panel) var(--ease-move), color var(--dur-hover) var(--ease-out); }
 .how-row[data-top] { color: var(--pf-ink); }
 .how-row i { width: 8px; height: 8px; } .how-row .rk { color: var(--pf-muted); font-variant-numeric: tabular-nums; }
@@ -747,3 +750,89 @@ button.pf-go { padding: 0; border: 0; background: none; font: inherit; cursor: p
 @container (max-width: 340px) { .bt-in .ph { display: none; } .bt-log li { grid-template-columns: 4ch minmax(0, 1fr); } }
 
 @media (prefers-reduced-motion: reduce) { .bt-log .t, .bt-run .res { transition: none !important; } }
+
+/* ---- How Builder Day works: Build as blocks going up (build-blocks.tsx, build-art.ts) ---- */
+.bb { flex: 1; display: flex; flex-direction: column; --bb-ground: var(--pf-rule); }
+.bb-art { display: block; width: 100%; height: auto; margin-top: 14px; overflow: visible; }
+.bb-art text { font-family: var(--wh-mono); font-weight: 500; white-space: pre; }
+.bb-steps { list-style: none; margin: 8px 0 0; padding: 0; font: 400 13px/1 var(--wh-mono); }
+.bb-row { display: grid; grid-template-columns: 3ch 8px minmax(0, 1fr) auto; align-items: center; gap: 10px; height: 32px; padding: 0 4px; box-sizing: border-box; color: var(--pf-muted); transition: color var(--dur-hover) var(--ease-out); }
+.bb-row > i { width: 8px; height: 8px; box-sizing: border-box; border: 1px solid var(--pf-rule); transition: background-color var(--dur-hover) var(--ease-out), border-color var(--dur-hover) var(--ease-out); }
+.bb-row .rk, .bb-row .ct { font-variant-numeric: tabular-nums; }
+.bb-row .ct { text-align: right; font-size: 12px; }
+.bb-row .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--wh-sans); font-size: 14px; }
+.bb-row .nm em { font-style: normal; color: var(--pf-muted); }
+.bb-row[data-on] { color: var(--pf-ink); }
+.bb-row[data-on] > i { background: var(--pf-soft); border-color: var(--pf-soft); }
+.bb-row[data-now] > i { background: var(--how-1); border-color: var(--how-1); }
+.bb-sub { border-top: 1px solid var(--how-line); }
+.bb-sub[data-on] .nm, .bb-sub[data-on] .ct { color: var(--how-1); }
+.bb .how-ways { margin-top: auto; padding-top: 14px; }
+@media (max-width: 420px) { .bb .how-ways .wk { flex-basis: 100%; margin: 0 0 10px; } }
+@media (prefers-reduced-motion: reduce) { .bb-row, .bb-row > i { transition: none !important; } }
+
+/* ---- How Builder Day works: Build as the two ways to submit (ways.tsx, ways-config.ts) ---- */
+.sw { flex: 1; display: flex; flex-direction: column; gap: 14px; }
+.sw .how-ways { margin-top: 0; }
+.sw-win { flex: none; display: flex; flex-direction: column; border: 1px solid var(--how-line); background: var(--how-ink); font: 400 12px/1.5 var(--wh-mono); color: var(--pf-ink); }
+.sw[data-chrome='bare'] .sw-win { border: 0; background: none; }
+.sw[data-chrome='bare'] .sw-bar { background: none; border-bottom-style: dashed; }
+.sw[data-chrome='bare'] .sw-tab { background: none; border-right: 0; padding-left: 0; }
+.sw-bar { position: relative; display: flex; align-items: stretch; justify-content: space-between; height: 38px; border-bottom: 1px solid var(--how-line); background: #131414; }
+.sw-tab { display: flex; align-items: center; gap: 8px; min-width: 0; margin-bottom: -1px; padding: 0 14px; border-right: 1px solid var(--how-line); background: var(--how-ink); font: 500 12px/1 var(--wh-mono); white-space: nowrap; animation: sw-in var(--sw-swap) var(--ease-out) both; }
+.sw-lock { flex: none; width: 7px; height: 8px; box-sizing: border-box; border: 1px solid var(--pf-muted); border-top-width: 3px; }
+.sw-dot { flex: none; width: 6px; height: 6px; background: var(--how-1); }
+.sw-clk { display: flex; align-items: center; padding: 0 12px; font: 500 11px/1 var(--wh-mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--pf-muted); white-space: pre; }
+.sw-clk b { font-weight: 500; font-variant-numeric: tabular-nums; color: var(--pf-ink); }
+.sw-clk[data-s='submitted'] b { color: var(--how-1); }
+.sw-prog { position: absolute; left: 0; top: -1px; height: 2px; background: var(--pf-ink); }
+.sw-prog[data-sent] { background: var(--how-1); }
+/* both ways in one cell: the window is as tall as the taller, the swap moves nothing */
+.sw-stage { display: grid; flex: 1; }
+/* the window runs down to the panel's foot (the taller final panel sets it), Submit at its bottom like a real form */
+.sw .sw-win { flex: 1 0 auto; }
+.sw-form .sw-btn { margin-top: auto; }
+.sw-way { grid-area: 1 / 1; display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 16px 14px 14px; transition: opacity var(--sw-swap) var(--ease-out), translate var(--sw-swap) var(--ease-out), visibility 0s; }
+.sw-way[data-off] { opacity: 0; translate: 0 var(--sw-rise); visibility: hidden; transition: opacity calc(var(--sw-swap) * 0.6) var(--ease-out), translate 0s calc(var(--sw-swap) * 0.6), visibility 0s calc(var(--sw-swap) * 0.6); }
+.sw[data-chrome='bare'] .sw-way { padding-left: 0; padding-right: 0; }
+@keyframes sw-in { from { opacity: 0; } }
+
+/* in the browser */
+.sw-title { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 0 0 2px; font: 400 15px/1.3 var(--wh-sans); color: var(--pf-soft); }
+.sw-title b { font-weight: 500; color: var(--pf-ink); }
+.sw-city { font: 500 11px/1 var(--wh-mono); letter-spacing: 0.04em; color: var(--pf-muted); }
+.sw-f { display: grid; gap: 6px; }
+.sw-f .k { font: 500 11px/1 var(--wh-mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--pf-muted); }
+.sw-f .v { display: flex; align-items: center; min-width: 0; height: 38px; padding: 0 10px; box-sizing: border-box; border: 1px solid var(--how-line); background: #121313; font: 400 13px/1 var(--wh-mono); white-space: nowrap; overflow: hidden; transition: border-color var(--dur-hover) var(--ease-out); }
+.sw-f[data-at] .v { border-color: var(--pf-soft); }
+.sw-f .ph { color: #5d5e5c; }
+.sw-cur { flex: none; width: 7px; height: 15px; margin-left: 1px; background: var(--pf-ink); }
+.sw-btn { position: relative; display: grid; place-items: center; height: 40px; margin-top: 4px; border: 1px solid var(--pf-ink); background: var(--pf-ink); color: #0b0c0c; font: 500 13px/1 var(--wh-mono); transition: background-color var(--dur-hover) var(--ease-out), border-color var(--dur-hover) var(--ease-out), color var(--dur-hover) var(--ease-out); }
+.sw-btn > span { grid-area: 1 / 1; transition: opacity var(--dur-hover) var(--ease-out); }
+.sw-btn .b { opacity: 0; }
+.sw-btn[data-sent] { background: transparent; border-color: var(--how-1); color: var(--how-1); }
+.sw-btn[data-sent] .a { opacity: 0; } .sw-btn[data-sent] .b { opacity: 1; }
+
+/* the checks, the same in both */
+.sw-checks { list-style: none; display: grid; gap: 4px; margin: 4px 0 0; padding: 0; font: 400 12px/1.5 var(--wh-mono); }
+.sw-checks li { display: grid; grid-template-columns: 3ch auto minmax(0, 1fr); gap: 8px; color: #6d6e6b; transition: color var(--dur-hover) var(--ease-out); }
+.sw-checks .ck { color: #6d6e6b; letter-spacing: 0.06em; }
+.sw-checks .w { white-space: nowrap; }
+.sw-checks .n { min-width: 0; overflow: hidden; text-overflow: ellipsis; text-align: right; font-size: 11px; color: #5d5e5c; white-space: nowrap; }
+.sw-checks li[data-run] { color: var(--pf-soft); }
+.sw-checks li[data-ok] { color: var(--pf-ink); } .sw-checks li[data-ok] .ck { color: var(--how-1); } .sw-checks li[data-ok] .n { color: var(--pf-muted); }
+
+/* from the editor */
+.sw-chat p { margin: 0; text-wrap: pretty; transition: opacity var(--dur-hover) var(--ease-out); }
+.sw-me { color: var(--pf-ink); } .sw-me i { margin-right: 8px; font-style: normal; color: var(--how-1); }
+.sw-me:not([data-on]), .sw-re:not([data-on]), .sw-tool:not([data-on]) { opacity: 0.0001; }
+.sw-re { color: var(--pf-soft); margin-top: auto !important; }
+.sw-tool { display: grid; gap: 2px; min-width: 0; padding: 8px 10px 10px; border-left: 2px solid var(--how-line); background: #131414; transition: opacity var(--dur-hover) var(--ease-out), border-color var(--dur-hover) var(--ease-out); }
+.sw-tool:has(.st[data-ok]) { border-left-color: var(--how-1); }
+.sw-tool .th { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 4px; color: var(--pf-soft); }
+.pf .sw-tool .th code { display: inline; font: inherit; color: var(--pf-ink); }
+.sw-tool .st { letter-spacing: 0.1em; color: #6d6e6b; } .sw-tool .st[data-ok] { letter-spacing: 0; color: var(--how-1); }
+.pf .sw-arg { display: flex; align-items: center; min-width: 0; min-height: 18px; font: 400 12px/1.5 var(--wh-mono); color: var(--pf-ink); white-space: nowrap; overflow: hidden; }
+.sw-arg .k { flex: none; width: 6ch; font-style: normal; color: var(--pf-muted); }
+.sw-tool .sw-checks { margin-top: 6px; padding-top: 8px; border-top: 1px dashed var(--how-line); }
+@media (prefers-reduced-motion: reduce) { .sw-way, .sw-tab, .sw-btn, .sw-btn > span, .sw-checks li, .sw-chat p, .sw-tool, .sw-f .v { transition: none !important; animation: none !important; } }
