@@ -3,5 +3,5 @@ import { SITE_URL } from '@/lib/site';
 
 /* the site is one page */
 export default function sitemap(): MetadataRoute.Sitemap {
-  return [{ url: SITE_URL + '/', changeFrequency: 'daily', priority: 1 }];
+  return [{ url: SITE_URL, changeFrequency: 'daily', priority: 1 }];
 }
