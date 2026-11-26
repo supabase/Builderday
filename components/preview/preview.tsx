@@ -8,6 +8,7 @@ import { LabPanel, togglePanel, useLabSave } from '@/components/admin/kit';
 import { HowItWorks, PrizeBlock } from '@/components/day/explain';
 import { GetReady } from '@/components/day/get-ready';
 import { lumaHref } from '@/lib/luma';
+import { away } from '@/lib/routes';
 import { countdown, nearestCity, type Here, type OurFact, type OurWheel } from './facts';
 import './preview.css';
 import '@/components/day/explain.css';
@@ -44,7 +45,7 @@ export function SheetWheel({ cfg, noGl, mark, engineRef, ours, forced }: SheetPr
     if (!d || (id !== 'questions' && id !== 'how')) return;
     d.showModal(); const el = document.getElementById(id === 'how' ? 'wd-how-h' : 'questions'); el?.scrollIntoView({ block: 'start' }); if (id === 'questions') el?.focus({ preventScroll: true });
   }, []);
-  const reg = cities.map((c) => ({ ...c, href: lumaHref(c.id), action: c.status === 'full' ? 'Join the waiting list in ' + c.name : 'Register for ' + c.name }));
+  const reg = cities.map((c) => ({ ...c, href: lumaHref(c.id), action: c.status === 'full' ? 'Join the waiting list in ' + c.name : c.status === 'sold' ? c.name + ' is sold out' : 'Register for ' + c.name }));
   const f = { buildMin: ours.buildMin, voteAfter: ours.voteAfter, startHour: ours.startHour, date: ours.date };
   return (
     <Wheel cities={reg} cfg={cfg} noGl={noGl} mark={mark} engineRef={engineRef} start={start} date={ours.date} caption={CAPTION}>
@@ -57,7 +58,7 @@ export function SheetWheel({ cfg, noGl, mark, engineRef, ours, forced }: SheetPr
             <button type="button" className="wd-close" onClick={() => sheet.current?.close()}>Close</button>
           </div>
           <p className="wd-lede">{CITY_WORD_CAP} cities, one day: {ours.date}. Each city starts at its own local time, builds for {ours.buildMin} minutes, and votes until {ours.voteAfter} minutes after.</p>
-          <p className="wd-reg"><a className="ex-reg" href={lumaHref()}>Register on Luma<span aria-hidden="true">→</span></a></p>
+          <p className="wd-reg"><a className="ex-reg" href={lumaHref()} {...away(lumaHref())}>Register on Luma<span aria-hidden="true">→</span></a></p>
           <GetReady compact id="wd-ready" level={3} register={false} />
           <HowItWorks f={f} compact id="wd-how" level={3} />
           <PrizeBlock compact id="wd-prize" level={3} />

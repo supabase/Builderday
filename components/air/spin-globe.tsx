@@ -4,6 +4,7 @@ import { MONO, type WheelCfg } from '@/components/wheel/config';
 import { globeLook } from '@/components/wheel/globe-look';
 import { drawTextGlobe, layoutOf, loadFrames, loadLand, markAt, subsolar, type Frames, type LandMap, type TextGlobeDraw } from '@/components/wheel/text-globe';
 import { EPOCH } from '@/lib/day-data';
+import { at } from '@/lib/routes';
 
 /* The home's globe: the preview's text globe, turning, every city a mark you can press.
    - tour: it turns to each city in the order given (the live ones first), holds there with the city captioned under
@@ -109,9 +110,9 @@ export function SpinGlobe({ wheel, cities, order, minute, cfg, label }: {
     <div className="oa-spin" onPointerLeave={() => setCapI(-1)}>
       <canvas ref={cv} className="oa-globe" role="img" aria-label={label} data-press={hover >= 0 ? '' : undefined}
         onPointerMove={(e) => { if (e.pointerType === 'mouse') setH(pick(e)); }} onPointerLeave={() => setH(-1)}
-        onClick={(e) => { const i = pick(e); if (i >= 0) window.location.href = cities[i].href; }} />
+        onClick={(e) => { const i = pick(e); if (i >= 0) window.location.href = at(cities[i].href); }} />
       {cap ? (
-        <a className="oa-spin-cap" href={cap.href} data-off={spin && ci < 0 ? '' : undefined} aria-hidden={spin && ci < 0 ? true : undefined} tabIndex={spin && ci < 0 ? -1 : undefined}>
+        <a className="oa-spin-cap" href={at(cap.href)} data-off={spin && ci < 0 ? '' : undefined} aria-hidden={spin && ci < 0 ? true : undefined} tabIndex={spin && ci < 0 ? -1 : undefined}>
           <span className="oa-spin-m" aria-hidden="true">{cap.mark}</span>
           <span className="oa-code">{cap.code}</span> <b>{cap.name}</b> <span className="oa-spin-s">{cap.said}</span>
           <span className="oa-spin-go" aria-hidden="true">→</span>

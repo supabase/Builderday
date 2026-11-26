@@ -7,20 +7,21 @@ import { HackMark } from './mark';
 import familySaved from '@/saved/family.config.json';
 import { clampFamily, showPeople } from '@/lib/family';
 const FAMILY = clampFamily(familySaved);
-/* the first screen's one Key: the family's square primary (rule 2), or the Luma pill it was (the lab's other mode) */
-const PILL = FAMILY.key === 'pill' ? 'wh-pill' : 'wh-pill k-key';
 import { BuilderLogo } from './builder-logo';
 import { EVENT } from '@/lib/day-data';
 import { SupabaseMark } from '@/components/shared/supabase-mark';
-import { tokEase, tokMs } from '@/components/shared/motion';
 import type { WheelStatus } from './click';
+import heroSaved from '@/saved/hero.config.json';
+import { clampHero, hatchOf, serialOf, type HeroCfg } from './hero-config';
+import '@/components/day/ending.css';
 import './wheel.css';
+import { at, away } from '@/lib/routes';
 
 /* The city wheel as a page: the canvas, the mark, the link with its small globe, and the facts of the active city as
    a row of cells before its name. The screen lines are drawn over all of it, with holes for the two globes.
    A screen reader gets the cities as a table, and hears the city once the wheel stops on it. */
 
-export type WheelFact = WheelCity & { id: string; session: string; count: string; href: string; action: string; soon?: string;
+export type WheelFact = WheelCity & { id: string; code?: string; session: string; count: string; href: string; action: string; soon?: string;
   /* people as a number: the count cell shows only from the family's threshold up (an empty room reads as a dead one) */
   people?: number;
   /* a page's own press in place of the link (the preview: the person's own city opens their account) */
@@ -34,35 +35,122 @@ export function MarkFace({ mark, id }: { mark: MarkMode; id?: string }) {
   if (mark === 'builder') return <><BuilderLogo className="wh-builder" /><span className="wh-name">{EVENT.short}</span></>;
   return <>{mark === 'both' ? <SupabaseMark /> : null}<HackMark id={id} label={mark === 'both' ? EVENT.name : mark === 'name' ? '' : EVENT.short} />{mark === 'name' ? <span className="wh-name">{EVENT.name}</span> : null}</>;
 }
-export const STATUS_LABEL: Record<WheelStatus, string> = { open: 'Open', nearing: 'Filling up', full: 'Waiting list', soon: 'Opens soon' };
+export const STATUS_LABEL: Record<WheelStatus, string> = { open: 'Open', nearing: 'Filling up', full: 'Waiting list', sold: 'Sold out', soon: 'Opens soon' };
 
 /* each state has its words and its own shape, a ring that fills up, so it does not read by colour alone */
 export function StatusIcon({ status }: { status: WheelStatus }) {
   return (
     <svg viewBox="0 0 12 12" aria-hidden="true">
-      {status === 'full' ? <circle cx="6" cy="6" r="5" fill="currentColor" /> : <circle cx="6" cy="6" r="4.25" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray={status === 'soon' ? '2 2' : undefined} />}
+      {status === 'full' || status === 'sold' ? <circle cx="6" cy="6" r="5" fill="currentColor" /> : <circle cx="6" cy="6" r="4.25" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray={status === 'soon' ? '2 2' : undefined} />}
       {status === 'nearing' ? <path d="M6 1.75a4.25 4.25 0 0 1 0 8.5z" fill="currentColor" /> : null}
     </svg>
   );
 }
 
-/* The Luma link as a pill. When its words change they fade in and the pill eases from its old width to the new one,
-   so nothing is stretched. With reduced motion both just change. */
-function Pill({ ref, href, press, text }: { ref: RefObject<(HTMLAnchorElement & HTMLButtonElement) | null>; href: string; press?: () => void; text: string }) {
-  const [seen, setSeen] = useState({ text, n: 0 }), was = useRef(0);
-  if (seen.text !== text) setSeen({ text, n: seen.n + 1 });
+/* the hero as saved (tuned at /lab/hero) */
+export const HERO = clampHero(heroSaved as Partial<HeroCfg>);
+
+/* the box's words: the verb follows the state, and they always end with the city's name, so the name can be the wheel's.
+   The verbs are about one length, and the box keeps a slot as wide as the longest, so a change of state never moves
+   the name (the stub already says the state in full) */
+const VERBS = ['Register for', 'Waitlist for', 'Sold out in', 'Coming to'];
+export function regWords(status: WheelStatus, name: string) {
+  return `${status === 'sold' ? VERBS[2] : status === 'full' ? VERBS[1] : status === 'soon' ? VERBS[3] : VERBS[0]} ${name}`;
+}
+
+/* The city's name in the box. fixed: every name is in the slot, unseen but the current one, so the box is as wide as
+   the longest and never changes width. roll: the new name comes round the turn's way, the old one goes the other way
+   (the stub's flat roll, on the same clock). A roll is never cut short: if the wheel moves on mid-roll, it finishes,
+   then makes one quicker roll to the latest city, so a fast spin reads as two clean rolls, never a stutter. */
+function NameSlot({ name, names, dir, hand, fixed }: { name: string; names: string[]; dir: number; hand: HeroCfg['hand']; fixed: boolean }) {
+  const [shown, setShown] = useState(name);
+  const [roll, setRoll] = useState<{ old: string; dir: number; quick: boolean; n: number } | null>(null);
+  const [n, setN] = useState(0);
+  if (shown !== name && hand !== 'roll') setShown(name);
+  else if (shown !== name && !roll) { setRoll({ old: shown, dir, quick: false, n: n + 1 }); setN(n + 1); setShown(name); }
+  const end = (e: React.AnimationEvent) => {
+    if (e.target !== e.currentTarget) return;
+    if (shown !== name) { setRoll({ old: shown, dir, quick: true, n: n + 1 }); setN(n + 1); setShown(name); } else setRoll(null);
+  };
+  return (
+    <span className={'wh-reg-city' + (roll?.quick ? ' is-quick' : '')} data-hug={fixed ? undefined : ''} data-dir={(roll?.dir ?? dir) > 0 ? 'up' : 'down'}>
+      {fixed ? names.map((x) => <span key={'g' + x} className="wh-reg-ghost" aria-hidden="true">{x}</span>) : null}
+      {roll ? <span key={'o' + roll.n} className="wh-reg-name is-out" aria-hidden="true">{roll.old}</span> : null}
+      <span key={'n' + (roll?.n ?? n)} className={'wh-reg-name' + (roll ? ' is-in' : '')} onAnimationEnd={roll ? end : undefined}>{shown}</span>
+    </span>
+  );
+}
+
+/* the verb before the name: a slot as wide as the longest verb, set against the name, so the name starts in one place
+   (in either width: where the name starts sets the hero's size, so a change of state must never move it) */
+function VerbSlot({ verb }: { verb: string }) {
+  const all = VERBS.includes(verb) ? VERBS : [...VERBS, verb];
+  return (
+    <span className="wh-reg-verb">
+      {all.map((v) => <span key={v} className={v === verb ? undefined : 'wh-reg-ghost'} aria-hidden={v === verb ? undefined : true}>{v + ' '}</span>)}
+    </span>
+  );
+}
+
+/* The Luma link as the ending's register box (ending.css), with the city's small globe of dots. When its words end
+   with the city's name, the name is the wheel's own: the engine sets the box so its name lies where the wheel draws the
+   active name (data-lands); with the fade hand-over (data-hand) it hands the name over from the wheel at rest.
+   In hug width the paper ends just after the name. A new name never resizes anything by the frame: the layout takes
+   the wider of the two widths at once, and the paper's right edge glides from the old end to the new one by a clip
+   (paint only), on the name's own clock; then the layout settles on the new width under the clip. A change mid-glide
+   starts from where the edge is. Reduced motion, or a docked row (always full width): it simply changes. */
+function Pill({ ref, href, press, text, name, names, dot, dir, hero, hatch, lands: landsOn }: { ref: RefObject<(HTMLAnchorElement & HTMLButtonElement) | null>; href: string; press?: () => void; text: string; name: string; names: string[]; dot: { lat: number; lon: number }; dir: number; hero: HeroCfg; hatch?: string; lands?: boolean }) {
+  const lands = !!landsOn && text.endsWith(name), fixed = hero.width === 'fixed';
+  /* the paper's visible width as last settled, and the glide under way */
+  const vis = useRef(0), glide = useRef<Animation | null>(null);
+  /* the paper: the whole ticket when there is one, else the box */
+  const paper = (a: HTMLElement) => (a.closest('.wh-ticket') as HTMLElement | null) ?? a;
+  /* keep the settled width when the size changes for any other reason (a resize, the fonts arriving) */
+  useEffect(() => {
+    const a = ref.current; if (!a || fixed) return;
+    const p = paper(a), ro = new ResizeObserver(() => { if (!glide.current) vis.current = p.offsetWidth; });
+    ro.observe(p); return () => ro.disconnect();
+  }, [ref, fixed]);
   useLayoutEffect(() => {
-    const a = ref.current; if (!a) return;
-    const to = a.offsetWidth, from = was.current; was.current = to;
-    if (!from || from === to) return;
-    const ms = tokMs('--dur-slide'); if (!ms) return;
-    const run = a.animate([{ width: from + 'px' }, { width: to + 'px' }], { duration: ms, easing: tokEase('--ease-out') });
-    return () => run.cancel();
-  }, [ref, seen.n]);
-  const words = <span key={seen.n} className={'wh-pill-text' + (seen.n ? ' is-fresh' : '')}>{text}</span>;
+    const a = ref.current; if (!a || fixed) return;
+    const p = paper(a);
+    /* where the edge is now: mid-glide, read off the running clip; else the settled width */
+    let from = vis.current;
+    if (glide.current) {
+      const m = /calc\(100% - ([\d.]+)px\)/.exec(getComputedStyle(p).clipPath);
+      if (m) from = parseFloat(m[1]);
+      glide.current.cancel(); glide.current = null;
+    }
+    a.style.minWidth = '';
+    const to = p.offsetWidth; vis.current = to;
+    if (!from || Math.abs(from - to) < 1 || !hero.widthMs || p.closest('.wh-pin')?.hasAttribute('data-dock') || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    /* the layout holds the wider width while the edge travels, so the old name has room to leave */
+    if (from > to) a.style.minWidth = a.offsetWidth + (from - to) + 'px';
+    const edge = (w: number) => `inset(-4px calc(100% - ${w}px) -4px -4px)`;
+    const ease = getComputedStyle(document.documentElement).getPropertyValue('--ease-out').trim() || 'cubic-bezier(.23, 1, .32, 1)';
+    const run = p.animate([{ clipPath: edge(from) }, { clipPath: edge(to) }], { duration: hero.widthMs, easing: ease });
+    glide.current = run;
+    run.onfinish = () => { if (glide.current !== run) return; glide.current = null; a.style.minWidth = ''; run.cancel(); vis.current = p.offsetWidth; };
+  }, [ref, text, fixed, hero.widthMs]);
+  const words = (
+    <>
+      {hatch ? <span className="wh-hatch" aria-hidden="true"><span>{hatch}</span></span> : null}
+      <span className="en-lens" data-dot="" data-lat={dot.lat} data-lon={dot.lon} aria-hidden="true" />
+      <span className="en-reg-t">{lands ? <><VerbSlot verb={text.slice(0, -name.length).trimEnd()} /><NameSlot name={name} names={names} dir={dir} hand={hero.hand} fixed={fixed} /></> : text}</span>
+    </>
+  );
+  const cls = 'en-reg wh-reg', data = { 'data-lands': lands ? '' : undefined, 'data-hand': hero.hand };
   return press
-    ? <button ref={ref} type="button" className={PILL} aria-haspopup="dialog" onClick={press}>{words}</button>
-    : <a ref={ref} className={PILL} href={href}>{words}</a>;
+    ? <button ref={ref} type="button" className={cls} {...data} aria-haspopup="dialog" aria-label={text} onClick={press}>{words}</button>
+    : <a ref={ref} className={cls} {...data} href={at(href)} aria-label={text} {...away(href)}>{words}</a>;
+}
+
+/* the hero's knobs as the page's own variables and switches */
+export function heroVars(h: HeroCfg): CSSProperties {
+  /* the sizes are shares of the name size (--wh-f, which the engine sets from the wheel and the room); min and pull are
+     read by the engine */
+  return { '--hero-title-k': h.titleK, '--hero-body-k': h.bodyK, '--hero-cell-k': h.cellK, '--hero-stub-k': h.stubK, '--hero-gap-k': h.gapK, '--hero-lift-k': h.liftK,
+    '--hero-min': h.min, '--hero-grow': h.grow, '--hero-tall': h.tall, '--hero-perf': h.perf + 'px', '--hero-notch': h.notch + 'px' } as CSSProperties;
 }
 
 /* A cell as a block that turns on its long axis when `k` changes, like a drum of cards: the face that was there rolls
@@ -102,12 +190,16 @@ export function wheelVars(c: WheelCfg): CSSProperties {
    draws the mark (its header) and the table of cities (its board), so the wheel leaves both out; the globe is a
    slider a keyboard can turn. The options are read every frame, so a page may change them in place. Changing
    `fixed` needs a new wheel (give it a new key). */
-export function Wheel({ cities, cfg, start = 0, noGl = false, cells = true, mark = 'hack', date, caption, engineRef, onCity, foot, lead, children, className, flow }: {
+type WheelProps = {
   cities: WheelFact[]; cfg: WheelCfg; start?: number; noGl?: boolean; cells?: boolean; mark?: MarkMode; date: string; caption: string; foot?: ReactNode;
-  /* the page's words over the cells, in the column layout */
-  lead?: ReactNode;
+  /* the page's words over the cells, in the column layout, and how that side is set (saved/hero.config.json by default) */
+  lead?: ReactNode; hero?: HeroCfg;
   engineRef?: RefObject<WheelEngine | null>; onCity?: (i: number) => void; children?: ReactNode; className?: string; flow?: WheelFlow;
-}) {
+};
+/* the engine places the cells element it was made with, and each layout has its own: a new layout is a new wheel */
+export function Wheel(props: WheelProps) { return <OneWheel key={props.cfg.layout} {...props} />; }
+
+function OneWheel({ cities, cfg, start = 0, noGl = false, cells = true, mark = 'hack', date, caption, engineRef, onCity, foot, lead, hero = HERO, children, className, flow }: WheelProps) {
   const pin = useRef<HTMLDivElement>(null), canvas = useRef<HTMLCanvasElement>(null), cellsEl = useRef<HTMLDListElement & HTMLDivElement>(null);
   const footEl = useRef<HTMLDivElement>(null), grip = useRef<HTMLSpanElement>(null), flowRef = useRef(flow);
   useEffect(() => { if (flowRef.current && flow) Object.assign(flowRef.current, flow); }, [flow]);
@@ -142,43 +234,86 @@ export function Wheel({ cities, cfg, start = 0, noGl = false, cells = true, mark
   const [last, setLast] = useState(cur), [dir, setDir] = useState(1);
   if (last !== cur) {
     const n = cities.length; let d = cur - last; if (d > n / 2) d -= n; if (d < -n / 2) d += n;
-    setDir(d > 0 ? -1 : 1); setLast(cur);
+    setDir(d > 0 ? 1 : -1); setLast(cur);
   }
   /* each cell is as wide as its longest words in any city, so the column keeps one width */
-  const widest = (f: (c: WheelFact) => string, icon = false) => `calc(${cities.reduce((a, c) => Math.max(a, f(c).length), 0)}ch + ${icon ? 45 : 26}px)`;
+  /* the time as the hero says: with its zone (UTC-5) or "local" */
+  const timeOf = (c: WheelFact) => hero.zone === 'local' ? c.session.replace(/ UTC.*$/, ' local') : c.session;
+  const names = cities.map((c) => c.name);
+  const widest = (f: (c: WheelFact) => string, icon = false) => `calc(${cities.reduce((a, c) => Math.max(a, f(c).length), 0)}ch + ${icon ? 72 : 46}px)`;
   const dot = text ? { 'data-dot': '', 'data-lat': city.lat, 'data-lon': city.lon } : {};
   /* the cells' and the link's words changed: measure them again before the next frame */
-  useLayoutEffect(() => { eng.current?.measure(); }, [cur, cities, cells, cfg.font, cfg.layout, mark, foot, lead]);
+  useLayoutEffect(() => { eng.current?.measure(); }, [cur, cities, cells, cfg.font, cfg.layout, mark, foot, lead, hero]);
   /* a screen reader hears the city after the wheel comes to rest, not each city on the way */
   useEffect(() => {
-    const t = window.setTimeout(() => setSaid(`${city.name}, ${city.session}, ${city.count}, ${STATUS_LABEL[city.status]}`), cfg.statusDelay);
+    const t = window.setTimeout(() => setSaid([city.name, city.session, city.people == null || showPeople(FAMILY, city.people) ? city.count : '', STATUS_LABEL[city.status]].filter(Boolean).join(', ')), cfg.statusDelay);
     return () => window.clearTimeout(t);
   }, [city, cfg.statusDelay]);
 
   return (
-    <div ref={pin} role="region" aria-label="Choose your city" className={'wh-pin' + (flow ? ' wh-flow' + (flow.fixed ? ' wh-fixed' : '') : '') + (className ? ' ' + className : '')} style={flow ? { ...wheelVars(cfg), '--wh-peek': flow.peek + 'px' } as CSSProperties : wheelVars(cfg)}>
+    <div ref={pin} role="region" aria-label="Choose your city" className={'wh-pin' + (flow ? ' wh-flow' + (flow.fixed ? ' wh-fixed' : '') : '') + (className ? ' ' + className : '')}
+      data-hero={column ? hero.mode : undefined} data-hero-words={column ? hero.words : undefined} data-hero-state={column ? hero.state : undefined} data-hero-reach={column ? hero.reach : undefined}
+      style={{ ...wheelVars(cfg), ...(column ? heroVars(hero) : {}), ...(flow ? { '--wh-peek': flow.peek + 'px' } : {}) } as CSSProperties}>
       {/* the text globe is a picture of its own: one image, named by the city it is turned to */}
       <canvas key={noGl ? '2d' : 'gl'} ref={canvas} className="wh-canvas" {...(text ? { role: 'img', 'aria-label': `The world drawn in characters, turned to ${city.name}` } : { 'aria-hidden': true })} />
       {flow ? null : <h1 className="wh-wordmark" data-mark={mark}><MarkFace mark={mark} /></h1>}
       {flow ? <span ref={grip} className="wh-grip" role="slider" tabIndex={0} aria-label="City wheel: the left and right arrows turn it" aria-valuemin={1} aria-valuemax={cities.length} aria-valuenow={cur + 1} aria-valuetext={city.name} /> : null}
       {column ? (
-        /* the column: the page's words, the cells on the active name's line, then the Luma pill. The engine moves the
-           whole column (it is the element it places), so the words and the pill keep to the cells. */
-        <div ref={cellsEl} className="wh-col">
-          {lead ? <div className="wh-lead">{lead}</div> : null}
-          {cells ? (
-            <dl className="wh-cells" data-placed="">
-              <div className="sr-only"><dt>City</dt><dd>{city.name}</dd></div>
-              <div><dt className="sr-only">Session, local time</dt><dd><Prism k={city.id} dir={dir} width={widest((c) => c.session)}>{city.session}</Prism></dd></div>
-              {city.people == null || showPeople(FAMILY, city.people) ? <div><dt className="sr-only">People</dt><dd><Prism k={city.id} dir={dir} width={widest((c) => c.count)}>{city.count}</Prism></dd></div> : null}
-              <div className="wh-status"><dt className="sr-only">Status</dt><dd><Prism k={city.id} dir={dir} status={city.status} width={widest((c) => STATUS_LABEL[c.status], true)}><StatusIcon status={city.status} /><span>{STATUS_LABEL[city.status]}</span></Prism></dd></div>
-            </dl>
-          ) : null}
-          <div className="wh-col-foot">
-            <Pill ref={cta} href={city.href} press={city.press} text={city.press ? city.action : city.status === 'full' ? 'Join the waiting list on Luma' : city.status === 'soon' ? 'Opens soon on Luma' : 'Register on Luma'} />
-            {foot}
+        /* the column: the page's words, on the left margin (wheel.css places it). The cells and the Luma box are one row
+           apart from it: the engine puts the row on the active name's line, the box's name on the wheel's own. */
+        <>
+          <div ref={cellsEl} className="wh-col">
+            {lead ? <div className="wh-lead" data-sk-skip={hero.screen === 'all' || hero.screen === 'words' ? undefined : ''}>{lead}</div> : null}
+            {foot ? <div className="wh-col-foot">{foot}</div> : null}
           </div>
-        </div>
+          {(() => {
+            const pill = <Pill ref={cta} lands hatch={hero.mode === 'ticket' && hero.reach === 'wheel' ? hatchOf(hero.seed, 'hatch') : undefined} href={city.href} press={city.press} dot={city} name={city.name} names={names} dir={dir} hero={hero} text={city.press ? city.action : regWords(city.status, city.name)} />;
+            const status = <><StatusIcon status={city.status} /><span>{STATUS_LABEL[city.status]}</span></>;
+            /* the row is paper and ink, not the screen: it takes the screen's lines only when the hero says all */
+            const skipRow = hero.screen === 'all' ? undefined : '';
+            if (hero.mode === 'ticket') return (
+              /* the ticket: the stub (the city's code, its number, its time and state), a perforation, then the body, the
+                 Luma link, whose press covers the whole ticket */
+              <div className="wh-row wh-reg-at wh-ticket" data-sk-skip={skipRow}>
+                {cells ? (
+                  <dl className="wh-stub" data-placed="">
+                    <div className="sr-only"><dt>City</dt><dd>{city.name}</dd></div>
+                    <div className="wh-stub-top"><dt className="sr-only">City code</dt><dd className="wh-stub-code"><Prism k={city.id} dir={dir}>{city.code || city.name.slice(0, 3).toUpperCase()}</Prism></dd>
+                      <dd className="wh-stub-no" aria-hidden="true">No.&nbsp;<Prism k={city.id} dir={dir}>{serialOf(hero.seed, city.id)}</Prism></dd></div>
+                    <div><dt className="sr-only">Session, local time</dt><dd><Prism k={city.id} dir={dir}>{timeOf(city)}</Prism></dd></div>
+                    <div className="wh-status"><dt className="sr-only">Status</dt><dd><Prism k={city.id} dir={dir} status={city.status}>{status}</Prism></dd></div>
+                  </dl>
+                ) : null}
+                {pill}
+              </div>
+            );
+            if (hero.mode === 'spoke') return (
+              /* the spoke: the box alone on the line, the facts one line of type over it */
+              <div className="wh-row wh-reg-at wh-spoke" data-sk-skip={skipRow}>
+                {cells ? (
+                  <dl className="wh-facts" data-placed="">
+                    <div className="sr-only"><dt>City</dt><dd>{city.name}</dd></div>
+                    <div><dt className="sr-only">Session, local time</dt><dd><Prism k={city.id} dir={dir}>{timeOf(city)}</Prism></dd></div>
+                    <div className="wh-status"><dt className="sr-only">Status</dt><dd><Prism k={city.id} dir={dir} status={city.status}>{status}</Prism></dd></div>
+                  </dl>
+                ) : null}
+                {pill}
+              </div>
+            );
+            return (
+              <div className="wh-row wh-reg-at" data-sk-skip={skipRow}>
+                {cells ? (
+                  <dl className="wh-cells" data-placed="">
+                    <div className="sr-only"><dt>City</dt><dd>{city.name}</dd></div>
+                    <div><dt className="sr-only">Session, local time</dt><dd><Prism k={city.id} dir={dir} width={widest(timeOf)}>{timeOf(city)}</Prism></dd></div>
+                    <div className="wh-status"><dt className="sr-only">Status</dt><dd><Prism k={city.id} dir={dir} status={city.status} width={widest((c) => STATUS_LABEL[c.status], true)}>{status}</Prism></dd></div>
+                  </dl>
+                ) : null}
+                {pill}
+              </div>
+            );
+          })()}
+        </>
       ) : (
         <>
           <div ref={footEl} className="wh-foot">
@@ -189,7 +324,7 @@ export function Wheel({ cities, cfg, start = 0, noGl = false, cells = true, mark
                 <span className="wh-cta-text"><span className="wh-cta-action">{city.action}</span> <span>{date}</span></span>
               </button>
             ) : (
-              <a ref={cta} className="wh-cta" href={city.href}>
+              <a ref={cta} className="wh-cta" href={at(city.href)} {...away(city.href)}>
                 <span ref={lens} className="wh-lens" aria-hidden="true" {...dot} />
                 <span className="wh-cta-text"><span className="wh-cta-action">{city.action}</span> <span>{date}</span></span>
               </a>

@@ -33,7 +33,7 @@ export function ourWheel(live?: Record<string, { people: number; status: WheelSt
     return {
       id: c.id, name: c.name, code: CODE[c.id] ?? c.name.slice(0, 3).toUpperCase(), lat, lon, status, offset: o,
       session: `${hhmm(x.start + o)}–${hhmm(x.end + o)} ${zoneText(o / 60)}`, count: people === 1 ? '1 person' : `${people} people`, people,
-      href: `/city/${c.id}`, action: status === 'full' ? `Join the waiting list in ${c.name}` : `Join in ${c.name}`,
+      href: `/city/${c.id}`, action: status === 'full' ? `Join the waiting list in ${c.name}` : status === 'sold' ? `${c.name} is sold out` : `Join in ${c.name}`,
       opens: EPOCH + x.start * 60000, buildEnds: EPOCH + x.buildEnd * 60000, closes: EPOCH + x.end * 60000,
     };
   });

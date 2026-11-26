@@ -13,6 +13,7 @@ import '@/components/forms/forms.css';
 import type { ArtSubject } from '@/components/forms/art-config';
 import { TeamPart, type TeamLook } from './team';
 import './account.css';
+import { at, away } from '@/lib/routes';
 
 /* The account: a cell in the header of every page, and the sheet it opens.
    - The cell. Signed out it says "Sign in". Signed in with a place it shows the place's city code; with no place,
@@ -143,7 +144,7 @@ export function AccountBody({ me, email, here, onSignOut, onSignIn, claimLook, t
       <p className={FM_P}>This email has no place on a city’s list yet, so you can vote on the day but not submit.</p>
       <p className={FM_P}>Registered on Luma and still pending or on the waitlist? Your place comes when Luma approves you, and we email you then.</p>
       {store.isLive() || claimLook ? <Claim look={claimLook} onClaimed={onClaimed} /> : <p className={FM_NOTE + ' mt-6'}>This site has no lists yet, so there is no place to find.</p>}
-      {LUMA_LIVE ? <p className={FM_P}><a className="underline-link" href={lumaHref()}>Register for your city on Luma</a></p> : null}
+      {LUMA_LIVE ? <p className={FM_P}><a className="underline-link" href={lumaHref()} {...away(lumaHref())}>Register for your city on Luma</a></p> : null}
       {desk ? <Desk /> : null}
       {Out}
     </>
@@ -156,7 +157,7 @@ export function AccountBody({ me, email, here, onSignOut, onSignIn, claimLook, t
       {moved ? <p id={id + '-mv'} className={FM_P + ' mt-2'} role="status">Your place in <b>{moved.cityName}</b> moved to this account{moved.replaced ? <>, in place of {moved.replaced}</> : null}.</p> : null}
       <p className={FM_P}>{DAY}{start ? <>. Building starts at <b>{start}</b>, {p.cityName} time.</> : '.'}{p.checkedIn ? ' You are checked in.' : ''}</p>
       {p.listedAs ? <p className={FM_NOTE + ' mt-2'}>Listed under {p.listedAs}, moved to this email.</p> : null}
-      {me?.open && (other || !here) ? <p className={FM_P}><a className="underline-link" href={'/city/' + p.city}>Go to {p.cityName}’s page</a></p> : null}
+      {me?.open && (other || !here) ? <p className={FM_P}><a className="underline-link" href={at('/city/' + p.city)}>Go to {p.cityName}’s page</a></p> : null}
 
       {me && me.teams?.on !== false && (store.isLive() || teamLook) ? <TeamPart me={me} look={teamLook} /> : null}
 
@@ -173,7 +174,7 @@ export function AccountBody({ me, email, here, onSignOut, onSignIn, claimLook, t
   );
 }
 
-const Desk = () => <p className={FM_P}><a className="underline-link" href="/desk">Open the desk</a></p>;
+const Desk = () => <p className={FM_P}><a className="underline-link" href={at('/desk')}>Open the desk</a></p>;
 
 /* "Registered with a different email?": the address on Luma gets six digits; typed here, the place moves to this
    account. The same answer whether or not the address is on a list (rule 7). */

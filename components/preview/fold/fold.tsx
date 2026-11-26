@@ -2,7 +2,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
 import type { WheelCfg } from '@/components/wheel/config';
 import type { WheelEngine, WheelFlow } from '@/components/wheel/engine';
-import { Wheel, wheelVars } from '@/components/wheel/wheel';
+import { HERO, Wheel, wheelVars } from '@/components/wheel/wheel';
+import type { HeroCfg } from '@/components/wheel/hero-config';
 import { HowItWorks, PrizeBlock } from '@/components/day/explain';
 import { GetReady } from '@/components/day/get-ready';
 import { DayScreen } from '@/components/day/shared';
@@ -16,7 +17,7 @@ import { clampParts, partsVars, type PartsCfg } from '@/components/board/config'
 import { realMinute } from '@/lib/clock';
 import { LUMA_LIVE, lumaHref } from '@/lib/luma';
 import { PRIZES } from '@/lib/prizes';
-import { EVENT, startsSentence } from '@/lib/day-data';
+import { EPOCH, EVENT, startsSentence } from '@/lib/day-data';
 import footSaved from '@/saved/footer.config.json';
 import endSaved from '@/saved/ending.config.json';
 import partsSaved from '@/saved/parts.config.json';
@@ -36,7 +37,7 @@ import { mountGlobes } from '@/components/screen/globe';
 import { mountDotGlobes } from '@/components/wheel/dot-globes';
 import { usePref } from '@/components/board/prefs';
 import { tokEase } from '@/components/shared/motion';
-import { SupabaseMark } from '@/components/shared/supabase-mark';
+import { SupabaseLockup } from '@/components/shared/supabase-mark';
 import { useForms } from '@/components/forms/forms-provider';
 import { meNow, useFormsState } from '@/components/forms/store';
 import { cellState, openAccount } from '@/components/account/account';
@@ -66,11 +67,13 @@ type Props = {
   cfg: FoldCfg; wheel: WheelCfg; ours: OurWheel; forced: number | null; here?: Here | null; noGl: boolean; nowMs: number;
   /* how the page ends (saved/ending.config.json unless a lab passes its own) */
   ending?: EndCfg;
+  /* the first screen's left side (saved/hero.config.json unless a lab passes its own) */
+  hero?: HeroCfg;
   /* the lab's own things over the page (its panel) */
   children?: ReactNode;
 };
 
-export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, ending, children }: Props) {
+export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, ending, hero: heroCfg = HERO, children }: Props) {
   const { cities, start } = useOurCities(ours, forced, here), off = useOffset();
   const nearest = off === null ? 0 : nearestCity(ours.cities, off, here);
   const [pick, setPick] = useState<number | null>(null), cur = pick ?? start, city = cities[cur] ?? cities[0];
@@ -104,7 +107,7 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
      countdown cell on the wheel: every city opens on the same day, so it said the same thing ten times. */
   const reg = useMemo(() => cities.map((c, i) => (i === mine && forms
     ? { ...c, soon: undefined, href: '#ready', action: 'Your place in ' + c.name, press: () => forms.account() }
-    : { ...c, soon: undefined, href: lumaHref(c.id), action: c.status === 'full' ? 'Join the waiting list in ' + c.name : 'Register for ' + c.name })), [cities, mine, forms]);
+    : { ...c, soon: undefined, href: lumaHref(c.id), action: c.status === 'full' ? 'Join the waiting list in ' + c.name : c.status === 'sold' ? c.name + ' is sold out' : 'Register for ' + c.name })), [cities, mine, forms]);
   const board: BoardCity[] = useMemo(() => reg.map((c) => ({ ...c, reg: c.href, regLabel: c.action })), [reg]);
   const placed = useRef(false);
   useEffect(() => {
@@ -330,11 +333,14 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
 
   /* the column layout carries its own words over the cells (the wheel places them), in place of the lede */
   const column = wheel.layout === 'column';
-  const lead = column ? (
-    <>
-      <div><h1><span className="sr-only">{EVENT.name}, {ours.date}: </span>{ours.buildMin}min Build Challenge<span className="sr-only">, in {n} cities</span></h1><p className="wh-lead-muted">Officially hosted by <span className="wh-supabase"><SupabaseMark /><span>supabase</span></span></p></div>
-      <div><p>{ours.date}</p><p>{LUMA_LIVE && ours.regOpen ? 'RSVP now open' : 'RSVP opens soon'}</p></div>
-    </>
+  /* the day's weekday, from the event's date */
+  const WEEKDAY = new Date(EPOCH).toLocaleDateString('en-GB', { weekday: 'long', timeZone: 'UTC' });
+  const rsvp = LUMA_LIVE && ours.regOpen ? 'RSVP now open' : 'RSVP opens soon';
+  const dateLine = heroCfg.weekday ? `${WEEKDAY} ${ours.date}` : ours.date;
+  const head = <><h1><span className="sr-only">{EVENT.name}, {ours.date}: </span>{ours.buildMin}min Build Challenge<span className="sr-only">, in {n} cities</span></h1><p className="wh-lead-muted">Officially hosted by <SupabaseLockup className="wh-supabase" /></p></>;
+  const lead = column ? (heroCfg.words === 'tight'
+    ? <div>{head}<p className="wh-lead-date">{dateLine}</p>{heroCfg.rsvp ? <p>{rsvp}</p> : null}</div>
+    : <><div>{head}</div><div><p>{dateLine}</p>{heroCfg.rsvp ? <p>{rsvp}</p> : null}</div></>
   ) : undefined;
   const words = line && !column && cfg.words === 'lede' ? (
     <div ref={wordsRef} className="pf-words">
@@ -353,7 +359,7 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
           reg={{ href: lumaHref(city.id), city: city.name, waiting: city.status === 'full' }}
           globe={!fixed && !dots ? { lat: city.lat, lon: city.lon } : null} dot={dots ? { lat: city.lat, lon: city.lon } : null} acct={acct} />
       </div>
-      <Wheel key={`${fixed}-${rm}`} cities={reg} cfg={wcfg} noGl={noGl} mark={wheel.mark} engineRef={eng} start={start} date={ours.date} caption={CAPTION} onCity={onCity} lead={lead}
+      <Wheel key={`${fixed}-${rm}`} cities={reg} cfg={wcfg} noGl={noGl} mark={wheel.mark} engineRef={eng} start={start} date={ours.date} caption={CAPTION} onCity={onCity} lead={lead} hero={heroCfg}
         flow={line ? flow : { ...flow, fixed: false, globe: 'leaves' }}>
         {words}
         <div ref={topSentinel} className="pf-sentinel" style={{ top: 8 }} aria-hidden="true" />

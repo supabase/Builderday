@@ -4,7 +4,7 @@
    saved/parts.config.json as custom properties (partsVars). Prefixes: hr header row, an announcement line, fp flap,
    sg segment, ch chip, fl flash, tc test card, bp pass, bg bug, sw switches, dg globe. */
 
-@font-face { font-family: 'Departure Mono'; src: url('/fonts/departure-mono/DepartureMono-Regular.woff2') format('woff2'); font-display: swap; }
+@font-face { font-family: 'Departure Mono'; src: url('../../public/fonts/departure-mono/DepartureMono-Regular.woff2') format('woff2'); font-display: swap; }
 
 /* the day pages' ground, also under the preview's sections */
 :root { --bd-ground: #0c0d0d; }

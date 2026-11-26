@@ -31,12 +31,12 @@ export async function dayGate(now = Date.now()): Promise<Gate> {
 }
 
 /* where a person lands after a link or a code: their city's page once the day pages are open; before then the
-   preview page, with the wheel on their city (rule 1: no link from us points at a page that is closed) */
+   preview page (served at /), with the wheel on their city (rule 1: no link from us points at a page that is closed) */
 export async function landing(city: string | null, now = Date.now()): Promise<string> {
   const g = await dayGate(now);
   const i = city ? CITY_IDS.indexOf(city) : -1;
   if (g.open) return city && i >= 0 ? '/city/' + city : '/';
-  return i >= 0 ? '/preview?city=' + i : '/preview';
+  return i >= 0 ? '/?city=' + i : '/';
 }
 
 /* may this signed-in person see the day pages before they open? A host, a judge or a super admin may. */

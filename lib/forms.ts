@@ -1,5 +1,6 @@
 /* forms.ts: what the sheets check and write, as pure functions. The checks, the share text and the share card. */
 import { EVENT } from '@/lib/day-data';
+import { at } from '@/lib/routes';
 
 export const MAX_PIC = 5 * 1024 * 1024;
 export const PIC_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -43,7 +44,7 @@ export const SITE = 'https://hackday-seven.vercel.app';
 export function projectURL(p: ShareProject): string {
   if (p.url) return p.url;
   const host = typeof location !== 'undefined' ? location.origin : SITE, slug = p.slug || slugOf(p.name);
-  return host + (p.city ? '/city/' + p.city + '/p/' + slug : '/p/' + slug);
+  return host + at(p.city ? '/city/' + p.city + '/p/' + slug : '/p/' + slug);
 }
 export function shareText(p: ShareProject, myHandle: string | null): string {
   const me = myHandle && p.handle === myHandle, where = p.cityName || cityLabel(p.city);

@@ -3,7 +3,7 @@
    words. The colours below re-point the site's tokens inside .dk, so the sheets' field and key (.fm-i, .fm-b, .fm-chk)
    follow without a second set of rules. Green keeps its one job: the one next thing on Today. Prefix dk-. */
 
-@font-face { font-family: 'Departure Mono'; src: url('/fonts/departure-mono/DepartureMono-Regular.woff2') format('woff2'); font-display: swap; }
+@font-face { font-family: 'Departure Mono'; src: url('../../public/fonts/departure-mono/DepartureMono-Regular.woff2') format('woff2'); font-display: swap; }
 
 .dk {
   --c-ground: #0c0d0d; --c-ink: #f4f4f2; --c-ink-2: #a3a39f; --c-ink-3: #8b8b87;

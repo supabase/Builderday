@@ -5,6 +5,7 @@
 import { useMemo, useState, useSyncExternalStore, type FormEvent } from 'react';
 import { lumaLine, type DeskAct, type DeskCity, type DeskState, type ImportPreview } from '@/lib/event/desk';
 import { ago, copyText, Sec, Status, usePress, type Ask } from './parts';
+import { BASE } from '@/lib/routes';
 
 const noop = () => () => {};
 const plural = (n: number, one: string, many: string) => n + ' ' + (n === 1 ? one : many);
@@ -196,7 +197,7 @@ export const STATUS: Record<string, string> = { queued: 'Waiting', sent: 'Sent',
 
 /* the line for Luma's confirmation message, with a copy key; the site's address is read after load */
 function LumaLine({ said, say }: { said: { key: string; text: string; error: boolean } | null; say: (k: string, t: string, bad?: boolean) => void }) {
-  const site = useSyncExternalStore(noop, () => window.location.origin, () => '');
+  const site = useSyncExternalStore(noop, () => window.location.origin + BASE, () => '');
   const line = site ? lumaLine(site) : '';
   return (
     <>

@@ -12,6 +12,6 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: Request, { params }: { params: Promise<{ code: string }> }) {
   const base = siteUrl(req), code = teamKey((await params).code).slice(0, 6);
   const t = backendOn() ? await teamByCode(code) : null;
-  const to = await landing(t?.city || null).catch(() => '/preview');
+  const to = await landing(t?.city || null).catch(() => '/');
   return NextResponse.redirect(base + to + (to.indexOf('?') >= 0 ? '&' : '?') + 'team=' + encodeURIComponent(code), 303);
 }

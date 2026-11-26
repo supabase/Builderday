@@ -6,6 +6,7 @@
    A page picks the driver through FormsProvider's `live`; the sheets and the pages call `store` either way. */
 import { useSyncExternalStore } from 'react';
 import { slugOf } from '@/lib/forms';
+import { at } from '@/lib/routes';
 
 export type Session = { email: string; handle: string; voter: boolean };
 /* what the live driver knows about the person (GET /api/me) */
@@ -116,7 +117,7 @@ const standIn = {
 let me: Me | null = null, loaded = false, loading: Promise<void> | null = null;
 async function call<T>(path: string, method: string, data?: unknown): Promise<Result<T>> {
   try {
-    const r = await fetch(path, { method, headers: data ? { 'Content-Type': 'application/json' } : undefined, body: data ? JSON.stringify(data) : undefined, credentials: 'same-origin', cache: 'no-store' });
+    const r = await fetch(at(path), { method, headers: data ? { 'Content-Type': 'application/json' } : undefined, body: data ? JSON.stringify(data) : undefined, credentials: 'same-origin', cache: 'no-store' });
     const j = await r.json().catch(() => ({})) as T & { error?: string; wait?: number; field?: string };
     return r.ok ? { ok: true, data: j } : { ok: false, error: j.error || 'Something went wrong (' + r.status + '). Try again.', wait: j.wait, field: j.field };
   } catch { return { ok: false, error: 'No connection. Check you are online and try again.' }; }
@@ -178,7 +179,7 @@ const live = {
     if (keepPicture) f.append('keep', '1');
     if (file) f.append('picture', file);
     let r: Response;
-    try { r = await fetch('/api/entry', { method: 'POST', body: f, credentials: 'same-origin' }); } catch { throw Object.assign(new Error('No connection. Check you are online and try again.'), { field: '' }); }
+    try { r = await fetch(at('/api/entry'), { method: 'POST', body: f, credentials: 'same-origin' }); } catch { throw Object.assign(new Error('No connection. Check you are online and try again.'), { field: '' }); }
     const j = await r.json().catch(() => ({})) as { entry?: Me['entry']; error?: string; field?: string };
     if (!r.ok || !j.entry) throw Object.assign(new Error(j.error || 'Your entry was not saved. Try again.'), { field: j.field || '' });
     if (me) { me = { ...me, entry: j.entry, name: me.name || by || null }; emit(); }

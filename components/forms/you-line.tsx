@@ -1,6 +1,7 @@
 'use client';
 import { meNow, useFormsState } from './store';
 import { IN_ROOM_NEXT, notListedAnywhere } from '@/lib/event/rule';
+import { at } from '@/lib/routes';
 
 /* The line under a city page's header, for a signed-in person on a site with the backend: where they are on the list
    (signing out is in the account sheet, opened from the header). Before the day it also says when
@@ -12,7 +13,7 @@ export function YouLine({ city, cityName, date, start, state }: { city: string; 
   const pass = me.pass, here = !!pass && pass.city === city;
   let text: React.ReactNode;
   if (here) text = <>You are on the list for <b>{cityName}</b>{state === 'next' ? <>, {date}. Building starts <b>{start}</b>.</> : state === 'build' ? (me.entry ? <>. Your entry: <b>{me.entry.name}</b>.</> : pass.checkedIn ? '. Building is on: submit any time before the end.' : '. ' + IN_ROOM_NEXT) : '.'}</>;
-  else if (pass) text = <>You are on the list for <a className="ev-you-a" href={'/city/' + pass.city}>{pass.cityName}</a>. You can vote here; you submit in {pass.cityName}.</>;
+  else if (pass) text = <>You are on the list for <a className="ev-you-a" href={at('/city/' + pass.city)}>{pass.cityName}</a>. You can vote here; you submit in {pass.cityName}.</>;
   else text = <>Signed in as <b>{me.email}</b>. {notListedAnywhere}</>;
   return (
     <p className="ev-you">

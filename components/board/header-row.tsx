@@ -4,6 +4,7 @@ import { BuilderLogo } from '@/components/wheel/builder-logo';
 import { StateChip, type StateWord } from '@/components/screen/chip';
 import { hms, useSecond, type DayClock } from './clock';
 import { EVENT } from '@/lib/day-data';
+import { at } from '@/lib/routes';
 
 /* Row 0 of every day page: the mark (home), the page's title, the day's state as a chip, and a burnt-in clock that
    ticks once a second (the one thing that moves at rest). The clock is the only part that reads the second, so nothing
@@ -20,7 +21,7 @@ export function HeaderRow({ title, state, clock, first, offset, zone, homeHref, 
 }) {
   return (
     <header className="hr">
-      <a className="hr-mark" href={homeHref} aria-label={EVENT.name + ', home'}><BuilderLogo className="hr-mark-svg" /><span className="hr-mark-name">{EVENT.name}</span></a>
+      <a className="hr-mark" href={at(homeHref)} aria-label={EVENT.name + ', home'}><BuilderLogo className="hr-mark-svg" /><span className="hr-mark-name">{EVENT.name}</span></a>
       <span className="hr-title">{title}</span>
       <StateChip s={state} className="hr-chip" />
       <span className="hr-fill" />

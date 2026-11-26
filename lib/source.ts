@@ -21,6 +21,7 @@ import type { CityWorld, Row, Votes } from './city';
 import type { HomeCity, HomeWorld } from './home';
 import { publicSnap, rankOrder, type CitySnap, type DaySnap, type SnapCity, type SnapEntry, type SnapStep } from './event/snapshot';
 import { topTies } from './event/format';
+import { at } from '@/lib/routes';
 
 const minOf = (ms: number) => (ms - EPOCH) / 60000;
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
@@ -198,8 +199,8 @@ export function useSnapshots(on: boolean, city: string | null): { day: DaySnap |
       busy.current = true;
       try {
         const [d, c] = await Promise.all([
-          fetch('/api/day/snapshot', { cache: 'no-store' }).then((r) => (r.ok ? r.json() as Promise<DaySnap> : null)).catch(() => null),
-          city ? fetch('/api/city/' + encodeURIComponent(city) + '/snapshot', { cache: 'no-store' }).then((r) => (r.ok ? r.json() as Promise<CitySnap> : null)).catch(() => null) : Promise.resolve(null),
+          fetch(at('/api/day/snapshot'), { cache: 'no-store' }).then((r) => (r.ok ? r.json() as Promise<DaySnap> : null)).catch(() => null),
+          city ? fetch(at('/api/city/' + encodeURIComponent(city) + '/snapshot'), { cache: 'no-store' }).then((r) => (r.ok ? r.json() as Promise<CitySnap> : null)).catch(() => null) : Promise.resolve(null),
         ]);
         if (!dead) setS((o) => ({ day: d || o.day, city: c || o.city }));
       } finally { busy.current = false; }

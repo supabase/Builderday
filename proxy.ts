@@ -7,11 +7,12 @@ import { CITY_IDS } from '@/lib/day-data';
 /* Two jobs.
    1. The old city address: /city.html?city=<id>&moment=vote becomes /city/<id>?moment=vote, every other parameter
       kept. Without a city it goes to Berlin, as the old page did.
-   2. The gate. Before the day pages open, the home and the city pages (a project's own address
-      too) send visitors to the preview page with a temporary redirect, the wheel on that city. A signed-in host, judge
+   2. The gate. Before the day pages open, the home (/) shows the preview page under its own address (a rewrite), the
+      city pages (a project's own address too) redirect to it with the wheel on that city (/?city=<i>), and the old
+      /preview address redirects to /. Once they open, / is the day home, with no change of address. A signed-in host, judge
       or super admin passes; so does ?admin on a site without the backend, and on the local dev server. The desk, the
       stage, /in, the labs and the API are not gated. */
-const GATED = /^\/(?:city\/([^/]+)(?:\/p\/[^/]+)?\/?)?$/;
+const GATED = /^\/(?:city\/([^/]+)(?:\/p\/[^/]+)?\/?)?$/, PREVIEW = /^\/preview\/?$/;
 
 export async function proxy(req: NextRequest) {
   const url = req.nextUrl.clone();
@@ -22,10 +23,10 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(url, 308);
   }
 
-  const m = GATED.exec(url.pathname);
-  if (!m) return NextResponse.next();
+  const m = GATED.exec(url.pathname), old = PREVIEW.test(url.pathname);
+  if (!m && !old) return NextResponse.next();
   const on = backendOn();
-  if (url.searchParams.has('admin') && (!on || process.env.NODE_ENV !== 'production')) return NextResponse.next();
+  if (!old && url.searchParams.has('admin') && (!on || process.env.NODE_ENV !== 'production')) return NextResponse.next();
   if ((await dayGate()).open) return NextResponse.next();
 
   /* a session's cookies are read, and refreshed ones passed on, as @supabase/ssr asks of a proxy */
@@ -48,13 +49,18 @@ export async function proxy(req: NextRequest) {
   }
 
   const to = req.nextUrl.clone();
-  to.pathname = '/preview';
-  to.search = '';
-  const i = m[1] ? CITY_IDS.indexOf(decodeURIComponent(m[1])) : -1;
-  if (i >= 0) to.searchParams.set('city', String(i));
-  const out = NextResponse.redirect(to, 307);
+  let out: NextResponse;
+  if (old) { to.pathname = '/'; out = NextResponse.redirect(to, 307); }
+  else if (!m![1]) { to.pathname = '/preview'; out = NextResponse.rewrite(to, { request: req }); }
+  else {
+    to.pathname = '/';
+    to.search = '';
+    const i = CITY_IDS.indexOf(decodeURIComponent(m![1]));
+    if (i >= 0) to.searchParams.set('city', String(i));
+    out = NextResponse.redirect(to, 307);
+  }
   res.cookies.getAll().forEach((c) => out.cookies.set(c));
   return out;
 }
 
-export const config = { matcher: ['/', '/city.html', '/city/:path*'] };
+export const config = { matcher: ['/', '/preview', '/city.html', '/city/:path*'] };

@@ -12,6 +12,7 @@
 import { REC } from './pen';
 import { glassGlsl } from '@/components/wheel/crt';
 import { WHEEL_DEF } from '@/components/wheel/config';
+import { at } from '@/lib/routes';
 
 export type BeamLook = { sigma: number; halo: number; haloW: number; expo: number; hot: number };
 export type BeamStats = { contexts: number; format: string; lost: number };
@@ -258,7 +259,7 @@ function glassInit(st: State): Glass | null {
     const u: Glass['u'] = {};
     for (const n of ['uPicture', 'uLand', 'uResolution', 'uHub', 'uRadius', 'uG', 'uC', 'uN', 'uMirror', 'uThrough', 'uFringe']) u[n] = gl.getUniformLocation(p, n);
     const g: Glass = { p, vao, pic: tex(gl.CLAMP_TO_EDGE), land: tex(gl.REPEAT), landOk: false, picKey: null, u };
-    const img = new Image(); img.onload = () => { if (S !== st) return; gl.bindTexture(gl.TEXTURE_2D, g.land); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img); g.landOk = true; landDone(); }; img.src = '/wheel/land.png';
+    const img = new Image(); img.onload = () => { if (S !== st) return; gl.bindTexture(gl.TEXTURE_2D, g.land); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img); g.landOk = true; landDone(); }; img.src = at('/wheel/land.png');
     return g;
   } catch (e) { console.warn(e); return null; }
 }

@@ -10,6 +10,7 @@ import { labCity, labRow, serverNow } from '@/lib/stage/lab';
 import { loadStage, placeName, stageRights, wallEventFor } from '@/lib/stage/server';
 import { StageLive, type WallStart } from '@/components/stage/stage-live';
 import '@/components/stage/stage.css';
+import { at } from '@/lib/routes';
 
 export const dynamic = 'force-dynamic';
 type P = { params: Promise<{ city: string }> };
@@ -34,7 +35,7 @@ export default async function Page({ params }: P) {
   const [stage, event] = await Promise.all([loadStage(city, { hidden: false, code: who.drive }), wallEventFor(city)]);
   /* the address on the wall's QR: the city page, which only Builder Day has. Another event's places have no page to
      sign in and submit on yet, so their wall shows the room code alone (builders use it from their editor). */
-  const url = event.bd ? proto + '://' + host + '/city/' + city : '';
+  const url = event.bd ? proto + '://' + host + at('/city/' + city) : '';
   const base = { city, name, url, cfg, first, seed: Number((day as { seed?: number }).seed) || 17, event };
   let start: WallStart;
   if (stage) {

@@ -4,6 +4,7 @@
 import { useState, type FormEvent } from 'react';
 import type { DeskAct, DeskCity, DeskScene, DeskState } from '@/lib/event/desk';
 import { Sec, Status, usePress, type Ask } from './parts';
+import { at } from '@/lib/routes';
 
 const KIND: Record<string, string> = { speaker: 'Speaker', words: 'Words', link: 'Link', product: 'Product' };
 type Kind = 'speaker' | 'words' | 'link' | 'product';
@@ -46,7 +47,7 @@ export function Deck({ s, c, act, ask }: { s: DeskState; c: DeskCity; act: DeskA
   return (
     <>
       <Sec title={c.name + '’s deck'} id="dk-deck" aside={s.scenes.length + (s.scenes.length === 1 ? ' slide' : ' slides')}>
-        <p className="dk-note">The stage shows these in order. Drive it from <a className="dk-t" href={'/desk/' + c.id + '/remote'}>the remote</a>.</p>
+        <p className="dk-note">The stage shows these in order. Drive it from <a className="dk-t" href={at('/desk/' + c.id + '/remote')}>the remote</a>.</p>
         <ol className="dk-list">
           {s.scenes.map((sc, i) => {
             const k = 's:' + sc.id;

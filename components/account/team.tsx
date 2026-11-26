@@ -6,6 +6,7 @@ import { ErrBox, FM_F, FM_L, FM_NOTE, FM_T } from '@/components/forms/sheet';
 import { teamCode, teamCodeOK, teamKey } from '@/lib/team';
 import { TeamPicture } from './team-picture';
 import { initialsOf, type Seat } from './team-art';
+import { at } from '@/lib/routes';
 
 /* "Your team", in the account sheet of someone with a place. Builders on one city's list make a team and share one
    entry: any of them can submit or edit it, none of them can vote for it.
@@ -126,7 +127,7 @@ export function TeamPart({ me, look }: { me: Me; look?: TeamLook }) {
           {full && !t.set ? <p className="ac-st">The team is full: {max} people.</p> : null}
           {nameless ? <p className={FM_NOTE}>Your team sees you by the start of your email until your name is in. It comes from Luma, or from the first time you submit.</p> : null}
           <p className="ac-st">{mine
-            ? <>Your team’s project: {me.open ? <a className="underline-link" href={'/city/' + t.city + '/p/' + mine.slug}>{mine.name}</a> : <b>{mine.name}</b>}. Any of you can edit it until building ends.</>
+            ? <>Your team’s project: {me.open ? <a className="underline-link" href={at('/city/' + t.city + '/p/' + mine.slug)}>{mine.name}</a> : <b>{mine.name}</b>}. Any of you can edit it until building ends.</>
             : <>No project yet. On the day any of you submits it, once, for the whole team.</>}</p>
           {t.set ? <p className="ac-st">The team is set: building has ended in {t.cityName}.</p>
             : leaving ? (

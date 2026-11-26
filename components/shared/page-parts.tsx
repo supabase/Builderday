@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import clsx from 'clsx';
 import { SupabaseMark } from './supabase-mark';
+import { at } from '@/lib/routes';
 
 /* a section's mono caps heading */
 /* the page frame: the container every width rule queries (the phone: and tablet: variants) */
@@ -14,7 +15,7 @@ export const BELOW = 'relative mx-(--m) rule-t';
 /* the mark: home on the home page, the whole day on a city page */
 export function MastheadMark({ href, label }: { href: string; label: string }) {
   return (
-    <a className="mh-mark inline-flex min-h-11 items-center gap-2 whitespace-nowrap text-lg tracking-snug" href={href} aria-label={label}>
+    <a className="mh-mark inline-flex min-h-11 items-center gap-2 whitespace-nowrap text-lg tracking-snug" href={at(href)} aria-label={label}>
       <SupabaseMark /><span className="font-semibold">supabase <b className="font-regular text-ink-2 phone:hidden">builder day</b></span>
     </a>
   );

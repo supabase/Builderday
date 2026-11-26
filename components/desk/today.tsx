@@ -4,6 +4,7 @@ import { clockText, nextThing, phaseLine, type DayWords, type DeskAct, type Desk
 import { BUILDER_DAY, hasVotes } from '@/lib/event/format';
 import { EVENT } from '@/lib/day-data';
 import { IconGo, IconOut, Status, usePress, type Ask } from './parts';
+import { at } from '@/lib/routes';
 
 export function Today({ s, c, now, act, ask, go }: { s: DeskState; c: DeskCity; now: number; act: DeskAct; ask: (a: Ask) => void; go: (tab: string) => void }) {
   const { busy, said, run } = usePress(act);
@@ -25,7 +26,7 @@ export function Today({ s, c, now, act, ask, go }: { s: DeskState; c: DeskCity; 
       yes: 'Add 5 minutes', run: () => run('next', 'clock.add', { city: c.id, what: 'build', mins: 5 }, () => 'Five minutes added. Building ends at ' + clockText((c.buildEnd ?? now) + 5 * 60000, c.offset) + '.'),
     });
   };
-  const remote = '/desk/' + c.id + '/remote';
+  const remote = at('/desk/' + c.id + '/remote');
   return (
     <>
       <section className="dk-sec" aria-labelledby="dk-today">
@@ -45,8 +46,8 @@ export function Today({ s, c, now, act, ask, go }: { s: DeskState; c: DeskCity; 
             <Status said={said} k="next" />
             <div className="dk-links">
               <a className="dk-t" href={remote}>Open the remote</a>
-              <a className="dk-t" href={'/city/' + c.id + '/stage'} target="_blank" rel="noreferrer">Open the stage</a>
-              {ours ? <a className="dk-t" href={'/city/' + c.id} target="_blank" rel="noreferrer">Open the city page</a> : null}
+              <a className="dk-t" href={at('/city/' + c.id + '/stage')} target="_blank" rel="noreferrer">Open the stage</a>
+              {ours ? <a className="dk-t" href={at('/city/' + c.id)} target="_blank" rel="noreferrer">Open the city page</a> : null}
             </div>
           </div>
         ) : s.can.judge && !ours ? (
@@ -56,7 +57,7 @@ export function Today({ s, c, now, act, ask, go }: { s: DeskState; c: DeskCity; 
           </div>
         ) : s.can.judge ? (
           <div className="dk-next">
-            <a className="dk-key is-plain" href={'/city/' + c.id} target="_blank" rel="noreferrer">Judge on the {c.name} page<IconOut /></a>
+            <a className="dk-key is-plain" href={at('/city/' + c.id)} target="_blank" rel="noreferrer">Judge on the {c.name} page<IconOut /></a>
             <p className="dk-note">Your votes are on the city page, as on the day: up to {s.me.roles.find((r) => r.role === 'judge')?.budget ?? 50} in all, several on one project if you like. Flags on entries are under Entries.</p>
           </div>
         ) : null}

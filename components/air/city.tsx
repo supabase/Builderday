@@ -9,7 +9,7 @@ import type { HomeWorld } from '@/lib/home';
 import { EPOCH, EVENT } from '@/lib/day-data';
 import { CODE, PLACE } from '@/lib/places';
 import { hhmm, ord, tz } from '@/lib/format';
-import { routes } from '@/lib/routes';
+import { routes, at } from '@/lib/routes';
 import { Picture } from '@/components/pictures/picture';
 import { HowItWorks, PrizeBlock } from '@/components/day/explain';
 import { Ending, type EndCity } from '@/components/day/ending';
@@ -143,7 +143,7 @@ function Facing({ W, H, clock, first, wheel, pick, elsewhere, hidden, action, on
           ) : <p className="oa-face-lead">{W.state === 'next' ? 'No entries until it opens.' : 'No entries yet.'}</p>}
         {elsewhere ? <p className="oa-face-lead">The pick went to {elsewhere.name}, {elsewhere.city}.</p> : null}
         <div className="oa-face-acts">
-          {action.press ? <button type="button" className="oa-act" onClick={action.press} aria-haspopup="dialog">{action.words}</button> : <a className="oa-act" href={action.href}>{action.words}</a>}
+          {action.press ? <button type="button" className="oa-act" onClick={action.press} aria-haspopup="dialog">{action.words}</button> : <a className="oa-act" href={action.href ? at(action.href) : undefined}>{action.words}</a>}
           {gate.can && action.href !== '#ranking' ? <button type="button" className="oa-link" onClick={onVote} style={{ background: 'none', border: 0, cursor: 'pointer', padding: 0 }}>Vote</button> : null}
         </div>
       </div>
