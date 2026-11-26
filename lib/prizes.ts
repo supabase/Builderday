@@ -5,9 +5,7 @@
    box each. There is no 2nd or 3rd prize in a city.
    Global: the Supabase team picks 1st, 2nd and 3rd from all the finalists, announced at the end of Launch Week.
 
-   Specs and prices are the configurations those prices buy on apple.com and meta.com (checked 2026-11-26). The prize
-   section prints the price beside the spec (owner, 2026-11-26: "in spec list add dollar amount"); nothing else prints
-   what a prize costs, and never a total. Every page, drawing, email and editor answer reads
+   Specs and prices are the configurations those prices buy on apple.com and meta.com (checked 2026-11-26). No page prints a price (owner, 2026-11-26, reversing "add dollar amount"), and never a total; `price` stays in the sheet. Every page, drawing, email and editor answer reads
    from here. Pure. */
 
 export type Prize = {
@@ -37,10 +35,9 @@ export const PRIZE_SHEET = {
   announce: 'at the end of Launch Week',
 } as const;
 
-/* the spec with the price after it: "14-inch, M6, 24GB, 1TB · $2,199" (the price never wraps away from the spec) */
+/* the spec as printed (owner, 2026-11-26: no prices shown; `price` stays in the sheet, unprinted) */
 export function specLine(p: Prize): string | null {
-  const price = p.price ? '$' + p.price.toLocaleString('en-US') : null;
-  return [p.spec, price].filter(Boolean).join('\u00a0·\u00a0') || null;
+  return p.spec || null;
 }
 /* "$1,000 in Supabase credits" */
 export function credits(p: Prize): string { return '$' + p.credits.toLocaleString('en-US') + ' in Supabase credits'; }
