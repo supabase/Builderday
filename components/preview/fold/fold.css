@@ -24,7 +24,7 @@
 
 /* ---------- the header ---------- */
 .pf-hdr-wrap { position: sticky; top: calc(var(--pf-hdr) - var(--pf-hh)); z-index: 30; box-sizing: border-box; height: var(--pf-hh); margin-bottom: calc(-1 * var(--pf-hh)); padding-top: calc(var(--pf-mc) - 22px); pointer-events: none; }
-.pf-hdr { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 24px; height: 44px; padding: 0 var(--pf-gutter); }
+.pf-hdr { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 24px; height: 44px; padding: 0 var(--pf-edge); }
 /* the first screen's words keep under the header: its mark's centre (--pf-mc, 49px) and half its height (22px), then
    36px; a plain length, as the wheel's engine reads it as a number */
 .pf .wh-pin { --wh-gutter: var(--pf-edge); --wh-safe-top: 107px; }
@@ -51,7 +51,7 @@
 /* the cells overlap by a pixel: the focused one comes forward so its ring is whole */
 .pf-cell:focus-visible { position: relative; z-index: 1; }
 /* the very top's links: How it works, and Sign in (or the account) once the person is known */
-.pf-tops { position: absolute; right: var(--pf-gutter); top: 0; display: flex; align-items: center; gap: 28px; height: 44px; }
+.pf-tops { position: absolute; right: var(--pf-edge); top: 0; display: flex; align-items: center; gap: 28px; height: 44px; }
 .pf-top { display: flex; align-items: center; height: 44px; padding: 0; border: 0; background: none; color: var(--pf-ink); font: 500 17px/1 var(--wh-sans); letter-spacing: -0.01em; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 5px; cursor: pointer; white-space: nowrap; }
 /* the very top's links give way to the cells. The bar grows out of Sign in: on, the Sign in cell takes the plain
    link's place in the same frame (a cut, the board's way); off, the link is back in the frame the last cell goes. */
