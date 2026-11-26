@@ -8,6 +8,5 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: [{ userAgent: '*', allow: at('/'), disallow: ['/lab/', '/desk', '/api/', '/in/', '/city/*/stage'].map(at) }],
     sitemap: SITE_URL + '/sitemap.xml',
-    host: SITE_URL,
   };
 }

@@ -39,7 +39,7 @@
 .wh-wordmark[data-mark='both'], .wh-wordmark[data-mark='name'], .wh-wordmark[data-mark='builder'] { display: flex; align-items: center; gap: 14px; }
 /* the Builder Day logo as its brand has it: the pixel globe and the name in its green, the name in Manrope */
 .wh-wordmark svg.wh-builder { width: 28px; height: 28px; flex: none; shape-rendering: crispEdges; filter: none; }
-.wh-wordmark[data-mark='builder'] { gap: 12px; color: #56bd88; }
+.wh-wordmark[data-mark='builder'] { gap: 12px; color: #3ecf8e; }
 .wh-wordmark[data-mark='builder'] .wh-name { font: 600 22px/1 var(--font-manrope), var(--wh-sans); letter-spacing: -0.02em; }
 /* the name beside the mark, in the face and size of the page's other top-line words */
 .wh-name { font: 500 17px/1 var(--wh-sans); letter-spacing: -0.01em; white-space: nowrap; }
@@ -172,8 +172,8 @@ button.wh-cta { appearance: none; margin: 0; padding: 0; border: 0; background: 
 .wh-lead h1 { max-width: max(var(--wh-h1-max, 100vw), 5.5em); margin-bottom: 0.3em; font-weight: 500; font-size: min(max(32px, min(var(--f) * var(--hero-title-k, 1.55), 8svh)), var(--wh-title-cap, 999px)); line-height: 1.08; letter-spacing: -0.035em; }
 /* tight: the date is one more line under the host's, set apart by the gap */
 .wh-lead .wh-lead-date { margin-top: min(var(--f) * var(--hero-gap-k, 0.6), 4svh); }
-.wh-supabase { display: inline-flex; align-items: center; gap: 0.27em; margin-left: 0.18em; vertical-align: -0.14em; color: var(--wh-ink); font-weight: 600; letter-spacing: -0.03em; }
-.wh-supabase svg { width: 0.86em; height: 0.9em; flex: none; }
+/* the Supabase logo set in the line: its wordmark's x-height matches the words' and its baseline sits on theirs */
+.wh-supabase { display: inline-block; height: 1.14em; width: auto; aspect-ratio: 207.272 / 40; margin-left: 0.2em; vertical-align: -0.31em; color: var(--wh-ink); }
 .wh-col-foot { position: absolute; left: 0; top: calc(100% + 40px); display: flex; flex-direction: column; align-items: flex-start; gap: 16px; }
 /* a short window: the words close up so they stay clear of the header */
 @media (max-height: 760px) { .wh-col-foot { top: calc(100% + 32px); } }

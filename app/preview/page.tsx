@@ -17,13 +17,15 @@ import { FormsProvider } from '@/components/forms/forms-provider';
 
 const TITLE = `${EVENT.name}: ${CITY_WORD} cities, one day`;
 const DESCRIPTION = `${CITY_WORD_CAP} cities, east to west on 10 December 2026. Most build for 90 minutes from ${cityStartLocal({ start: USUAL_START })} local time. The top 3 in each city win prizes and go to the global final, for a MacBook Pro, a Mac mini or a MacBook Neo.`;
-/* one address for every ?city= and ?at= variant; the share image is opengraph-image.tsx beside this file */
-export const metadata: Metadata = { ...pageMeta(TITLE, DESCRIPTION), alternates: { canonical: '/' }, twitter: { card: 'summary_large_image' } };
+/* one address for every ?city= and ?at= variant (the site's own, with no trailing slash: that one redirects); the share
+   image is opengraph-image.tsx beside this file */
+const meta = pageMeta(TITLE, DESCRIPTION);
+export const metadata: Metadata = { ...meta, alternates: { canonical: SITE_URL }, openGraph: { ...meta.openGraph, url: SITE_URL }, twitter: { card: 'summary_large_image' } };
 /* the status bar takes the page's own paper (fold.tsx PaperStyle: rgb(p, p+1, p+1)), not the site-wide ground */
 const hex = (n: number) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0');
 const P = clampWheel(wheel).paper;
 export const viewport: Viewport = { themeColor: '#' + hex(P) + hex(P + 1) + hex(P + 1) };
-const LD = previewLd({ url: SITE_URL + '/', description: DESCRIPTION });
+const LD = previewLd({ url: SITE_URL, description: DESCRIPTION });
 
 /* The preview home, until the day: the wheel, then the day under the fold (saved/fold.config.json, tuned at
    /lab/fold). ?city= opens on a city by its place in the list (from 0), ?gl=0 draws without WebGL, ?mark= and ?globe= try the wheel's others, ?admin shows the page's knobs. */
