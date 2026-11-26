@@ -164,9 +164,14 @@
 .rd-extra .rd-sb { min-height: 44px; background: none; border-color: var(--pf-rule); color: var(--pf-ink); transition: border-color var(--dur-hover, 140ms) var(--ease-out, ease-out), scale var(--dur-hover, 140ms) var(--ease-out, ease-out); }
 @media (hover: hover) and (pointer: fine) { .rd-extra .rd-sb:hover { background: none; border-color: var(--pf-ink); } }
 .rd .rd-links { display: flex; flex-wrap: wrap; gap: 4px 20px; }
-.rd-links a { display: inline-flex; align-items: center; min-height: 44px; color: var(--pf-ink); font: 500 15px/1 var(--wh-sans); text-decoration: underline; text-decoration-color: var(--pf-rule); text-underline-offset: 3px; transition: text-decoration-color var(--dur-hover, 140ms) var(--ease-out, ease-out); }
+.rd-links a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: var(--pf-ink); font: 500 15px/1 var(--wh-sans); text-decoration: none; }
+/* only the name is underlined; the arrow stands clear of the line */
+.rd-links-t { text-decoration: underline; text-decoration-thickness: 1px; text-decoration-color: var(--pf-rule); text-underline-offset: 4px; transition: text-decoration-color var(--dur-hover, 140ms) var(--ease-out, ease-out); }
+.rd-away { flex: none; width: 10px; height: 10px; color: var(--pf-muted); transition: translate var(--dur-hover, 140ms) var(--ease-out, ease-out), color var(--dur-hover, 140ms) var(--ease-out, ease-out); }
+.rd-key .rd-away { margin-left: 8px; color: currentColor; }
 .rd-links a:focus-visible { outline: 2px solid var(--pf-soft); outline-offset: 2px; }
-@media (hover: hover) and (pointer: fine) { .rd-links a:hover { text-decoration-color: var(--pf-ink); } }
+/* on hover the line comes up to full ink and the arrow leans a pixel the way it points */
+@media (hover: hover) and (pointer: fine) { .rd-links a:hover .rd-links-t { text-decoration-color: var(--pf-ink); } .rd-links a:hover .rd-away { translate: 1px -1px; color: var(--pf-ink); } .rd-key:hover .rd-away { translate: 1px -1px; } }
 /* the editor's line takes the full row under its words */
 .rd-extra > .rd-extra-ed { grid-template-columns: minmax(0, 1fr); }
 .rd-extra-line { display: grid; gap: 12px; max-width: 760px; min-width: 0; }
@@ -177,4 +182,4 @@
   .rd-extra > li { grid-template-columns: minmax(0, 1fr); }
   .rd-extra .rd-sb { justify-self: start; }
 }
-@media (prefers-reduced-motion: reduce) { .rd-more > summary, .rd-links a { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .rd-more > summary, .rd-links-t, .rd-away { transition: none; } }

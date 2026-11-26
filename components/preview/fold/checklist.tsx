@@ -106,7 +106,7 @@ export function FoldList({ city, cityId, auto, step }: { city: string; cityId: s
                   <h4>{t.name}</h4>
                   <p>{t.why}</p>
                   <div className="rd-tool-k">
-                    <a className="rd-key" href={t.href} {...away(t.href)}>{t.label}<span aria-hidden="true"> ↗</span><span className="rd-vh"> (opens in a new tab)</span></a>
+                    <a className="rd-key" href={t.href} {...away(t.href)}>{t.label}<Away /><span className="rd-vh"> (opens in a new tab)</span></a>
                     <button type="button" className="rd-mark" aria-pressed={ticked.has(t.id)} onClick={() => tick(t.id)}><span className="rd-mark-b" aria-hidden="true" />I have this<span className="rd-vh">: {t.name}</span></button>
                   </div>
                 </li>
@@ -131,6 +131,12 @@ export function FoldList({ city, cityId, auto, step }: { city: string; cityId: s
 
 /* the person's own Builder Day line, written for the editor they pick. Signed out (or with no place) there is no line
    yet; while the server is not open, none for anyone. */
+/* a link that leaves the page: a drawn arrow up and to the right, square cut like the page's other marks, outside the
+   link's underline */
+export function Away() {
+  return <svg className="rd-away" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 8 8 2M3.5 2H8v4.5" fill="none" stroke="currentColor" strokeWidth="1.4" /></svg>;
+}
+
 export function EditorLine({ url, signedIn, onCopy }: { url: string | null; signedIn: boolean; onCopy: () => void }) {
   const [pick, setPick] = useState('claude'), ed = EDITORS.find((e) => e.id === pick) ?? EDITORS[0];
   const [copied, setCopied] = useState<'no' | 'yes' | 'sel'>('no'), [mac, setMac] = useState(true), back = useRef(0), code = useRef<HTMLElement>(null);

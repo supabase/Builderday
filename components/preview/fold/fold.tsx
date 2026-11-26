@@ -99,16 +99,17 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
 
   /* the person, drawn after /api/me answers, so the first paint is the signed-out page */
   const forms = useForms(), fs = useFormsState(), me = meNow();
-  const pass = me?.pass ?? null, mine = pass ? cities.findIndex((c) => c.id === pass.city) : -1;
+  /* with signing in off, the page is the signed-out page for everyone */
+  const pass = cfg.signin === 'on' ? me?.pass ?? null : null, mine = pass ? cities.findIndex((c) => c.id === pass.city) : -1;
   /* the header's register cell is the person's own (a button, not the link): the dock is measured again when it changes */
-  const mineCell = !!forms && cfg.acct === 'merged' && cellState(fs.signedIn, me) === 'place';
+  const mineCell = !!forms && cfg.signin === 'on' && cfg.acct === 'merged' && cellState(fs.signedIn, me) === 'place';
   const signIn = useMemo(() => (forms ? () => openAccount(forms) : undefined), [forms]);
   const acct: Acct | null = useMemo(() => {
-    if (!forms || hero) return null;
+    if (!forms || hero || cfg.signin === 'off') return null;
     const state = cellState(fs.signedIn, me);
     return { state, code: pass ? CODE[pass.city] || pass.city.slice(0, 3).toUpperCase() : '', cityName: pass?.cityName || '', merged: cfg.acct === 'merged', top: cfg.acctTop === 'both',
       open: signIn! };
-  }, [forms, hero, fs.signedIn, me, pass, cfg.acct, cfg.acctTop, signIn]);
+  }, [forms, hero, fs.signedIn, me, pass, cfg.acct, cfg.acctTop, cfg.signin, signIn]);
   /* arriving signed in, the wheel turns to the person's city, once, and never after the visitor has turned it (an
      address with ?city= already says where to start) */
   /* the register links: for the person's own city they open the account instead ("Your place in Berlin"). No
@@ -340,7 +341,7 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
             mine={mine} onMine={forms ? () => forms.account() : undefined} />
         </section>
       );
-      case 'ready': return line && cfg.ready === 'short' ? <FoldShort key={id} city={city.name} cityId={city.id} auto={cfg.arrive === 'tube'} step={cfg.dryStep} more={cfg.readyMore} /> : line && cfg.ready === 'list' ? <FoldList key={id} city={city.name} cityId={city.id} auto={cfg.arrive === 'tube'} step={cfg.dryStep} /> : (
+      case 'ready': return line && cfg.ready === 'short' ? <FoldShort key={id} city={city.name} cityId={city.id} auto={cfg.arrive === 'tube'} step={cfg.dryStep} more={cfg.readyMore} signin={cfg.signin === 'on'} /> : line && cfg.ready === 'list' ? <FoldList key={id} city={city.name} cityId={city.id} auto={cfg.arrive === 'tube'} step={cfg.dryStep} /> : (
         <div key={id} id="ready" className="pf-part" data-part={id}>
           {line ? <FoldReady city={city.name} cityId={city.id} mode={cfg.ready === 'list' || cfg.ready === 'short' ? 'steps' : cfg.ready} auto={!late && cfg.arrive === 'tube'} step={cfg.dryStep} hold={cfg.dryHold} onSignIn={signIn} /> : <GetReady city={city.name} cityId={city.id} id="ready" onSignIn={signIn} />}
         </div>

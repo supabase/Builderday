@@ -61,6 +61,7 @@
   "wordsPhone": 20,
   "acct": "merged",
   "acctTop": "both",
+  "signin": "off",
   "introSweep": 1.5,
   "introMs": 300,
   "rowTotal": 360,

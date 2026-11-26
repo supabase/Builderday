@@ -27,6 +27,9 @@ export type FoldCfg = {
   /* the account: with a place, the register cell becomes the account (merged) or the account cell
      sits beside it (beside); Sign in only in the header's cells (link) or also at the very top (both) */
   acct: 'merged' | 'beside'; acctTop: 'link' | 'both';
+  /* signing in on this page: off hides every way in (the header's Sign in cell, the link at the top, and Get ready's
+     "Sign in now" and "Submit from your editor"), until it is ready to come back */
+  signin: 'on' | 'off';
   /* the first screen; the space above the first part (under the wheel, on the page's ground) */
   peek: number; firstTop: number;
   /* the globe's dock: its size in the header, how much of the wheel's height the dock takes, its turn with the scroll */
@@ -76,7 +79,7 @@ export type FoldCfg = {
 
 export const FOLD_DEF: FoldCfg = {
   dir: 'line', page: 'full',
-  glass: 'fixed', globe: 'docks', input: 'hand', jump: 'smooth', scrollEase: 'brake', cities: 'belt', ready: 'dry', readyMore: 'closed', prizes: 'block', order: 'prize-first', words: 'lede', arrive: 'tube', arrival: 'tune', back: 'quiet', bar: 'none', topLink: 'none', acct: 'merged', acctTop: 'both',
+  glass: 'fixed', globe: 'docks', input: 'hand', jump: 'smooth', scrollEase: 'brake', cities: 'belt', ready: 'dry', readyMore: 'closed', prizes: 'block', order: 'prize-first', words: 'lede', arrive: 'tube', arrival: 'tune', back: 'quiet', bar: 'none', topLink: 'none', acct: 'merged', acctTop: 'both', signin: 'on',
   peek: 56, firstTop: 28,
   dockSize: 26, dockEnd: 0.62, dockTurn: 0.3,
   barPad: 22, cellPad: 12, dotSize: 2,
@@ -118,7 +121,7 @@ export const FOLD_BOUNDS: Record<string, [number, number, number]> = {
 export const FOLD_CHOICES: Record<string, string[]> = {
   dir: ['base', 'plain', 'line', 'unroll'], page: ['full', 'hero'],
   glass: ['fixed', 'today'], globe: ['docks', 'leaves'], input: ['hand', 'globe'], jump: ['roll', 'smooth', 'cut'], scrollEase: ['brake', 'ease', 'in-out'],
-  cities: ['belt', 'board', 'clocks'], ready: ['dry', 'steps', 'list', 'short'], readyMore: ['closed', 'open'], prizes: ['block', 'podium', 'type'], order: ['prize-first', 'cities-first', 'how-first'], words: ['lede', 'none'], arrive: ['tube', 'none'], arrival: [...ARRIVALS, 'none'], back: ['quiet', 'same'], bar: ['none', 'cells'], topLink: ['none', 'how'], acct: ['merged', 'beside'], acctTop: ['link', 'both'], howAuto: ['view', 'off'],
+  cities: ['belt', 'board', 'clocks'], ready: ['dry', 'steps', 'list', 'short'], readyMore: ['closed', 'open'], prizes: ['block', 'podium', 'type'], order: ['prize-first', 'cities-first', 'how-first'], words: ['lede', 'none'], arrive: ['tube', 'none'], arrival: [...ARRIVALS, 'none'], back: ['quiet', 'same'], bar: ['none', 'cells'], topLink: ['none', 'how'], acct: ['merged', 'beside'], acctTop: ['link', 'both'], signin: ['on', 'off'], howAuto: ['view', 'off'],
   howBuild: ['term', 'receipt', 'chat'], howLink: ['lines', 'bus', 'ribbon', 'none'], howPrize: ['tags', 'none'], howHatch: ['lift', 'stay'],
 };
 
