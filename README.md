@@ -31,7 +31,8 @@ Parameters: `?city=` opens on a city by its place in the list (from 0), `?at=lat
 
 | Path | Holds |
 |---|---|
-| `app/` | The page, the layout, the share image, robots and the sitemap. `globals.css` holds the design tokens. |
+| `app/` | The page, the layout, the share image (`opengraph-image.tsx`), robots and the sitemap. `globals.css` holds the design tokens. |
+| `assets/og/` | What the share image is drawn with: its three fonts and the campaign frame's logo, Supabase lockup and guide. |
 | `components/wheel/` | The city wheel: the engine, the text globe, the mark and the Register ticket. |
 | `components/preview/` | The page around the wheel: the header, the arrival, the city facts. |
 | `components/screen/` | The screen look over the page: the lines, grain and corners. |
