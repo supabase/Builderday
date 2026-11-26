@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type PointerEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
 import { MONO, type WheelCfg } from '@/components/wheel/config';
 import { globeLook } from '@/components/wheel/globe-look';
 import { STUDY, drawTextGlobe, loadFrames, loadLand, subsolar, type Frames, type LandMap } from '@/components/wheel/text-globe';
@@ -102,7 +102,7 @@ export function Ending({ cfg: given, wheel, cities, start, last, date, sound, li
       onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) letGo(); }} style={{ ...style, '--en-cell': cfg.cell + 'px', '--en-tpl': `minmax(0, ${cfg.reg}fr) repeat(3, minmax(0, 1fr))`, '--en-tag': cfg.tag } as CSSProperties}>
       {telex ? <p className="en-tx" aria-hidden="true">ZCZC</p> : null}
       {cfg.mark === 'big' ? <div className="en-big" aria-hidden="true"><BuilderLogo /></div> : null}
-      {cfg.end === 'flat' && map ? <FlatMap cfg={cfg} wheel={wheel} cities={cities} aim={aim} point={point} phone={phone} reduced={reduced} play={play} onPress={onMapPress} states={states} label={label} /> : null}
+      {cfg.end === 'flat' && map ? <FlatMap cfg={cfg} wheel={wheel} cities={cities} aim={aim} pick={hold} phone={phone} reduced={reduced} play={play} onPress={onMapPress} states={states} label={label} /> : null}
       {cfg.end === 'ident' ? <Ident cfg={cfg} wheel={wheel} cities={cities} aim={aim} cells={cells} /> : null}
       {cfg.end === 'cities' ? (
         <nav className="en-names" aria-label="Register for a city">
@@ -143,8 +143,8 @@ export function Ending({ cfg: given, wheel, cities, start, last, date, sound, li
 }
 
 /* ---------- the world opened flat ---------- */
-function FlatMap({ cfg, wheel, cities, aim, point, phone, reduced, play, onPress, states, label = 'Register for a city' }: {
-  cfg: EndCfg; wheel: WheelCfg; cities: EndCity[]; aim: number; point: (i: number) => void; phone: boolean; reduced: boolean; play: number; onPress?: () => void;
+function FlatMap({ cfg, wheel, cities, aim, pick, phone, reduced, play, onPress, states, label = 'Choose your city' }: {
+  cfg: EndCfg; wheel: WheelCfg; cities: EndCity[]; aim: number; pick: (i: number) => void; phone: boolean; reduced: boolean; play: number; onPress?: () => void;
   states?: { mark: string; ink: number }[]; label?: string;
 }) {
   const host = useRef<HTMLDivElement>(null), cv = useRef<HTMLCanvasElement>(null);
@@ -224,12 +224,13 @@ function FlatMap({ cfg, wheel, cities, aim, point, phone, reduced, play, onPress
             const top = Math.min(m.r, m.code.r), bottom = Math.max(m.r, m.code.r) + 1;
             const box = { left: lo * colW + '%', width: (hi - lo + 1) * colW + '%', top: top * lineH + '%', height: (bottom - top) * lineH + '%' } as CSSProperties;
             const code = { left: ((m.code.c - lo) / (hi - lo + 1)) * 100 + '%', top: ((m.code.r - top + 0.5) / (bottom - top)) * 100 + '%' } as CSSProperties;
-            const props = { className: 'en-mk', style: box, 'data-on': m.i === aim ? '' : undefined, 'data-side': m.label.side, onPointerEnter: (e: PointerEvent) => { if (e.pointerType === 'mouse') point(m.i); }, onFocus: () => point(m.i) };
+            /* a press picks the city (the cells under the map follow it, and so does every Register on the page); a
+               pointer passing over only lights the code, so the cells never change under someone who is just reading */
             return (
               <li key={x.id}>
-                {x.press
-                  ? <button type="button" {...props} aria-haspopup="dialog" onClick={x.press}><span className="en-code" style={code}>{x.code}</span><span className="sr-only">{x.action}</span></button>
-                  : <a {...props} href={at(x.href)} {...away(x.href)}><span className="en-code" style={code}>{x.code}</span><span className="sr-only">{x.action}</span></a>}
+                <button type="button" className="en-mk" style={box} data-on={m.i === aim ? '' : undefined} data-side={m.label.side} aria-pressed={m.i === aim} onClick={() => pick(m.i)}>
+                  <span className="en-code" style={code}>{x.code}</span><span className="sr-only">{x.name}</span>
+                </button>
               </li>
             );
           })}
