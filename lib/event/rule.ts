@@ -1,30 +1,26 @@
-/* rule.ts: who may submit, said the same way everywhere. Be on your city's list with the
-   email you used on Luma, then type the code on the screen in the room. Anyone may vote after confirming an email.
-   The emails, the line under a city's header, Get ready, the submit sheet, the editor server and every refusal read
+/* rule.ts: who may submit, said the same way everywhere. Sign in with your Supabase account, be on your city's list
+   (from Luma, with this email or one you add), and a host checks you in at the door on the day. Anyone may vote once
+   signed in. The line under a city's header, Get ready, the submit sheet, the editor server and every refusal read
    from here, so the words cannot drift apart. */
 
-export const HOW_TO_SUBMIT = 'To submit, be on your city’s list with the email you used on Luma, then type the code on the screen in the room.';
+export const HOW_TO_SUBMIT = 'To submit, sign in with your Supabase account, be on your city’s list from Luma, and get checked in by a host at the door.';
 
-/* the same two steps, for one city */
-export const howIn = (city: string) => 'To submit, be on the list for ' + city + ' with the email you used on Luma, then type the code on the screen in the room.';
+/* the same steps, for one city */
+export const howIn = (city: string) => 'To submit, sign in with your Supabase account, be on the list for ' + city + ' from Luma, and get checked in by a host at the door.';
 
 /* refusals */
-export const notListed = (city: string) => 'You are not on the list for ' + city + ', so you can vote but not submit. To submit, ask the host at the desk to add the email you used on Luma, then type the code on the screen in the room.';
-export const notListedAnywhere = 'You are not on a city’s list, so you can vote but not submit. To submit, ask the host at the desk to add the email you used on Luma, then type the code on the screen in the room.';
-export const notInRoom = (city: string) => 'You are on the list for ' + city + '. To submit, type the code on the screen in the room.';
-export const roomNotListed = (email: string, city: string) => email + ' is not on the list for ' + city + '. Ask the host at the desk to add you. You can still vote.';
-export const otherCity = (mine: string, here: string) => 'You are on the list for ' + mine + ', not ' + here + '. Type the code on the screen in the ' + mine + ' room.';
-export const wrongCode = (city: string) => 'That code is not the one on the screen in ' + city + '. Check it and try again.';
+export const notListed = (city: string) => 'You are not on the list for ' + city + ', so you can vote but not submit. Registered on Luma with another email? Add it in your account. Otherwise ask a host at the door.';
+export const notListedAnywhere = 'You are not on a city’s list, so you can vote but not submit. Registered on Luma with another email? Add it in your account. Otherwise ask a host at the door.';
+export const notInRoom = (city: string) => 'You are on the list for ' + city + '. To submit, ask a host at the door to check you in.';
 
-/* for someone already on a list (the email with their link, the line under their city's header) */
-export const ON_LIST_NEXT = 'To submit on the day, type the code on the screen in the room with this email.';
-export const IN_ROOM_NEXT = 'To submit, type the code on the screen in the room.';
-/* the submit sheet's code step (its heading already says "Type the code on the screen") */
-export const roomStep = (city: string) => 'You are on the list for ' + city + '. The code is the four letters and numbers beside the QR, and you type it once.';
-export const ROOM_NOT_SAVED = 'Your entry is not saved yet. Check in first; what you typed is kept.';
-export const ROOM_HOST = 'Not in the room, or the code does not work? The host at the desk can check you in.';
-/* for the editor: the server asks for the code once */
-export const EDITOR_ROOM = 'On the day, your editor asks for the code on the screen in the room once, before it submits.';
+/* for someone already on a list (the line under their city's header, the account sheet) */
+export const ON_LIST_NEXT = 'On the day, a host checks you in at the door. Then you can submit.';
+export const IN_ROOM_NEXT = 'Checked in: you can submit.';
+/* the submit sheet when the person is not checked in yet */
+export const checkInStep = (city: string) => 'You are on the list for ' + city + '. A host at the door checks you in, then Submit opens here.';
+export const NOT_SAVED = 'Your entry is not saved yet. What you typed is kept here until you are checked in.';
+/* for the editor */
+export const EDITOR_ROOM = 'On the day, a host checks you in at the door; after that your editor can submit.';
 
-/* the room code itself: four letters and numbers */
-export const roomCodeOK = (c: string) => /^[A-Za-z0-9]{4}$/.test(c.trim());
+/* the email sign-in, when its switch is off */
+export const EMAIL_OFF = 'Sign in with your Supabase account.';

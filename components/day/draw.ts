@@ -20,8 +20,10 @@ export type Facts = {
   cities?: CityFact[]; pickAt?: number; seedPick?: number;
   /* city: the page's own city (a city page), so the drawing follows a project there; prize: the pick's prize as words */
   city?: string; prize?: string;
-  /* who picks the one from the finalists, in the event's own words */
+  /* who picks the global 1st, 2nd and 3rd from the finalists, in the event's own words */
   pickers?: string;
+  /* the minute voting opens, for everyone */
+  publicAt?: number;
   /* what first place in each city wins, as words ("a MacBook Neo") */
   cityPrize?: string;
 };

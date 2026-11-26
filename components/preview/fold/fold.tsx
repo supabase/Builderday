@@ -4,10 +4,10 @@ import type { WheelCfg } from '@/components/wheel/config';
 import type { WheelEngine, WheelFlow } from '@/components/wheel/engine';
 import { HERO, Wheel, wheelVars } from '@/components/wheel/wheel';
 import type { HeroCfg } from '@/components/wheel/hero-config';
-import { HowItWorks, PrizeBlock } from '@/components/day/explain';
+import { PrizeBlock } from '@/components/day/explain';
 import { GetReady } from '@/components/day/get-ready';
 import { DayScreen } from '@/components/day/shared';
-import { DayFooter, lastLine, useWhiteDot } from '@/components/day/footer';
+import { DayFooter, useWhiteDot } from '@/components/day/footer';
 import { Ending, type EndCity } from '@/components/day/ending';
 import { clampEnd, type EndCfg } from '@/components/day/ending-config';
 import { clampFoot, type FootCfg } from '@/components/day/footer-config';
@@ -28,7 +28,11 @@ import { FoldHeader, type Part } from './header';
 import { FoldBar } from './bar';
 import { FoldBoard, type BoardCity } from './board';
 import { FoldReady } from './ready';
-import { FoldQuestions } from './questions';
+import { FoldList } from './checklist';
+import { FoldShort } from './short';
+import { FoldPodium } from './podium';
+import { FoldPrizeType } from './prize-type';
+import { FoldHow } from './how';
 import { Unroll } from './unroll';
 import { jumpTo, jumpTop, once, useConverge, useWrite } from './motion';
 import { flapInto, reducedMotion } from './flap';
@@ -71,9 +75,13 @@ type Props = {
   hero?: HeroCfg;
   /* the lab's own things over the page (its panel) */
   children?: ReactNode;
+  /* proto:under-hero (remove with /proto/under-hero): a prototype's sections in place of the saved ones */
+  under?: (u: Under) => ReactNode;
 };
+/* proto:under-hero: what a prototype under the hero reads from the page */
+export type Under = { city: { id: string; name: string; opens: number; offset: number }; cur: number; nearest: number; section: (id: string) => ReactNode };
 
-export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, ending, hero: heroCfg = HERO, children }: Props) {
+export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, ending, hero: heroCfg = HERO, children, under }: Props) {
   const { cities, start } = useOurCities(ours, forced, here), off = useOffset();
   const nearest = off === null ? 0 : nearestCity(ours.cities, off, here);
   const [pick, setPick] = useState<number | null>(null), cur = pick ?? start, city = cities[cur] ?? cities[0];
@@ -153,7 +161,7 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
     const parts = Array.from((m.parentElement ?? m).querySelectorAll<HTMLElement>('[data-part]'));
     const io = new IntersectionObserver((es) => { if (performance.now() < litHold.current) return; for (const e of es) if (e.isIntersecting) setLit((e.target as HTMLElement).dataset.part ?? null); }, { rootMargin: '-40% 0px -55% 0px' });
     parts.forEach((p) => io.observe(p)); return () => io.disconnect();
-  }, [line, ord, cfg.cities, cfg.ready, cfg.questions]);
+  }, [line, ord, cfg.cities, cfg.ready]);
 
   /* where the globe docks: the header's register lens, measured on resize; the header sticks after a short scroll */
   const dockAt = useRef<{ x: number; y: number; r: number; stick: number } | null>(null);
@@ -249,12 +257,12 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
     const el = main.current?.querySelector<HTMLElement>('.pf-prize'); if (!el || !line || cfg.arrive !== 'tube' || cfg.bloom <= 0 || cfg.bloomMs <= 0) return;
     return once(el.querySelector('.ex') ?? el, 0.5, () => el.setAttribute('data-bloom', ''));
   }, [line, cfg.arrive, cfg.bloom, cfg.bloomMs, ord]);
-  const boardRef = useRef<HTMLElement>(null), qRef = useRef<HTMLElement>(null);
+  const boardRef = useRef<HTMLElement>(null);
   /* the rows a step apart, the whole write never longer than rowTotal however many cities there are */
   const rowStep = cfg.rowTotal > 0 ? Math.min(cfg.rowStep, cfg.rowTotal / Math.max(1, cities.length - 1)) : cfg.rowStep;
   useWrite(boardRef, line && cfg.arrive === 'tube' ? rowStep : 0, 0.15, line);
 
-  /* a link to a part (#how, #questions, the footer's own) lands on it; the address then goes back to the page's own, so
+  /* a link to a part (#how, the footer's own) lands on it; the address then goes back to the page's own, so
      a reload, or the address the browser remembers, opens at the top and not part way down */
   useEffect(() => {
     /* a reload does not bring back the place the visitor had scrolled to: the page always opens at its first screen */
@@ -283,10 +291,9 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
     litHold.current = performance.now() + ms + 100;
   }, [line, cfg.jump, cfg.rollMs, cfg.rollBar, cfg.scrollMin, cfg.scrollMax, cfg.scrollEase]);
 
-  const f = { buildMin: ours.buildMin, voteAfter: ours.voteAfter, startHour: ours.startHour, date: ours.date };
   const n = cities.length, g = PRIZES.global.what;
-  const order: string[] = ord === 'prize-first' ? ['prizes', 'how', 'cities', 'ready', 'questions'] : ord === 'how-first' ? ['how', 'prizes', 'cities', 'ready', 'questions'] : ['cities', 'how', 'prizes', 'ready', 'questions'];
-  const LABEL: Record<string, string> = { cities: 'Cities', how: 'How it works', prizes: 'Prizes', ready: 'Get ready', questions: 'Questions' };
+  const order: string[] = ord === 'prize-first' ? ['prizes', 'how', 'cities', 'ready'] : ord === 'how-first' ? ['how', 'prizes', 'cities', 'ready'] : ['cities', 'how', 'prizes', 'ready'];
+  const LABEL: Record<string, string> = { cities: 'Cities', how: 'How it works', prizes: 'Prizes', ready: 'Get ready' };
   const parts: Part[] = hero ? [] : order.map((id) => ({ id, label: LABEL[id] }));
   const barCells = useMemo(() => {
     const c: [string, string][] = [['Date', ours.date], ['Cities', count(n) + ', east to west'], ['Build', ours.buildMin + ' minutes']];
@@ -294,12 +301,12 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
     return c;
   }, [ours.date, ours.buildMin, n, ord, g]);
   const flap = useMemo(() => ({ flapMs: cfg.flapMs, flaps: line && cfg.arrive === 'tube' ? cfg.flaps : 0, stagger: cfg.flapStagger }), [cfg.flapMs, cfg.flaps, cfg.flapStagger, cfg.arrive, line]);
-  const lede = `${count(n)} cities, one day: ${ours.date}. Each city starts at its own local time and builds for ${ours.buildMin} minutes; voting closes ${ours.voteAfter} minutes after building ends.`;
+  const lede = `${count(n)} cities, one day: ${ours.date}. Each city starts at its own local time and builds for ${ours.buildMin} minutes. Votes are shown from minute ${EVENT.showAt ?? 60}.`;
   const late = ord === 'prize-first';
   /* each row shows its own start, so the lede only says what picking does */
   const cityLede = 'Pick your city. Every Register button on the page follows it.';
 
-  /* the footer's links to the page's own parts (Prizes, How it works, Questions) take the header's jump, so going back
+  /* the footer's links to the page's own parts (Prizes, How it works) take the header's jump, so going back
      up from the end moves the same way as the header's cells; a modified click keeps the browser's own way */
   const footJump = useCallback((e: MouseEvent) => {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -312,14 +319,19 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
   const day = useMemo(() => dayOf(0), []), minute = realMinute(nowMs), W = useMemo(() => homeAt(day, minute), [day, minute]);
   /* the ending: the world opened flat, unless the saved ending is today's end board */
   const end = useMemo(() => clampEnd(ending ?? (endSaved as Partial<EndCfg>)), [ending]), foot = useMemo(() => clampFoot(footSaved as Partial<FootCfg>), []);
+  const howCities = useMemo(() => reg.map((c) => ({ id: c.id, code: c.code ?? CODE[c.id] ?? c.name.slice(0, 3).toUpperCase(), name: c.name })), [reg]);
   const endCities: EndCity[] = useMemo(() => reg.map((c) => ({ id: c.id, name: c.name, code: c.code ?? CODE[c.id] ?? c.name.slice(0, 3).toUpperCase(), lat: c.lat, lon: c.lon, opens: c.opens, href: c.href, action: c.action, press: 'press' in c ? c.press : undefined })), [reg]);
   /* the white dot belongs to the footer; with the new ending in its place the page keeps it */
   useWhiteDot(!hero && !!foot.dot && end.end !== 'board');
 
   const section = (id: string): ReactNode => {
     switch (id) {
-      case 'prizes': return <div key={id} className="pf-part pf-prize" data-part={id}><PrizeBlock id="prizes" text={dots ? wheel : undefined} arrive={line && cfg.arrive === 'tube'} /></div>;
-      case 'how': return <div key={id} className="pf-part" data-part={id}><HowItWorks f={f} id="how" /></div>;
+      case 'prizes': return line && cfg.prizes === 'type'
+        ? <FoldPrizeType key={id} cities={n} finalists={n * EVENT.finalists} auto={cfg.arrive === 'tube'} ms={cfg.typeMs} step={cfg.typeStep} />
+        : line && cfg.prizes === 'podium'
+        ? <FoldPodium key={id} city={city.name} auto={cfg.arrive === 'tube'} step={cfg.podiumStep} />
+        : <div key={id} className="pf-part pf-prize" data-part={id}><PrizeBlock id="prizes" text={dots ? wheel : undefined} arrive={line && cfg.arrive === 'tube'} /></div>;
+      case 'how': return <FoldHow key={id} cfg={cfg} cities={howCities} mine={cur} finalists={cities.length * EVENT.finalists} buildMin={ours.buildMin} date={ours.date} />;
       case 'cities': return (
         <section key={id} ref={boardRef} id="cities" className="pf-part pf-cities" data-part={id} aria-labelledby="cities-h">
           <h2 id="cities-h" className="pf-h">{count(n)} cities, one day</h2>
@@ -328,16 +340,10 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
             mine={mine} onMine={forms ? () => forms.account() : undefined} />
         </section>
       );
-      case 'ready': return (
+      case 'ready': return line && cfg.ready === 'short' ? <FoldShort key={id} city={city.name} cityId={city.id} auto={cfg.arrive === 'tube'} step={cfg.dryStep} more={cfg.readyMore} /> : line && cfg.ready === 'list' ? <FoldList key={id} city={city.name} cityId={city.id} auto={cfg.arrive === 'tube'} step={cfg.dryStep} /> : (
         <div key={id} id="ready" className="pf-part" data-part={id}>
-          {line ? <FoldReady city={city.name} cityId={city.id} mode={cfg.ready} auto={!late && cfg.arrive === 'tube'} step={cfg.dryStep} hold={cfg.dryHold} onSignIn={signIn} /> : <GetReady city={city.name} cityId={city.id} id="ready" onSignIn={signIn} />}
+          {line ? <FoldReady city={city.name} cityId={city.id} mode={cfg.ready === 'list' || cfg.ready === 'short' ? 'steps' : cfg.ready} auto={!late && cfg.arrive === 'tube'} step={cfg.dryStep} hold={cfg.dryHold} onSignIn={signIn} /> : <GetReady city={city.name} cityId={city.id} id="ready" onSignIn={signIn} />}
         </div>
-      );
-      case 'questions': return (
-        <section key={id} ref={qRef} id="questions" className="pf-part pf-q" data-part={id} aria-labelledby="questions-h">
-          <h2 id="questions-h" className="pf-h">Questions</h2>
-          <FoldQuestions how={ours.how} mode={line ? cfg.questions : 'open'} />
-        </section>
       );
     }
     return null;
@@ -379,16 +385,19 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
       </Wheel>
       {hero ? null : <>
       <main ref={main} className="pf-main" id="day">
+        {/* proto:under-hero */}
+        {under ? under({ city, cur, nearest, section }) : <>
         {line && cfg.bar === 'cells' ? <FoldBar cells={barCells} flap={flap} dot={cfg.dotSize} live={cfg.arrive === 'tube'} /> : null}
         {line ? null : <p className="pf-lede pf-plain-lede">{lede}</p>}
         {order.map(section)}
+        </>}
       </main>
       <div className="pf-foot" data-part="" onClick={footJump}>
         {end.end === 'board'
           ? <DayFooter W={W} day={day} href={(id) => '/city/' + id} sound={P.sound === 'steps'} city={city.id} cfg={foot} minute={minute}
             sections={{ how: '#how', prizes: '#prizes' }} style={partsVars(P) as CSSProperties} face={P.face} noCities placed={mine >= 0 && forms ? () => forms.account() : undefined} />
-          : <Ending cfg={end} wheel={wheel} cities={endCities} start={cur} last={lastLine(W)} date={ours.date} sound={P.sound === 'steps'}
-            links={{ how: '#how', prizes: '#prizes', questions: '#questions' }} style={partsVars(P) as CSSProperties} face={P.face} markMode={wheel.mark} onPick={choose} />}
+          : <Ending cfg={end} wheel={wheel} cities={endCities} start={cur} last="" date={ours.date} sound={P.sound === 'steps'}
+            links={{ how: '#how', prizes: '#prizes' }} style={partsVars(P) as CSSProperties} face={P.face} markMode={wheel.mark} onPick={choose} />}
       </div>
       </>}
       <Unroll names={cities.map((c) => c.name)} cfg={wheel} eng={eng} board={boardRef} from={cfg.unrollFrom} spread={cfg.unrollSpread} on={unroll} gone={gone} />

@@ -25,15 +25,16 @@ import type { CityLive, SceneRow, StageAction, StageRow } from './types';
 export type StageStart = { deck: SceneRow[]; row: StageRow; city: CityLive };
 export type DriveOut = { ok: true; row: StageRow; city: CityLive } | { ok: false; why: string };
 
-/* the door's two counts and the room code (not readable by everyone; the code is shown to hosts only) */
+/* the door's two counts: on the list, and checked in by a host (not readable by everyone). There is no room code any
+   more (owner, 2026-11-25), so the wall shows the address and the QR alone. */
 async function facts(id: string, withCode: boolean): Promise<{ room_code: string | null; listed: number | null; here: number | null }> {
   const sb = admin();
-  const [listed, here, code] = await Promise.all([
+  void withCode;
+  const [listed, here] = await Promise.all([
     sb.from('passes').select('id', { count: 'exact', head: true }).eq('city', id),
-    sb.from('passes').select('id', { count: 'exact', head: true }).eq('city', id).not('opened_at', 'is', null),
-    withCode ? sb.from('cities').select('room_code').eq('id', id).maybeSingle() : Promise.resolve({ data: null }),
+    sb.from('passes').select('id', { count: 'exact', head: true }).eq('city', id).not('checked_in_at', 'is', null),
   ]);
-  return { room_code: (code.data as { room_code?: string | null } | null)?.room_code ?? null, listed: listed.count ?? null, here: here.count ?? null };
+  return { room_code: null, listed: listed.count ?? null, here: here.count ?? null };
 }
 
 /* a place's name from its row: Builder Day's cities and any place another event has on the desk. Null when the

@@ -12,7 +12,7 @@ import { away } from '@/lib/routes';
 import { countdown, nearestCity, type Here, type OurFact, type OurWheel } from './facts';
 import './preview.css';
 import '@/components/day/explain.css';
-import { CITY_WORD, CITY_WORD_CAP } from '@/lib/day-data';
+import { CITY_WORD, CITY_WORD_CAP, EVENT } from '@/lib/day-data';
 
 /* The preview home (/preview), until the day: the city wheel with our facts, opening on the visitor's nearest city by
    time zone, each city's cell with its countdown and a link to register on Luma; "How it works" opens the sheet with
@@ -57,7 +57,7 @@ export function SheetWheel({ cfg, noGl, mark, engineRef, ours, forced }: SheetPr
             <h2 id="wd-sheet-h">The day</h2>
             <button type="button" className="wd-close" onClick={() => sheet.current?.close()}>Close</button>
           </div>
-          <p className="wd-lede">{CITY_WORD_CAP} cities, one day: {ours.date}. Each city starts at its own local time, builds for {ours.buildMin} minutes, and votes until {ours.voteAfter} minutes after.</p>
+          <p className="wd-lede">{CITY_WORD_CAP} cities, one day: {ours.date}. Each city starts at its own local time, builds for {ours.buildMin} minutes, and votes from {EVENT.publicAt ? 'minute ' + EVENT.publicAt : 'the start'}.</p>
           <p className="wd-reg"><a className="ex-reg" href={lumaHref()} {...away(lumaHref())}>Register on Luma<span aria-hidden="true">→</span></a></p>
           <GetReady compact id="wd-ready" level={3} register={false} />
           <HowItWorks f={f} compact id="wd-how" level={3} />

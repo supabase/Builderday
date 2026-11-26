@@ -153,7 +153,7 @@ export function GetReady({ state = 'before', city, cityId, live = SERVER.live, u
               : <><p className="gr-note gr-seen">Not connected yet. Once the line is in your editor, say this to test it:</p><Say say={checkIt()} /></>) : null}
             <p className="ex-t gr-then">{now ? 'Then say it' : 'On the day, say it'}</p>
             <Say say={say} />
-            <p className="gr-note">Your editor asks for the room code, sends your project and answers with its link.</p></div>
+            <p className="gr-note">Once a host has checked you in, your editor sends your project and answers with its link.</p></div>
         </li>
         <li className="gr-step"><span className="gr-n" aria-hidden="true">{n(4)}</span>
           <div className="gr-body"><p className="ex-t">What we check, both ways</p><ul className="gr-rules">{RULES.map((r) => <li key={r}>{r}</li>)}</ul></div>

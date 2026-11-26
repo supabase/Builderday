@@ -1,7 +1,7 @@
 /* entries.ts: the one submit, for both doors (the form on a city's page and the editor's MCP tool), with the checks of
    lib/hackday-server.ts really run:
    - the clock: only while building runs in the entry's city, and not while a super admin has paused submissions;
-   - one entry per person, or per team: a second submit, by them or a teammate, edits the first;
+   - one entry per person: a second submit edits the first;
    - the repository (required): GitHub must be able to read it, and it must be made on the day (a block); a fork is a
      flag for the hosts;
    - the demo link: fetched once, guarded; no answer is a flag, never a block.
@@ -18,11 +18,10 @@ import { admin } from './supabase';
 import { EVENT_ID, type Person } from './people';
 import { eventById } from './events';
 import { mayBuild } from './room';
-import { entryOf, type MyEntry } from './me';
+import { entryOf, entryRowOf, type MyEntry } from './me';
 import { forget } from './snapshot';
 import { guardKey } from './repo-key';
 import { whenLocal } from './time';
-import { entryRowOf } from './teams';
 
 export type SubmitInput = { name: string; pitch: string; repo: string; demo?: string; video?: string; by?: string };
 export type Upload = { bytes: Uint8Array; type: string };
@@ -112,13 +111,13 @@ function clockSays(c: Row, now: number): string | null {
 }
 
 /* event: the event the entry is in (Builder Day unless named; the editor server names the one of the person's key).
-   The event's own rules decide what is asked: the room code, a repository, one made on the day, a demo link. */
+   The event's own rules decide what is asked: a host's check-in, a repository, one made on the day, a demo link. */
 export async function submitEntry(p: Person, input: SubmitInput, o: { via: 'web' | 'editor'; upload?: Upload | null; keepPicture?: boolean; event?: string }): Promise<SubmitResult> {
   const db = admin(), now = Date.now(), ev = o.event || EVENT_ID;
   const rules = (await eventById(ev))?.f;
-  /* the person's entry, or their team's: any member edits the one entry */
+  /* the person's entry, if they have one: a second submit edits it */
   const old = await entryRowOf(p.id, ev, 'id, city, slug, picture, picture_from');
-  /* rule 7c: on the city's list, then the clock, then checked in with the room code (so a late press reads "closed",
+  /* rule 7c: on the city's list, then the clock, then checked in by a host (so a late press reads "closed",
      not "type the code") */
   const gate = await mayBuild(p, (old?.city as string) || null, ev);
   if (!gate.ok && gate.field === 'list') return { ok: false, status: gate.status, error: gate.error, field: 'list' };
@@ -165,14 +164,11 @@ export async function submitEntry(p: Person, input: SubmitInput, o: { via: 'web'
     const set = new Set((taken || []).map((t) => t.slug)); for (let k = 2; set.has(slug); k++) slug = base + '-' + k;
   }
   const row = { city: cityId, slug, name: d.name, pitch: d.pitch, url: d.demo || d.repo, repo: d.repo || null, video: d.video || null, via: o.via, flags: verdict.flags, updated_at: new Date().toISOString() };
-  /* a first entry is the submitter's, and their team's when they are in one; an edit keeps its owner */
-  let w;
-  if (old) w = await db.from('entries').update(row).eq('id', old.id as string).select('id').single();
-  else {
-    const { data: m } = await db.from('team_members').select('team').eq('person', p.id).eq('event', ev).maybeSingle();
-    w = await db.from('entries').insert({ ...row, owner: p.id, team: m?.team || null }).select('id').single();
-  }
-  if (w.error || !w.data) return { ok: false, error: w.error?.code === '23505' ? 'You or your team already have an entry. Reload the page to edit it.' : 'Your entry was not saved. Try again.' };
+  /* a first entry is the submitter's; an edit keeps its owner */
+  const w = old
+    ? await db.from('entries').update(row).eq('id', old.id as string).select('id').single()
+    : await db.from('entries').insert({ ...row, owner: p.id }).select('id').single();
+  if (w.error || !w.data) return { ok: false, error: w.error?.code === '23505' ? 'You already have an entry. Reload the page to edit it.' : 'Your entry was not saved. Try again.' };
   const id = w.data.id as string;
 
   /* the picture: an upload replaces; no upload keeps the old one when asked; otherwise the demo's share image */

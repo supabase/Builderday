@@ -150,7 +150,7 @@ export function heroVars(h: HeroCfg): CSSProperties {
   /* the sizes are shares of the name size (--wh-f, which the engine sets from the wheel and the room); min and pull are
      read by the engine */
   return { '--hero-title-k': h.titleK, '--hero-body-k': h.bodyK, '--hero-cell-k': h.cellK, '--hero-stub-k': h.stubK, '--hero-gap-k': h.gapK, '--hero-lift-k': h.liftK,
-    '--hero-min': h.min, '--hero-grow': h.grow, '--hero-tall': h.tall, '--hero-perf': h.perf + 'px', '--hero-notch': h.notch + 'px' } as CSSProperties;
+    '--hero-min': h.min, '--hero-grow': h.grow, '--hero-tall': h.tall, '--hero-perf': h.perf + 'px', '--hero-stub-phone': h.stubPhone + 'px', '--hero-name-phone': h.namePhone + 'px', '--hero-notch': h.notch + 'px' } as CSSProperties;
 }
 
 /* A cell as a block that turns on its long axis when `k` changes, like a drum of cards: the face that was there rolls
@@ -252,7 +252,7 @@ function OneWheel({ cities, cfg, start = 0, noGl = false, cells = true, mark = '
 
   return (
     <div ref={pin} role="region" aria-label="Choose your city" className={'wh-pin' + (flow ? ' wh-flow' + (flow.fixed ? ' wh-fixed' : '') : '') + (className ? ' ' + className : '')}
-      data-hero={column ? hero.mode : undefined} data-hero-words={column ? hero.words : undefined} data-hero-state={column ? hero.state : undefined} data-hero-reach={column ? hero.reach : undefined}
+      data-hero={column ? hero.mode : undefined} data-hero-words={column ? hero.words : undefined} data-hero-state={column ? hero.state : undefined} data-hero-reach={column ? hero.reach : undefined} data-hero-dock={column ? hero.dock : undefined}
       style={{ ...wheelVars(cfg), ...(column ? heroVars(hero) : {}), ...(flow ? { '--wh-peek': flow.peek + 'px' } : {}) } as CSSProperties}>
       {/* the text globe is a picture of its own: one image, named by the city it is turned to */}
       <canvas key={noGl ? '2d' : 'gl'} ref={canvas} className="wh-canvas" {...(text ? { role: 'img', 'aria-label': `The world drawn in characters, turned to ${city.name}` } : { 'aria-hidden': true })} />
@@ -280,7 +280,9 @@ function OneWheel({ cities, cfg, start = 0, noGl = false, cells = true, mark = '
                     <div className="sr-only"><dt>City</dt><dd>{city.name}</dd></div>
                     <div className="wh-stub-top"><dt className="sr-only">City code</dt><dd className="wh-stub-code"><Prism k={city.id} dir={dir}>{city.code || city.name.slice(0, 3).toUpperCase()}</Prism></dd>
                       <dd className="wh-stub-no" aria-hidden="true">No.&nbsp;<Prism k={city.id} dir={dir}>{serialOf(hero.seed, city.id)}</Prism></dd></div>
-                    <div><dt className="sr-only">Session, local time</dt><dd><Prism k={city.id} dir={dir}>{timeOf(city)}</Prism></dd></div>
+                    <div><dt className="sr-only">Session, local time</dt><dd className="wh-stub-t"><Prism k={city.id} dir={dir}>{timeOf(city)}</Prism></dd>
+                      {/* the slim stub on a phone (wheel.css): the hours alone */}
+                      <dd className="wh-stub-t-short" aria-hidden="true"><Prism k={city.id} dir={dir}>{city.session.replace(/ UTC.*$/, '')}</Prism></dd></div>
                     <div className="wh-status"><dt className="sr-only">Status</dt><dd><Prism k={city.id} dir={dir} status={city.status}>{status}</Prism></dd></div>
                   </dl>
                 ) : null}

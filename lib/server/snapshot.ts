@@ -4,9 +4,8 @@
    as well: when the database cannot be reached, it is served marked stale instead of an error.
 
    What is kept is the whole truth; what leaves for the public is publicCity/publicDay: while a city's counts are
-   hidden (from its event's hide_at minutes after building starts until voting closes) they are frozen at that minute,
-   worked out at the moment of each answer, so no cache can carry a count past the freeze or hold one back after the
-   close. citySnapshot/daySnapshot are the truth and only for the desk and the server's own checks. */
+   hidden (from the start of building until its event's show_at minutes in) no count leaves, worked out at the moment
+   of each answer, so no cache can carry a count into the hidden stretch or hold one back after it. citySnapshot/daySnapshot are the truth and only for the desk and the server's own checks. */
 import { hiddenSpan, publicSnap, type CitySnap, type DaySnap, type SnapCity, type SnapEntry, type SnapStep } from '@/lib/event/snapshot';
 import { admin } from './supabase';
 import { EVENT } from '@/lib/day-data';
@@ -21,17 +20,18 @@ function cityOf(r: Row, rules: Map<string, Rules>): SnapCity {
     planned: ms(r.planned_start as string)!, buildMin: r.build_min as number, voteAfter: r.vote_after as number,
     buildStart: ms(r.build_start as string), buildEnd: ms(r.build_end as string), voteEnd: ms(r.vote_end as string),
     submissionsPaused: !!r.submissions_paused, votingPaused: !!r.voting_paused,
-    ...(rules.get(r.event as string) || { hideAt: EVENT.hideAt, publicAt: EVENT.publicAt, judgeWeight: EVENT.judgeWeight }),
+    ...(rules.get(r.event as string) || { showAt: EVENT.showAt, publicAt: EVENT.publicAt, judgeAt: EVENT.judgeAt, judgeWeight: EVENT.judgeWeight }),
   };
 }
-type Rules = { hideAt: number | null; publicAt: number | null; judgeWeight: number };
-/* each event's voting rules (hide_at, public_at, judge_weight); when the columns are not there yet (a database without
-   the migrations) every place keeps the event's own defaults */
+type Rules = { showAt: number | null; publicAt: number | null; judgeAt: number | null; judgeWeight: number };
+/* each event's voting rules (show_at, public_at, judge_at, judge_weight); when the columns are not there yet (a
+   database without the migrations) every place keeps the event's own defaults */
 async function rulesOf(): Promise<Map<string, Rules>> {
   const m = new Map<string, Rules>();
-  const { data, error } = await admin().from('events').select('id, hide_at, public_at, judge_weight');
+  const { data, error } = await admin().from('events').select('id, show_at, public_at, judge_at, judge_weight');
   if (!error) (data || []).forEach((r: Row) => m.set(r.id as string, {
-    hideAt: r.hide_at == null ? null : Number(r.hide_at), publicAt: r.public_at == null ? null : Number(r.public_at), judgeWeight: Number(r.judge_weight) || 1,
+    showAt: r.show_at == null ? null : Number(r.show_at), publicAt: r.public_at == null ? null : Number(r.public_at),
+    judgeAt: r.judge_at == null ? null : Number(r.judge_at), judgeWeight: Number(r.judge_weight) || 1,
   }));
   return m;
 }

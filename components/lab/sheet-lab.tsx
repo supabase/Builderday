@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ART_BOUNDS, ART_HATCHES, ART_MODES, ART_REVEALS, clampArt, type ArtLook } from '@/components/forms/art-config';
 import { ArtLookProvider, forgetPrints } from '@/components/forms/sheet-art';
 import { StillSheet } from '@/components/forms/sheet';
@@ -66,9 +66,8 @@ export function SheetLab({ saved }: { saved: ArtLook }) {
 }
 
 function Sign({ vote }: { vote?: boolean }) {
-  const em = useRef<HTMLInputElement>(null), fd = useRef<HTMLInputElement>(null);
-  const o = vote ? { label: 'Vote', title: 'Confirm your email to vote', reason: 'One vote per project, so we need an email.', verb: 'Confirm email' } : { title: 'Sign in to Builder Day', reason: 'Use the email you registered with on Luma.' };
-  return <StillSheet label={o.label || 'Sign in'} art={signInArt(o)}><SignInBody o={o} start={{ step: 'email', email: '' }} emRef={em} firstDigit={fd} onSignedIn={() => {}} /></StillSheet>;
+  const o = vote ? { label: 'Vote', title: 'Sign in to vote', reason: 'One vote per project, so we need to know it’s you.' } : { title: 'Sign in to Builder Day' };
+  return <StillSheet label={o.label || 'Sign in'} art={signInArt(o)}><SignInBody o={o} onSignedIn={() => {}} /></StillSheet>;
 }
 
 /* the real sheets, opened over the lab with the knobs' look */

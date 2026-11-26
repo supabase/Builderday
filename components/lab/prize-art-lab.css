@@ -1,0 +1,9 @@
+.pl { min-height: 100vh; padding: 40px 32px 120px; background: #0c0d0d; max-width: 1180px; box-sizing: border-box; }
+.pl-p { margin: 0 0 32px; max-width: 70ch; color: #b4b4af; font: 400 13px/1.5 var(--font-mono, ui-monospace, monospace); }
+.pl-big { max-width: 900px; }
+.pl-strip { list-style: none; margin: 48px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px 28px; }
+.pl-strip li { display: grid; gap: 8px; padding-top: 10px; border-top: 1px solid #2b2c2c; }
+.pl-strip li[data-on] { border-top-color: #3ecf8e; }
+.pl-strip button { justify-self: start; padding: 6px 0; min-height: 32px; background: none; border: 0; color: #c9c9c5; font: 500 11px/1 var(--font-mono, ui-monospace, monospace); letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; }
+.pl-strip li[data-on] button { color: #3ecf8e; }
+@media (max-width: 760px) { .pl { padding: 24px 16px 120px; } .pl-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

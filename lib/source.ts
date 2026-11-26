@@ -15,7 +15,7 @@
    Minutes are UTC minutes from 10 December 00:00, as everywhere in the model. The pages' project id is the entry's
    number (votes are keyed by it on the server too). Pure, except useSnapshots at the end. */
 import { useEffect, useRef, useState } from 'react';
-import { CITIES, EPOCH, EVENT, arriveAt, hiddenAt, hideMin, publicMin, type CitySched, type CityState, type Entry, type JudgeVote, type Sched, type SeedCity, type SeedDay, type Top } from './day-data';
+import { CITIES, EPOCH, EVENT, arriveAt, hiddenAt, showMin, judgeMin, publicMin, type CitySched, type CityState, type Entry, type JudgeVote, type Sched, type SeedCity, type SeedDay, type Top } from './day-data';
 import type { Project } from './data';
 import type { CityWorld, Row, Votes } from './city';
 import type { HomeCity, HomeWorld } from './home';
@@ -30,11 +30,12 @@ const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 /* a city's schedule: the live times once the host has started the clock; before that, the planned start (pushed to
    just after now if the planned minute has passed and the room has not started, so the page still says "next") */
 export function schedOf(c: SnapCity, nowMin: number): Omit<CitySched, 'city'> {
-  /* hideAt: an older answer without it keeps the event's default (hide left out) */
+  /* showAt: an answer without it keeps the event's default (show left out) */
   const hide = (start: number) => ({
-    ...(c.hideAt === undefined ? {} : { hide: c.hideAt == null ? null : start + c.hideAt }),
-    /* publicAt: likewise; null opens to everyone at the start */
+    ...(c.showAt === undefined ? {} : { show: c.showAt == null ? null : start + c.showAt }),
+    /* publicAt and judgeAt: likewise; null opens at the start (judges: with everyone) */
     ...(c.publicAt === undefined ? {} : { pub: start + (c.publicAt ?? 0) }),
+    ...(c.judgeAt === undefined ? {} : { jud: start + (c.judgeAt ?? c.publicAt ?? 0) }),
   });
   if (c.buildStart != null) { const start = minOf(c.buildStart); return { start, buildEnd: minOf(c.buildEnd!), end: minOf(c.voteEnd!), ...hide(start) }; }
   const start = Math.max(minOf(c.planned), Math.ceil(nowMin) + 1);
@@ -111,8 +112,8 @@ export function liveState(L: LiveCity, city: CitySched['city'], nowMin: number):
   else if (nowMin < x.end) { o.state = 'vote'; o.f = (nowMin - x.buildEnd) / (x.end - x.buildEnd); o.n = N; o.left = x.end - nowMin; }
   else { o.state = 'done'; o.n = N; }
   if (o.state !== 'next' && ranked.length && (o.state !== 'done' || N)) o.lead = { p: byNo.get(ranked[0].no)!.p, v: ranked[0].votes };
-  /* hidden: the snapshot's counts are the frozen ones (the server's freeze), so lead and top are as they stood then */
-  o.hideAt = hideMin(x); o.hidden = hiddenAt(x, nowMin); o.publicAt = publicMin(x);
+  /* hidden: the snapshot carries no counts (the server holds them until showAt), so the order is the order entries came in */
+  o.showAt = showMin(x); o.hidden = hiddenAt(x, nowMin); o.publicAt = publicMin(x); o.judgeAt = judgeMin(x);
   return o;
 }
 
@@ -144,9 +145,9 @@ export function liveCityWorld(base: CityWorld, snap: CitySnap, H: HomeWorld, now
   const l = liveCity(snap, nowMin), i = l.sd.i, x: CitySched = { city: base.city, ...l.x }, S = H.S;
   const st = liveState(l, base.city, nowMin);
   const votesOn = st.state !== 'next', voting = st.state === 'build' || st.state === 'vote', f = st.state === 'vote' ? st.f! : st.state === 'done' ? 1 : 0;
-  /* hidden: every count is the one at the freeze (liveCity froze the snapshot), your presses since move nothing, and the
-     order is the frozen one with the late entries under it */
-  const hidden = !!st.hidden, hideAt = hideMin(x);
+  /* hidden: no count shows (liveCity cut the snapshot at the start), your presses move nothing, and the order is the
+     order entries came in */
+  const hidden = !!st.hidden;
   /* an earlier minute (the pylon's ten minutes ago) is read from the steps; now is the tally itself */
   const past = nowMin < minOf(snap.at) - 0.05;
   const count = (no: number) => { let n = 0, j = 0; for (const [k, ms, d, judge] of snap.steps) { if (k !== no) continue; if (minOf(ms) > nowMin) break; n += d; if (judge) j += d; } return { n, j }; };
@@ -154,7 +155,7 @@ export function liveCityWorld(base: CityWorld, snap: CitySnap, H: HomeWorld, now
     const r = l.byNo.get(e.no)!, id = String(e.no), c = past ? count(e.no) : { n: e.votes, j: e.judge };
     /* a press of yours the snapshot does not show yet (adj: +1 or -1 until the next snapshot) */
     const yours = voting && voted[id] ? 1 : 0, pending = voting && !past && !hidden && adj ? adj[id] || 0 : 0, jm = voting && judged ? judged[id] || 0 : 0;
-    const v = Math.max(0, (votesOn ? c.n : 0) + pending), late = hidden && hideAt != null && minOf(e.created) > hideAt;
+    const v = Math.max(0, (votesOn ? c.n : 0) + pending), late = hidden;
     return { r, p: r.p, k: r.k, a: r.a, arrive: arriveAt(r, x), v, mine: yours + jm, rank: 0, j: c.j, votes: hidden ? null : v, judges: hidden ? null : c.j, late, tie: null as Row['tie'] };
   });
   const arrived = st.state === 'next' ? [] : rows;
@@ -174,11 +175,11 @@ export function liveCityWorld(base: CityWorld, snap: CitySnap, H: HomeWorld, now
     rows, arrived, ranked, lead, second: ranked[1], total: arrived.reduce((a, o) => a + o.v, 0), topV: ranked[0]?.v || 0,
     scaleV: Math.max(10, lead ? lead.v : 0),
     picked: H.picked, isPick: pickHere, pickCity: CITIES[H.final.city.i], pickWin: H.final.p, you: null,
-    last: st.state === 'vote' && st.left! <= Math.max(3, Math.round((x.end - x.buildEnd) * 0.1)) + 0.01,
+    last: voting && st.left! <= Math.max(3, Math.round((x.end - x.start) * 0.05)) + 0.01,
     inDay: nowMin >= S.winStart && nowMin <= S.winEnd,
     day: H.cs,
-    hidden, hideAt,
-    publicAt: publicMin(x), publicOpen: voting && nowMin >= publicMin(x), judgeWeight: snap.city.judgeWeight ?? EVENT.judgeWeight,
+    hidden, showAt: showMin(x),
+    publicAt: publicMin(x), publicOpen: voting && nowMin >= publicMin(x), judgeAt: judgeMin(x), judgeOpen: voting && nowMin >= judgeMin(x), judgeWeight: snap.city.judgeWeight ?? EVENT.judgeWeight,
   };
 }
 /* the tie rule: who reached that count first, then who arrived first (the snapshot's order) */

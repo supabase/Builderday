@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: 'Desk', robots: { index: false, follo
 export const dynamic = 'force-dynamic';
 
 /* /desk: admins, hosts and judges. ?event=<id> opens an event, ?city=<id> one of its places, ?tab= a screen. Signing
-   in is the six-digit code. */
+   in is a Supabase account. */
 type Q = Record<string, string | string[] | undefined>;
 export default async function DeskPage({ searchParams }: { searchParams: Promise<Q> }) {
   const q = await searchParams;

@@ -31,7 +31,7 @@ const cap = (s: string) => s.replace(/^an? /, '').replace(/^./, (c) => c.toUpper
 export type DayFinal = { finalists?: number; pick?: number; empty?: number[]; city?: string };
 export const facts = (f?: ExplainFacts, d?: DayFinal): Facts => {
   const df = dayFacts();
-  return { buildMin: f?.buildMin ?? 90, voteAfter: f?.voteAfter ?? 30, startHour: f?.startHour ?? SCHED.startHour, codes: CITIES.map((c) => CODE[c.id]), top: EVENT.finalists, cities: df.cities, seedPick: df.seedPick, pickAt: df.pickAt, prize: PRIZES.global.what ?? undefined, pickers: EVENT.pickers, cityPrize: PRIZES.city.what ?? undefined, ...d };
+  return { buildMin: f?.buildMin ?? 90, voteAfter: f?.voteAfter ?? SCHED.voteAfter, publicAt: EVENT.publicAt ?? 0, startHour: f?.startHour ?? SCHED.startHour, codes: CITIES.map((c) => CODE[c.id]), top: EVENT.finalists, cities: df.cities, seedPick: df.seedPick, pickAt: df.pickAt, prize: PRIZES.global.what ?? undefined, pickers: EVENT.pickers, cityPrize: PRIZES.city.what ?? undefined, ...d };
 };
 
 const H = ({ level, id, children }: { level: 2 | 3; id: string; children: string }) => (level === 3 ? <h3 id={id} className="ex-h">{children}</h3> : <h2 id={id} className="ex-h">{children}</h2>);
@@ -41,8 +41,8 @@ export function HowItWorks({ f, compact = false, id = 'how', scope, day, level =
   const cfg = scope ?? SAVED, top = EVENT.finalists, F = facts(f, day), fin = F.finalists ?? top * CITIES.length, layout = cfg.layout;
   const steps = [
     { scene: 'build' as const, k: 'Build', t: f.buildMin + ' minutes to build', p: 'Build something new with Supabase. Submit it in your browser or from your editor.' },
-    { scene: 'vote' as const, k: 'Vote', t: 'Share it, get votes', p: 'Anyone with the link can vote. Share your project while you build.' },
-    { scene: 'final' as const, k: 'Final', t: fin + ' finalists, one winner', p: 'The top ' + top + ' in each city go to the final. ' + EVENT.pickers + ' pick the winner.' },
+    { scene: 'vote' as const, k: 'Vote', t: 'Share it, get votes', p: 'Anyone with the link votes from ' + (EVENT.publicAt ? 'minute ' + EVENT.publicAt : 'the start') + '. The counts show from minute ' + (EVENT.showAt ?? 0) + ', when the judges join. Everything closes at ' + (f.buildMin + SCHED.voteAfter) + '.' },
+    { scene: 'final' as const, k: 'Final', t: fin + ' finalists, 3 winners', p: 'The top ' + top + ' in each city go to the final; first place wins the city. ' + cap(EVENT.pickers) + ' picks the global 1st, 2nd and 3rd.' },
   ];
   const accent = { ['--ex-accent' as string]: cfg.accent === 'orange' ? '#ff7a1a' : '#3ecf8e' };
   /* one tube for the day: the step-through */
@@ -70,16 +70,16 @@ export function PrizeBlock({ compact = false, id = 'prize', winner, scope, f, da
   const cfg = scope ?? SAVED, g = PRIZES.global.what, c = PRIZES.city.what, F = facts(f, day), fin = F.finalists ?? EVENT.finalists * CITIES.length, mode = cfg.prize;
   const amount = g ? cap(g) : 'To be announced', item = c ? cap(c) : 'To be announced';
   /* the rule for who wins sits on the same block as the prize, and a prize given ten times says so */
-  const who = winner ? 'Won by ' + winner : 'One winner, picked from the ' + fin + ' finalists by ' + EVENT.pickers;
+  const who = winner ? 'Won by ' + winner : '1st, 2nd and 3rd, picked from the ' + fin + ' finalists by ' + EVENT.pickers;
   const cities = F.cities ?? [], pickCity = F.pick !== undefined ? cities[Math.floor(F.pick / F.top)] : null;
   const cash = mode === 'flaps' ? { ...cfg, cash: 'flap' as const } : mode === 'nixie' ? { ...cfg, cash: 'nixie' as const } : cfg;
   const codes = <ul className="ex-codes" aria-label={`One in each of the ${CITY_WORD} cities`}>{CITIES.map((x) => <li key={x.id}>{CODE[x.id]}</li>)}</ul>;
   if (mode === 'docket') return (
     <section id={id} className="ex ex-prize ex-docket" data-compact={compact ? '' : undefined} aria-labelledby={id + '-h'}>
       <div className="ex-top"><H level={level} id={id + '-h'}>Prizes</H></div>
-      <p className="ex-k ex-dk-k">The winner</p>
+      <p className="ex-k ex-dk-k">Global 1st</p>
       <dl className="ex-dk">
-        <div><dt>Prize</dt><dd className="ex-dk-big">{amount}</dd></div><div><dt>To whom</dt><dd>{winner ? winner : 'One of the ' + fin + ' finalists'}</dd></div><div><dt>Picked by</dt><dd>{EVENT.pickers}</dd></div>
+        <div><dt>Prize</dt><dd className="ex-dk-big">{amount}</dd></div><div><dt>To whom</dt><dd>{winner ? winner : 'Three of the ' + fin + ' finalists'}</dd></div><div><dt>Picked by</dt><dd>{EVENT.pickers}</dd></div>
       </dl>
       <p className="ex-k ex-dk-k">City prize</p>
       <dl className="ex-dk">
@@ -91,7 +91,7 @@ export function PrizeBlock({ compact = false, id = 'prize', winner, scope, f, da
     <section id={id} className="ex ex-prize" data-compact={compact ? '' : undefined} data-prize={mode} aria-labelledby={id + '-h'}>
       <div className="ex-top"><H level={level} id={id + '-h'}>Prizes</H></div>
       <div className="ex-glob">
-        <span className="ex-k">{mode === 'tubes' ? 'The winner from the ' + fin + ' finalists' : 'The winner'}</span>
+        <span className="ex-k">{mode === 'tubes' ? 'The winners from the ' + fin + ' finalists' : 'Global 1st'}</span>
         {mode === 'glass' && text
           ? <PrizeText amount={amount} cities={cities} cfg={text} arrive={arrive} rule={<p className="ex-t ex-rule" data-sk-skip><span className="ex-sr">{amount}. </span>{who}</p>} />
           : mode === 'glass'

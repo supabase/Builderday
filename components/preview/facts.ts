@@ -1,10 +1,9 @@
-import { BUILDER_DAY } from '@/lib/event/format';
 import day from '@/saved/day.config.json';
 import { CODE, PLACE } from '@/lib/places';
 import { RULES, SERVER } from '@/lib/hackday-server';
 import { CITIES, EPOCH, EVENT, SCHED, USUAL_START, mulberry32, sched } from '@/lib/day-data';
 import { hhmm } from '@/lib/format';
-import { PRIZES } from '@/lib/prizes';
+import { PRIZES, PRIZE_SHEET, credits, prizeLine } from '@/lib/prizes';
 import type { WheelStatus } from '@/components/wheel/click';
 import type { WheelFact } from '@/components/wheel/wheel';
 
@@ -13,6 +12,7 @@ import type { WheelFact } from '@/components/wheel/wheel';
    in lib/places.ts, since the model has no coordinates. PLACEHOLDERS: the people counts and the states are seeded, not real; the
    model has no sign-ups yet. */
 
+const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 export { PLACE };
 
 export type OurFact = WheelFact & { offset: number; opens: number; buildEnds: number; closes: number };
@@ -44,19 +44,18 @@ export function ourWheel(live?: Record<string, { people: number; status: WheelSt
     /* the rail's four cells, and the sheet's format */
     format: [
       ['Build', `${cfg.buildMin} minutes, most from ${hhmm(USUAL_START)} local`],
-      ['Final', `Top ${top} in each city, ${fin} in all`],
+      ['Vote', `From ${EVENT.publicAt ? 'minute ' + EVENT.publicAt : 'the start'}, counts shown from minute ${EVENT.showAt ?? 0}`],
       ['City prize', `1st in each city wins ${cityPrize}`],
-      ['The winner', `${EVENT.pickers} pick one of the ${fin}`],
+      ['Global final', `${PRIZE_SHEET.picker} picks 1st, 2nd and 3rd from the ${fin}`],
     ],
     how: [
       ['How do I enter?', `Register for your city on Luma and come on ${EVENT.day} December. You get ${cfg.buildMin} minutes to build something new with Supabase.`],
-      ['How do I submit?', `In your browser on your city’s page, or from your editor with the Builder Day server. Both ask for the code shown in the room.${SERVER.live ? '' : ' The editor server opens soon.'}`],
-      ['Can I build with a team?', `Yes, up to ${BUILDER_DAY.teamMax} people on the same city’s list. One of you starts a team in your account and shares the code. A team sends one entry and can’t vote for it.`],
+      ['How do I submit?', `In your browser on your city’s page, or from your editor with the Builder Day server. Your host checks you in at the door first: only people on the list who are checked in can submit.${SERVER.live ? '' : ' The editor server opens soon.'}`],
       ['What is checked?', RULES.join(' ')],
-      ['Who can vote?', onDay && EVENT.publicAt != null ? `Builders on a city’s list vote from the start. Everyone else and the judges vote from minute ${EVENT.publicAt}, after confirming an email once. Voting closes ${cfg.voteAfter} minutes after building ends.` : `Anyone with the link, after confirming an email once. Voting closes ${cfg.voteAfter} minutes after building ends.`],
-      ['Who goes to the final?', `The top ${top} in each city, ${fin} in all. First place in each city also wins ${cityPrize}.`],
-      ['What do the judges do?', onDay ? `Each judge has ${EVENT.judgeVotes} votes, each worth ${EVENT.judgeWeight}, and can put several on one project.` : `Each judge has ${EVENT.judgeVotes} votes and can put several on one project. They count in the same tally as everyone’s.`],
-      ['How is the winner picked?', `${EVENT.pickers} pick one of the ${fin} finalists. The winner gets ${PRIZES.global.what ?? 'the global prize'}.`],
+      ['Who can vote?', `Anyone signed in with a Supabase account. Voting is open for everyone ${EVENT.publicAt ? 'from minute ' + EVENT.publicAt : 'from the start'}. The counts stay hidden until minute ${EVENT.showAt ?? 0}, then show live until everything closes at minute ${cfg.buildMin}.`],
+      ['Who goes to the final?', `The top ${top} by votes in each city, ${fin} in all. First place wins the city: ${prizeLine(PRIZE_SHEET.city.winner)}. The other two get ${prizeLine(PRIZE_SHEET.city.finalist)} each.`],
+      ['What do the judges do?', `They vote from minute ${EVENT.judgeAt ?? EVENT.publicAt ?? 0}, in the same count as everyone. Each judge has ${EVENT.judgeVotes} votes, and each one counts ${EVENT.judgeWeight}.`],
+      ['How are the global winners picked?', `${cap(PRIZE_SHEET.picker)} picks 1st, 2nd and 3rd from the ${fin} finalists, announced ${PRIZE_SHEET.announce}. ${PRIZE_SHEET.global.map((g) => ['1st', '2nd', '3rd'][g.place - 1] + ' wins a ' + g.thing + ' and ' + credits(g)).join('; ')}.`],
     ],
   };
 }

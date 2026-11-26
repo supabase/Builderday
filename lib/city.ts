@@ -6,7 +6,7 @@
    moves under the pointer or focus; one winner, one cut line; nothing listed twice; vote where you look, no toast; no
    ranking while building; vote traces are step lines; every vote lands as a tick at the now line; the rest of the
    day is always one click away; the winner's mark is the city's seal. */
-import { CITIES, CITY_IDS, EVENT, FINALIST_COUNT, TA, all, arriveAt, cityState, countMin, frozenOrder, hiddenAt, hideMin, judgeOf, minOfVote, mulberry32, publicMin, sched, seedFor, shuffle, slug, tOf, votesAtMin, type CitySched, type CityState, type Entry, type Sched, type SeedCity, type SeedDay } from './day-data';
+import { CITIES, CITY_IDS, EVENT, FINALIST_COUNT, TA, all, arriveAt, cityState, countMin, frozenOrder, hiddenAt, showMin, judgeMin, judgeOf, minOfVote, mulberry32, publicMin, sched, seedFor, shuffle, slug, tOf, votesAtMin, type CitySched, type CityState, type Entry, type Sched, type SeedCity, type SeedDay } from './day-data';
 import type { Project } from './data';
 import { NB, clamp, dur as durAny, fmtN, hhmm, ord, pluralN as plural, r2, tz } from './format';
 
@@ -43,8 +43,8 @@ export const BOUNDS: Record<string, [number, number, number]> = {
 };
 export const CHOICES: Record<string, string[]> = { mode: ['tower'], city: CITY_IDS, ground: ['night', 'paper', 'mint'], schedule: ['sun', 'same'], strip: ['both', 'arrivals', 'traces'], cut: ['full', 'short', 'off'], ledger: ['ledger', 'off'], sort: ['ranked', 'shuffled', 'newest'] };
 /* the keys the day's config decides, so both pages draw the same day */
-export const DAY_KEYS = ['seed', 'schedule', 'startHour', 'buildMin', 'voteAfter', 'pickAfter', 'hideAt'];
-export const SCHED_KEYS = ['schedule', 'startHour', 'buildMin', 'voteAfter', 'pickAfter', 'hideAt'];
+export const DAY_KEYS = ['seed', 'schedule', 'startHour', 'buildMin', 'voteAfter', 'pickAfter', 'showAt'];
+export const SCHED_KEYS = ['schedule', 'startHour', 'buildMin', 'voteAfter', 'pickAfter', 'showAt'];
 
 export type Extra = { def?: Record<string, unknown>; bounds?: Record<string, [number, number, number]>; choices?: Record<string, string[]> };
 /* clamps every knob into its bounds; extra: the tuning page's own bounds and choices on top */
@@ -90,10 +90,10 @@ export function homeT(now: number, S: Sched): number { return now > S.winEnd ? 1
 export type Votes = Readonly<Record<string, 1>>;
 /* v: votes now, yours included; mine: yours (one as a visitor, any number as a judge); j: how many are judges' (a
    judge's own included).
-   While the city's counts are hidden (W.hidden): v and j are the counts as they stood at the freeze (no later vote, not
+   While the city's counts are hidden (W.hidden): v and j are the counts as they stood when hiding began (no later vote, not
    even yours, moves them), rank is the frozen order, and votes and judges are null; mine still says which are yours.
    Otherwise votes is v and judges is j. A page prints votes and judges; v stays for the bars and traces. late: came in
-   after the freeze (it sits at the bottom, in the order it came). j and judges are in counted votes (a judge's vote at
+   after hiding began (it sits at the bottom, in the order it came). j and judges are in counted votes (a judge's vote at
    EVENT.judgeWeight). tie: once voting has closed, in a tie on votes that touches the top EVENT.finalists, 'open' until
    the host has settled it at the desk, then 'settled' (the order is the host's); null otherwise */
 export type Row = { r: Entry; p: Project; k: number; a: number; arrive: number; v: number; mine: number; rank: number; j: number; votes: number | null; judges: number | null; late: boolean; tie: 'open' | 'settled' | null };
@@ -102,12 +102,12 @@ export type CityWorld = {
   st: CityState; state: CityState['state']; f: number; votesOn: boolean; voting: boolean;
   rows: Row[]; arrived: Row[]; ranked: Row[]; lead: Row | null; second: Row | undefined; total: number; topV: number; scaleV: number;
   picked: boolean; isPick: boolean; pickCity: typeof CITIES[number]; pickWin: Project; you: Row | null; last: boolean; inDay: boolean; day: CityState[];
-  /* hidden: the counts and order are frozen, from hideAt (a minute, on the same scale as x.start; null: this city never
-     hides) until voting closes at x.end, when everything is real again. total is the total at the freeze while hidden */
-  hidden: boolean; hideAt: number | null;
-  /* publicAt: the minute anyone may vote, and the judges (same scale as x.start); before it only builders on the city's
-     list. publicOpen: voting is on and that minute has come. judgeWeight: what one judge's vote counts */
-  publicAt: number; publicOpen: boolean; judgeWeight: number;
+  /* hidden: no counts are shown, from the start until showAt (a minute, on the same scale as x.start; null: this city
+     never hides); the order is the order entries came in. From showAt the counts are live until the close */
+  hidden: boolean; showAt: number | null;
+  /* publicAt: the minute voting opens, for everyone; publicOpen: voting is on and that minute has come. judgeAt and
+     judgeOpen: the same for judges. judgeWeight: what one judge's vote counts */
+  publicAt: number; publicOpen: boolean; judgeAt: number; judgeOpen: boolean; judgeWeight: number;
 };
 /* voted: this visitor's own votes, by project id. judged: a judge's own votes (several may go on one project); they
    move the order like anyone's. Both show while voting is open; once it closes, the day's data is the count both
@@ -140,11 +140,11 @@ export function world(c: CityCfg, voted: Votes, judged?: Readonly<Record<string,
     /* traces share one vertical scale: the leader's count now, so first place's line reaches the top of its row */
     scaleV: Math.max(10, lead ? lead.v : 0),
     picked, isPick: pick === i, pickCity, pickWin: pickSd.list[0].p, you: ys || null,
-    last: st.state === 'vote' && st.left! <= Math.max(3, Math.round(c.voteAfter * 0.1)) + 0.01,
+    last: voting && st.left! <= Math.max(3, Math.round((x.end - x.start) * 0.05)) + 0.01,
     inDay: now >= S.winStart && now <= S.winEnd,
     day: S.cs.map((y, j) => cityState(y, SD.cities[j], now)),
-    hidden, hideAt: hideMin(x),
-    publicAt: publicMin(x), publicOpen: voting && now >= publicMin(x), judgeWeight: EVENT.judgeWeight,
+    hidden, showAt: showMin(x),
+    publicAt: publicMin(x), publicOpen: voting && now >= publicMin(x), judgeAt: judgeMin(x), judgeOpen: voting && now >= judgeMin(x), judgeWeight: EVENT.judgeWeight,
   };
 }
 /* the last few votes before now, from the shared vote curves (each entry's n-th vote has a minute) */
@@ -172,8 +172,9 @@ export function local(W: CityWorld, m: number): string { return hhmm(m + W.off);
 export function status(W: CityWorld): string {
   const s = W.st, nm = W.city.name;
   if (s.state === 'next') return nm + ' starts at ' + local(W, W.x.start) + (s.wait! >= 1440 ? ' on ' + EVENT.date : '') + '. That is in ' + dur(s.wait!) + '.';
-  if (W.hidden) return 'Votes are hidden from ' + local(W, W.hideAt!) + '. All counts appear at ' + local(W, W.x.end) + '.' + (s.state === 'build' ? ' Entries close in ' + dur(s.left!) + '.' : '');
-  if (s.state === 'build') return nm + ' is building and voting is open. Entries close in ' + dur(s.left!) + '.';
+  if (s.state === 'build' && W.now < W.publicAt) return nm + ' is building. Voting opens at ' + local(W, W.publicAt) + '. Entries close in ' + dur(s.left!) + '.';
+  if (W.hidden) return 'Voting is open. The counts are hidden until ' + local(W, W.showAt!) + '. Entries close in ' + dur(s.left!) + '.';
+  if (s.state === 'build') return nm + ' is building and voting is open. Everything closes in ' + dur(s.left!) + '.';
   if (s.state === 'vote') return W.lead ? 'Voting closes in ' + dur(s.left!) + '.' : 'No entries came in. Entries closed at ' + local(W, W.x.buildEnd) + '.';
   if (!W.lead) return nm + ' had no entries.';
   const fin = W.ranked.slice(0, EVENT.finalists).map((o) => o.p.name);
@@ -212,7 +213,7 @@ export function cutText(W: CityWorld, c: CityCfg): string {
 export function slotText(W: CityWorld, o: Row | null | undefined): { k: string; a: string; b: string } {
   if (!o) return { k: '', a: '', b: '' };
   const first = o === W.lead, done = W.state === 'done';
-  if (W.hidden) return { k: o.late ? 'New' : first ? 'Leading at ' + local(W, W.hideAt!) : ord(o.rank), a: 'Votes hidden', b: '' };
+  if (W.hidden) return { k: 'In at ' + local(W, o.arrive), a: W.now < W.publicAt ? 'Voting opens at ' + local(W, W.publicAt) : 'Votes hidden until ' + local(W, W.showAt!), b: '' };
   return { k: first ? (done ? (W.picked && W.isPick ? 'Picked' : 'Winner') : 'Leading') : ord(o.rank), a: plural(o.v, 'vote'), b: gapText(W, o) };
 }
 export function sheetLabel(W: CityWorld, c: CityCfg): string { return W.votesOn ? 'The top ' + c.top + ' in ' + W.city.name + ', by votes' : W.state === 'build' ? 'Entries in ' + W.city.name + ', newest first' : W.city.name + ' has no entries yet'; }
@@ -314,7 +315,7 @@ export function ticks(W: CityWorld, V: View): Tick[] {
 /* one entry's line on the strip: the arrival mark, then the vote trace as steps from its arrival to now */
 export function trace(W: CityWorld, V: View, o: Row, c: CityCfg, big?: boolean): { d: string | null; arr: number | null } | null {
   const x = W.x, show = c.strip, base = 92, top = big ? 10 : 14;
-  const ax = V.x(o.arrive) * 10, end = Math.min(W.now, x.end, W.hidden ? W.hideAt! : Infinity), endX = V.x(end) * 10, bx = V.x(x.buildEnd) * 10;
+  const ax = V.x(o.arrive) * 10, end = Math.min(W.now, x.end, W.hidden ? W.x.start : Infinity), endX = V.x(end) * 10, bx = V.x(x.buildEnd) * 10;
   if (W.state === 'next' || o.arrive > W.now || o.arrive > end) return null;
   let d = 'M' + r2(ax) + ' ' + base;
   if (W.votesOn && show !== 'arrivals') {
@@ -351,7 +352,7 @@ export function miniDay(W: CityWorld) {
 export function restOfDay(W: CityWorld) {
   const S = W.S, span = S.winEnd - S.winStart, X = (m: number) => (m - S.winStart) / span * 100, nx = X(Math.min(W.now, S.winEnd));
   const rows = W.day.filter((_, j) => j !== W.i).map((y) => {
-    const t: [string, string] = y.state === 'next' ? ['Starts in', dur(y.wait!, true)] : !y.lead ? ['Closed', 'No entries'] : y.state === 'build' || y.state === 'vote' ? [y.hidden ? 'Leading at ' + (y.hideAt! - y.start) + ' min' : 'Leading', y.lead.p.name] : ['1st', y.lead.p.name];
+    const t: [string, string] = y.state === 'next' ? ['Starts in', dur(y.wait!, true)] : y.hidden && (y.state === 'build' || y.state === 'vote') ? ['Votes hidden', 'until ' + hhmm(y.showAt! + y.city.offset)] : !y.lead ? ['Closed', 'No entries'] : y.state === 'build' || y.state === 'vote' ? ['Leading', y.lead.p.name] : ['1st', y.lead.p.name];
     const l = X(y.start), w = X(y.end) - l, { bf, fill } = barFill(y);
     return { y, t, l: r2(l), w: r2(w), bf: r2(bf), fill: r2(fill), loc: hhmm(y.start + y.city.offset) + '–' + hhmm(y.end + y.city.offset) + ' ' + tz(y.city.offset) };
   });

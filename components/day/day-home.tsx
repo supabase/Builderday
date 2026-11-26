@@ -35,6 +35,7 @@ import './day-home.css';
 import './rank-pictures.css';
 import './explain.css';
 import { EVENT } from '@/lib/day-data';
+import { DEMO } from '@/lib/demo';
 import { HomeHero } from '@/components/air/home-hero';
 import { AirHome, AIR_HOME_CHOICES, AIR_HOME_DEF, type AirHomeCfg, type BoardMix } from '@/components/air/home';
 import type { SpinCfg } from '@/components/air/spin-globe';
@@ -78,7 +79,8 @@ export function DayHome({ saved, parts, q, page, base, foot, live }: {
      seconds. Without it (and in every lab) the page draws the seeded day. */
   live?: { day: DaySnap | null };
 }) {
-  const P = clampParts(parts), real = !!page, admin = !real || q.admin !== undefined;
+  /* demo: the sample day (lib/demo.ts); the page draws the seeded day, opens the panel and keeps the switch on its links */
+  const P = clampParts(parts), real = !!page, demo = real && q[DEMO] !== undefined, admin = !real || demo || q.admin !== undefined;
   const DIRS = real ? DIRS_ALL.slice(1) : DIRS_ALL, CHOICES: Record<string, string[]> = { dir: DIRS.map(([d]) => d), mix: ['globe', 'side', 'band', 'flat'], list: ['flat', 'board'], gMode: ['tour', 'spin', 'face'], final: AIR_HOME_CHOICES.final, order: AIR_HOME_CHOICES.order, marks: AIR_HOME_CHOICES.marks, startLine: AIR_HOME_CHOICES.startLine, night: AIR_HOME_CHOICES.night, wire: ['typed', 'off'], howFeed: AIR_HOME_CHOICES.how, hidden: ['auto', 'on', 'off'] };
   const MIXL: Record<string, string> = { globe: 'The text globe', side: 'The map beside it', band: 'The map under it', flat: 'Opened flat (no opening)' };
   const GML: Record<string, string> = { tour: 'Tour: city to city', spin: 'Spin at one speed', face: 'Face the opening’s city' };
@@ -100,7 +102,8 @@ export function DayHome({ saved, parts, q, page, base, foot, live }: {
     if (q.worst === '0') c.worst = 0; else if (q.worst === '1') c.worst = 1;
     if (q.fastext) c.fastext = q.fastext === '1' ? 1 : 0;
     const S0 = sched(dayOf(c.worst)), ms = homeMoments({ ...HOME_DEF, ...dayOf(c.worst) } as HomeCfg);
-    c.t = page ? realMinute(page.nowMs) : nowOf(ms[2][2], S0);
+    /* the sample day opens at mid-day, with cities building, voting and closed at once */
+    c.t = page && !demo ? realMinute(page.nowMs) : nowOf(ms[2][2], S0);
     if (q.t) c.t = nowOf(+q.t, S0);
     if (q.m && isFinite(+q.m)) c.t = +q.m;
     if (q.moment) { const m = ms.find((x) => x[0] === q.moment); if (m) c.t = nowOf(m[2], S0); }
@@ -114,7 +117,7 @@ export function DayHome({ saved, parts, q, page, base, foot, live }: {
   const ms = homeMoments({ ...HOME_DEF, ...day } as HomeCfg).map(([id, label, t]) => [id, label, nowOf(t, S)] as [string, string, number]);
   const clock = useLabClock(cfg.t, !!cfg.live, cfg.speed), bm = useTick(clock, cfg.t, P.tick), W0 = homeAt(day, bm), snaps = useSnapshots(!!live, null), dSnap = snaps.day || live?.day || null;
   const W = live && dSnap ? liveHome(W0, dSnap, bm) : W0, dayFinal = dayFinalOf(W);
-  const moved = useRealClock(clock, real, q);
+  const moved = useRealClock(clock, real && !demo, q);
   const { save, msg, rail } = useLabSave('day-home', 'lab-day-home-saved');
   const doSave = useCallback(() => save({ dir: cfg.dir, mix: cfg.mix, list: cfg.list, gMode: cfg.gMode, gSpeed: cfg.gSpeed, gDwell: cfg.gDwell, gTurn: cfg.gTurn, gWake: cfg.gWake, gSize: cfg.gSize, gBleed: cfg.gBleed, final: cfg.final, fastext: cfg.fastext, leaderPic: cfg.leaderPic, how: cfg.how, order: cfg.order, marks: cfg.marks, startLine: cfg.startLine, wire: cfg.wire, night: cfg.night, howFeed: cfg.howFeed }), [cfg, save]);
   const [res, setRes] = useState<Contrast | null>(null);
@@ -133,7 +136,7 @@ export function DayHome({ saved, parts, q, page, base, foot, live }: {
   }, [cfg.dir, cfg.worst, cfg.final, cfg.fastext, bare]);
 
   /* links carry the moment only when the clock was moved, and the panel only when it is open */
-  const carry = (m: number) => real ? pageQuery({ m: moved || admin || !cfg.live ? m.toFixed(2) : null, still: cfg.live ? null : '1', worst: cfg.worst ? '1' : null, admin: admin ? '' : null })
+  const carry = (m: number) => real ? pageQuery({ m: moved || admin || !cfg.live ? m.toFixed(2) : null, still: cfg.live ? null : '1', worst: cfg.worst ? '1' : null, admin: admin && !demo ? '' : null, [DEMO]: demo ? '' : null })
     : '&m=' + m.toFixed(2) + (cfg.worst ? '' : '&worst=0') + (cfg.live ? '' : '&still=1');
   const href: Href = (id) => real ? '/city/' + id + carry(bm) : '/lab/day-city?city=' + id + carry(bm);
   const flap = { flipMs: P.flipMs, flaps: P.flaps, stagger: P.stagger, mode: P.flap, onStep: () => step(P.sound === 'steps') };
@@ -178,10 +181,10 @@ export function DayHome({ saved, parts, q, page, base, foot, live }: {
       )}
       {bare ? null : (
         <>
-          <LabPanel tab={real ? 'Admin' : 'Lab'} title={real ? 'Home: admin' : 'Day home lab'} cfg={{ ...cfg, seed: day.seed }} bounds={bounds} choices={CHOICES} groups={GROUPS} set={set} moments={ms} momentIdx={cur} out={out}
+          <LabPanel closed={demo} tab={demo ? 'Sample day' : real ? 'Admin' : 'Lab'} title={demo ? 'Home: sample day' : real ? 'Home: admin' : 'Day home lab'} cfg={{ ...cfg, seed: day.seed }} bounds={bounds} choices={CHOICES} groups={GROUPS} set={set} moments={ms} momentIdx={cur} out={out}
             optionLabel={(k, v) => (k === 'mix' ? MIXL[v] : k === 'gMode' ? GML[v] : k === 'list' ? LISTL[v] : LABELS[v]) || v} meter={meter} msg={msg} rail={rail} railLabel={(s) => LABELS[String(s.dir)] + ', ' + String(s.final)}
-            apply={(s) => setCfg((c) => ({ ...c, ...(s as Partial<DayHomeCfg>) }))} buttons={real ? [['Now', () => set('t', realMinute(Date.now()))], ['Save', doSave, true]] : [['Save', doSave, true]]} />
-          <LayoutPicker modes={DIRS} mode={cfg.dir} setMode={(m) => set('dir', m)} replay={() => clock.set(cfg.t)} />
+            apply={(s) => setCfg((c) => ({ ...c, ...(s as Partial<DayHomeCfg>) }))} buttons={demo ? [] : real ? [['Now', () => set('t', realMinute(Date.now()))], ['Save', doSave, true]] : [['Save', doSave, true]]} />
+          {demo ? null : <LayoutPicker modes={DIRS} mode={cfg.dir} setMode={(m) => set('dir', m)} replay={() => clock.set(cfg.t)} />}
         </>
       )}
     </>

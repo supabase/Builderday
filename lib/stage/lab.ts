@@ -3,7 +3,6 @@
    laid around `now`, so a held clock gives the same picture every time. Pure. */
 
 import { CITIES, CITY_IDS } from '@/lib/day-data';
-import { CODE } from '@/lib/places';
 import { deadlineAt } from './act';
 import type { CityLive, SceneKind, SceneRow, StageRow } from './types';
 
@@ -29,14 +28,11 @@ export const MOMENTS: Moment[] = [
   { id: 'final', label: 'The final', kind: 'final', step: 0, set: (n, c) => runFor(c.build_min + c.vote_after + 12)(n, c) },
 ];
 
-/* the lab's room code: three letters of the city and a seeded number (the real one is on the city row) */
-export const labCode = (id: string) => CODE[id] + '-' + String(4100 + CITY_IDS.indexOf(id) * 37).slice(-4);
-
 export function labCity(id: string, now: number): CityLive {
   const c = CITIES[Math.max(0, CITY_IDS.indexOf(id))];
   return {
     id: c.id, planned_start: now + 40 * M, build_min: 90, vote_after: 30, build_start: null, build_end: null, vote_end: null,
-    room_code: labCode(c.id), submissions_paused: false, voting_paused: false, listed: 142, here: 61,
+    room_code: null, submissions_paused: false, voting_paused: false, listed: 142, here: 61,
   };
 }
 export const labRow = (city: string, scene: string, step = 0): StageRow => ({ city, scene, step, timer: {}, chart_on: false, blank: false, updated_at: 0, updated_by: null });

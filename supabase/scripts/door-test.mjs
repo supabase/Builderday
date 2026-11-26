@@ -3,9 +3,10 @@
 //   (the editor server is the site's own /api/mcp unless NEXT_PUBLIC_HACKDAY_MCP_URL names another at build time)
 // then: node supabase/scripts/door-test.mjs [--site http://localhost:4399]
 // It runs Luma's webhook (signature, age, repeats, approved then declined, declined while checked in, an unknown
-// event, two cities), the claim of a place from another email, the editor line (header, address, a wrong key,
-// practice, the early refusals, the key found in a repository, the newer protocol revision) and the gate, then puts
-// everything back. The stand-in Luma answers only the current paths, so the fallback is not what passes here.
+// event, two cities, and that no email goes out), the claim of a place from another email, the editor line (header,
+// address, a wrong key, practice, the early refusals, a host's check-in, the key found in a repository, the newer
+// protocol revision) and the gate, then puts everything back. People sign in with the stand-in Supabase account, so
+// the site also needs HACKDAY_FAKE_SUPABASE=1. The stand-in Luma answers only the current paths, so the fallback is not what passes here.
 import http from 'node:http';
 import { createHmac } from 'node:crypto';
 import { env, rest } from './env.mjs';
@@ -41,11 +42,11 @@ function jar() {
 const RUN = Date.now(), SINCE = new Date(RUN - 1000).toISOString();
 /* this run's mail only: the outbox and the log keep earlier runs' rows */
 const outbox = async (to, template) => (await rest(e, 'outbox?to_email=eq.' + encodeURIComponent(to) + '&template=eq.' + template + '&created_at=gte.' + encodeURIComponent(SINCE) + '&order=created_at.desc&select=data,created_at'));
-async function byCode(email) {
-  const j = jar(); let s = await j.go('/api/auth/code', { email });
-  if (s.body?.wait) { await sleep((s.body.wait + 1) * 1000); s = await j.go('/api/auth/code', { email }); }
-  const [row] = await outbox(email, 'code');
-  await j.go('/api/auth/verify', { email, code: row.data.code }); return j;
+/* sign in with the stand-in Supabase account for this email (the site runs with HACKDAY_FAKE_SUPABASE=1) */
+async function signIn(email) {
+  const j = jar(), r = await j.go('/api/auth/supabase', { token: 'fake.' + email });
+  if (r.status !== 200) throw new Error('Supabase sign-in for ' + email + ': ' + JSON.stringify(r.body) + ' (is HACKDAY_FAKE_SUPABASE=1 set on the site?)');
+  return j;
 }
 let bad = 0; const check = (t, ok, extra = '') => { if (!ok) bad++; console.log((ok ? 'ok   ' : 'FAIL ') + t + (extra && !ok ? '  · ' + String(extra).slice(0, 240) : '')); };
 const placeOf = async (listEmail) => (await rest(e, 'passes?list_email=eq.' + encodeURIComponent(listEmail) + '&select=id,person,city,source,checked_in_at,claimed_at,editor_version,editor_seen_at,key_version,sent_at'))[0] || null;
@@ -79,8 +80,10 @@ const clean = async () => {
   await rest(e, 'cities?id=in.(berlin,london,tokyo)', { method: 'PATCH', body: JSON.stringify({ luma_event_id: null }) });
 };
 
-const [ev0] = await rest(e, 'events?select=id,open,opens_at');
-const [tokyo0] = await rest(e, 'cities?id=eq.tokyo&select=build_start,build_end,vote_end,room_code,build_min,vote_after');
+/* the event the site's pages belong to (Tokyo's), not whichever event the table lists first */
+const [{ event: EVID }] = await rest(e, 'cities?id=eq.tokyo&select=event');
+const [ev0] = await rest(e, 'events?id=eq.' + EVID + '&select=id,open,opens_at');
+const [tokyo0] = await rest(e, 'cities?id=eq.tokyo&select=build_start,build_end,vote_end,build_min,vote_after');
 try {
   await clean();
   for (const [c, id] of Object.entries(EV)) await rest(e, 'cities?id=eq.' + c, { method: 'PATCH', body: JSON.stringify({ luma_event_id: id }) });
@@ -92,13 +95,13 @@ try {
   check('webhook: the same delivery twice is answered and not applied again', (await hook('guest.registered', g('ana', 'approved'), EV.berlin, { id: 'wh_same_' + RUN })) === 200);
   check('webhook: registered and updated for one guest: one place', (await hook('guest.updated', g('ana', 'approved'), EV.berlin)) === 200 && (await rest(e, 'passes?list_email=eq.' + em('ana') + '&select=id')).length === 1);
   await sleep(600);
-  const anaMail = await outbox(em('ana'), 'link');
-  check('webhook: "Your place" is sent once', anaMail.length === 1 && /\/in\//.test(anaMail[0]?.data?.link || ''), JSON.stringify(anaMail));
+  const anaMail = await rest(e, 'outbox?to_email=eq.' + encodeURIComponent(em('ana')) + '&created_at=gte.' + encodeURIComponent(SINCE) + '&select=template');
+  check('webhook: no email goes out for a place', anaMail.length === 0, JSON.stringify(anaMail));
 
   await hook('guest.registered', g('bo', 'approved'), EV.berlin);
   check('webhook: approved then declined: the place goes, the account stays', (await hook('guest.updated', g('bo', 'declined'), EV.berlin)) === 200 && !(await placeOf(em('bo'))) && !!(await personOf(em('bo'))));
   await hook('guest.registered', g('cy', 'approved'), EV.berlin);
-  await rest(e, 'passes?list_email=eq.' + em('cy'), { method: 'PATCH', body: JSON.stringify({ checked_in_at: new Date().toISOString(), checked_in_how: 'room' }) });
+  await rest(e, 'passes?list_email=eq.' + em('cy'), { method: 'PATCH', body: JSON.stringify({ checked_in_at: new Date().toISOString(), checked_in_how: 'host' }) });
   check('webhook: declined while checked in: the place stays', (await hook('guest.updated', g('cy', 'declined'), EV.berlin)) === 200 && !!(await placeOf(em('cy'))));
   check('webhook: pending makes no place', (await hook('guest.registered', g('dee', 'pending_approval'), EV.berlin)) === 200 && !(await placeOf(em('dee'))));
   const logs0 = (await rest(e, 'log?what=eq.luma%20hook&order=at.desc&limit=1&select=data'))[0];
@@ -113,7 +116,7 @@ try {
   await hook('guest.registered', g('gus', 'approved'), EV.berlin);
   await rest(e, 'passes?list_email=eq.' + em('gus'), { method: 'PATCH', body: JSON.stringify({ checked_in_at: new Date().toISOString(), checked_in_how: 'host' }) });
   const gusPlace = await placeOf(em('gus'));
-  const work = await byCode(em('gus.work'));
+  const work = await signIn(em('gus.work'));
   const me0 = await work.go('/api/me');
   check('claim: signed in with another email, there is no place yet', me0.body?.signedIn === true && me0.body?.pass === null, JSON.stringify(me0.body?.pass));
   const c1 = await work.go('/api/auth/claim', { email: em('gus') });
@@ -128,7 +131,7 @@ try {
   check('claim: /api/me shows the place and the address it is listed under', me1.body?.pass?.city === 'berlin' && me1.body?.pass?.listedAs === em('gus'), JSON.stringify(me1.body?.pass));
   await hook('guest.updated', g('gus', 'approved'), EV.berlin);
   check('claim: the next Luma event for the old address does not make the place again', (await rest(e, 'passes?list_email=eq.' + em('gus') + '&select=id,person')).length === 1 && (await placeOf(em('gus')))?.person === workP?.id);
-  const host = await byCode('host.berlin@hackday.test');
+  const host = await signIn('host.berlin@hackday.test');
   GUESTS[EV.berlin].push({ id: 'gst-gus', user_email: em('gus'), user_name: 'Person gus', approval_status: 'approved', registered_at: new Date().toISOString() });
   const pv = await host.go('/api/desk', { action: 'import.preview', city: 'berlin', from: 'luma' });
   check('claim: the desk\'s Sync from Luma counts the claimed place as already listed', pv.body?.preview?.already >= 1 && pv.body?.preview?.fresh === 1, JSON.stringify(pv.body));
@@ -136,7 +139,7 @@ try {
   check('claim: the desk\'s Guests row says listed as one address, signed in as the other', guests.some((x) => x.email === em('gus.work') && x.listedAs === em('gus')), JSON.stringify(guests.filter((x) => x.email.endsWith(D))));
 
   await hook('guest.registered', g('hal', 'approved'), EV.berlin);
-  const hal = await byCode(em('hal.work'));
+  const hal = await signIn(em('hal.work'));
   await hal.go('/api/auth/claim', { email: em('hal') });
   let last;
   for (let k = 0; k < 5; k++) last = await hal.go('/api/auth/claim/verify', { email: em('hal'), code: '000000' === (await outbox(em('hal'), 'claim'))[0].data.code ? '111111' : '000000' });
@@ -147,7 +150,7 @@ try {
   await hook('guest.registered', g('ivy', 'approved'), EV.berlin);
   const ivyP = await personOf(em('ivy'));
   await rest(e, 'entries', { method: 'POST', body: JSON.stringify({ city: 'berlin', owner: ivyP.id, slug: 'door-test-ivy', name: 'Ivy entry', url: 'https://example.com', repo: 'https://github.com/door-test/ivy' }) });
-  const ivy = await byCode(em('ivy.work'));
+  const ivy = await signIn(em('ivy.work'));
   await ivy.go('/api/auth/claim', { email: em('ivy') });
   const iv = await ivy.go('/api/auth/claim/verify', { email: em('ivy'), code: (await outbox(em('ivy'), 'claim'))[0].data.code });
   check('claim: a place already in use is refused', iv.status === 409 && /already in use/.test(iv.body?.error || '') && (await placeOf(em('ivy')))?.person === ivyP.id, JSON.stringify(iv.body));
@@ -170,16 +173,18 @@ try {
   const pr = await tool(key, 'practice', { repo: 'https://github.com/door-test/practice-app' });
   check('editor: practice enters nothing and says what the day holds', !pr.error && /nothing is entered/i.test(pr.text) && /Tokyo/.test(pr.text) && (await rest(e, 'entries?select=id&city=eq.tokyo')).length === entries0, pr.text);
   check('editor: a call with a good key marks the editor connected', !!(await placeOf(em('jo')))?.editor_seen_at);
-  const me2 = await (await byCode(em('jo'))).go('/api/me');
+  const me2 = await (await signIn(em('jo'))).go('/api/me');
   check('editor: /api/me carries "connected" and a line with the key', !!me2.body?.pass?.editorSeen && /\/api\/mcp\/[\w-]{46}$/.test(me2.body?.editor?.url || ''), JSON.stringify([me2.body?.pass, me2.body?.editor ? 'line' : null]));
-  const e1 = await tool(key, 'check_in', { code: tokyo0.room_code }), e2 = await tool(key, 'submit', { name: 'Early', pitch: 'x', repo: 'https://github.com/door-test/early' });
-  check('editor: check_in and submit refuse before the day, with the start time', e1.error && e2.error && /opens on the day/.test(e1.text) && /09:00 on 10 December/.test(e2.text) && !(await placeOf(em('jo'))).checked_in_at, e1.text + ' | ' + e2.text);
+  const e2 = await tool(key, 'submit', { name: 'Early', pitch: 'x', repo: 'https://github.com/door-test/early' });
+  check('editor: submit refuses before the day, with the start time', e2.error && /opens on the day/.test(e2.text) && /09:00 on 10 December/.test(e2.text) && !(await placeOf(em('jo'))).checked_in_at, e2.text);
 
   await setGate('open');
   const t0 = Date.now() - 2 * min;
   await rest(e, 'cities?id=eq.tokyo', { method: 'PATCH', body: JSON.stringify({ build_start: new Date(t0).toISOString(), build_end: new Date(t0 + 90 * min).toISOString(), vote_end: new Date(t0 + 120 * min).toISOString() }) });
-  const ci = await tool(key, 'check_in', { code: tokyo0.room_code });
-  check('editor: on the day, check_in with the room code', !ci.error && /Checked in for Tokyo/.test(ci.text), ci.text);
+  const tok = await signIn('owner@hackday.test');
+  const ci = await tok.go('/api/desk', { action: 'guest.in', city: 'tokyo', person: (await placeOf(em('jo'))).person });
+  const wi = await tool(key, 'whoami');
+  check('editor: on the day, a host checks the person in and whoami says so', ci.status === 200 && /Checked in by a host/.test(wi.text), JSON.stringify(ci.body) + ' | ' + wi.text);
   const before = await placeOf(em('jo'));
   const lk = await tool(key, 'submit', { name: 'Leaky App', pitch: 'Carries its key', repo: 'https://github.com/door-test/leak-app', by: 'Jo' });
   const afterLeak = await placeOf(em('jo')), ent = (await rest(e, 'entries?owner=eq.' + before.person + '&select=flags'))[0];
@@ -189,50 +194,49 @@ try {
   key = keyFor(afterLeak);
 
   const bad1 = await tool(key, 'submit', { name: 'Missing', pitch: 'x', repo: 'https://github.com/door-test/not-found' });
-  const jw = await byCode(em('jo'));
+  const jw = await signIn(em('jo'));
   const f = new FormData(); f.set('name', 'Missing'); f.set('pitch', 'x'); f.set('repo', 'https://github.com/door-test/not-found'); f.set('by', 'Jo');
   const bad2 = await jw.form('/api/entry', f);
   check('editor: the form and the tool refuse the same bad entry with the same words', bad1.error && bad1.text.startsWith(bad2.body?.error || '§'), bad1.text + ' | ' + bad2.body?.error);
 
-  const tok = await byCode('owner@hackday.test');
   const end = await tok.go('/api/desk', { action: 'guest.editor', city: 'tokyo', person: before.person });
   check('editor: a host ends one person\'s editor line; their link stays', end.status === 200 && (await placeOf(em('jo'))).editor_version === afterLeak.editor_version + 1 && (await placeOf(em('jo'))).key_version === before.key_version, JSON.stringify(end.body));
   key = keyFor(await placeOf(em('jo')));
 
   // 4. the gate: the day pages before they open
   const inKey = (pass) => { const b = (x) => x.toString('base64url'); return b(Buffer.from(pass.id.replace(/-/g, ''), 'hex')) + b(createHmac('sha256', e.HACKDAY_KEY_SECRET).update('in:' + pass.id + ':' + pass.key_version).digest().subarray(0, 18)); };
+  const shut = async () => (await page('/city/london')).status === 307;
   const setEvent = async (o) => { await rest(e, 'events?id=eq.' + ev0.id, { method: 'PATCH', body: JSON.stringify(o) }); await sleep(5200); };
   const page = async (p, j) => { const r = j ? await j.go(p) : await (async () => { const x = await fetch(SITE + p, { redirect: 'manual' }); await x.text(); return { status: x.status, location: x.headers.get('location') }; })(); return r; };
   const later = new Date(Date.now() + 864e5).toISOString(), earlier = new Date(Date.now() - 864e5).toISOString();
-  const berlinI = 4;
   await setEvent({ open: 'closed', opens_at: earlier });
-  const h0 = await page('/'), c0 = await page('/city/berlin'), p0 = await page('/city/berlin/p/anything');
-  check('gate: closed, the home goes to the preview page, temporarily', h0.status === 307 && /\/preview$/.test(h0.location || ''), JSON.stringify(h0));
-  check('gate: closed, a city page goes to the preview page on that city', c0.status === 307 && /\/preview\?city=\d$/.test(c0.location || '') && p0.status === 307, JSON.stringify([c0, p0]));
-  check('gate: the preview page, the desk, /in and the API stay open', (await page('/preview')).status === 200 && (await page('/desk')).status === 200 && (await page('/api/me')).status !== 307);
-  check('gate: a super admin passes', (await page('/', tok)).status === 200 && (await page('/city/berlin', tok)).status === 200);
+  const h0 = await page('/'), c0 = await page('/city/london'), p0 = await page('/city/london/p/anything'), pv0 = await page('/preview');
+  check('gate: closed, the home shows the preview page under its own address', h0.status === 200, JSON.stringify(h0));
+  check('gate: closed, a city page goes to the home on that city', c0.status === 307 && /\/\?city=\d+$/.test(c0.location || '') && p0.status === 307, JSON.stringify([c0, p0]));
+  check('gate: closed, the old /preview address goes to the home', pv0.status === 307, JSON.stringify(pv0));
+  check('gate: the desk and the API stay open', (await page('/desk')).status === 200 && (await page('/api/me')).status !== 307);
+  check('gate: a super admin passes', (await page('/city/london', tok)).status === 200);
   const ana = await placeOf(em('ana'));
   const l0 = await page('/in/' + inKey(ana));
-  check('gate: closed, the emailed link lands on the preview page on the person\'s city', l0.status === 303 && new RegExp('/preview\\?city=' + berlinI + '$').test(l0.location || ''), JSON.stringify(l0));
+  check('gate: an old emailed link sends to the sign-in page', l0.status === 303 && /\/in\?e=supabase$/.test(l0.location || ''), JSON.stringify(l0));
   await setEvent({ open: 'auto', opens_at: later });
-  check('gate: by the time, before the opening: closed', (await page('/')).status === 307);
+  check('gate: by the time, before the opening: closed', await shut());
   await setEvent({ open: 'auto', opens_at: earlier });
-  const h1 = await page('/'), l1 = await page('/in/' + inKey(ana));
-  check('gate: by the time, after the opening: open, and the link lands on the city page', h1.status === 200 && (await page('/city/berlin')).status === 200 && /\/city\/berlin$/.test(l1.location || ''), JSON.stringify([h1.status, l1]));
+  check('gate: by the time, after the opening: open', (await page('/')).status === 200 && !(await shut()));
   await setEvent({ open: 'open', opens_at: later });
-  check('gate: the desk opens it before the time', (await page('/')).status === 200);
+  check('gate: the desk opens it before the time', !(await shut()));
   await setEvent({ open: 'closed', opens_at: earlier });
-  check('gate: the desk closes it after the time', (await page('/')).status === 307);
+  check('gate: the desk closes it after the time', await shut());
   const sw = await tok.go('/api/desk', { action: 'gate.set', open: 'open' });
   await sleep(5200);
-  check('gate: the desk\'s switch opens it', sw.status === 200 && (await page('/')).status === 200, JSON.stringify(sw.body));
+  check('gate: the desk\'s switch opens it', sw.status === 200 && !(await shut()), JSON.stringify(sw.body));
   await setEvent({ open: ev0.open, opens_at: ev0.opens_at });
 
   // the newer protocol revision: no handshake, server/discover, a version we do not speak
   const disc = await mcp(key, 'server/discover', { _meta: { 'io.modelcontextprotocol/protocolVersion': '2026-07-28', 'io.modelcontextprotocol/clientCapabilities': {} } }, { version: '2026-07-28' });
   check('protocol: server/discover names both eras and the server', disc.status === 200 && disc.j?.result?.supportedVersions?.[0] === '2026-07-28' && disc.j?.result?.supportedVersions?.includes('2025-06-18') && disc.j?.result?.resultType === 'complete' && !!disc.j?.result?._meta?.['io.modelcontextprotocol/serverInfo'], JSON.stringify(disc.j));
   const tl = await mcp(key, 'tools/list', { _meta: { 'io.modelcontextprotocol/protocolVersion': '2026-07-28' } }, { version: '2026-07-28' });
-  check('protocol: tools/list in the newer revision has five tools and its cache fields', tl.j?.result?.tools?.length === 5 && tl.j?.result?.ttlMs > 0 && !!tl.j?.result?.cacheScope, JSON.stringify(tl.j?.result && { n: tl.j.result.tools?.length, ttl: tl.j.result.ttlMs }));
+  check('protocol: tools/list in the newer revision has four tools and its cache fields', tl.j?.result?.tools?.length === 4 && tl.j?.result?.ttlMs > 0 && !!tl.j?.result?.cacheScope, JSON.stringify(tl.j?.result && { n: tl.j.result.tools?.length, ttl: tl.j.result.ttlMs }));
   const un = await mcp(key, 'tools/list', { _meta: { 'io.modelcontextprotocol/protocolVersion': '1900-01-01' } });
   check('protocol: a version we do not speak: 400 with the supported list', un.status === 400 && un.j?.error?.code === -32022 && Array.isArray(un.j?.error?.data?.supported), JSON.stringify(un.j));
   const init = await mcp(key, 'initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 't', version: '1' } });

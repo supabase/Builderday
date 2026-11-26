@@ -29,7 +29,7 @@ import { at, away } from '@/lib/routes';
 export type EndCity = { id: string; name: string; code: string; lat: number; lon: number; opens: number; href: string; action: string; press?: () => void;
   /* the city's time zone, when it is not one of the event's (the lab's test cities) */
   zone?: string };
-export type EndLinks = { how: string; prizes: string; questions: string };
+export type EndLinks = { how: string; prizes: string; questions?: string };
 
 const PHONE = '(max-width: 640px)';
 const phoneSub = (f: () => void) => { const m = window.matchMedia(PHONE); m.addEventListener('change', f); return () => m.removeEventListener('change', f); };
@@ -120,7 +120,7 @@ export function Ending({ cfg: given, wheel, cities, start, last, date, sound, li
         <nav aria-label="On this page and Supabase">
           <a href={links.prizes}>Prizes</a>
           <a href={links.how}>How it works</a>
-          <a href={links.questions}>Questions</a>
+          {links.questions ? <a href={links.questions}>Questions</a> : null}
           <a href="https://supabase.com">supabase.com</a>
           <a href="https://supabase.com/docs">Docs</a>
           <a href="https://supabase.com/privacy">Privacy</a>
@@ -129,7 +129,7 @@ export function Ending({ cfg: given, wheel, cities, start, last, date, sound, li
         <Switches sound={sound} />
       </div>
       <div className="en-end">
-        <p className="en-last">{last}</p>
+        {last ? <p className="en-last">{last}</p> : null}
         {cfg.imprint ? (
           <p className="en-imp bd-k">
             {cfg.mark === 'small' ? <span className="en-mark" aria-hidden="true">{markMode === 'builder' ? <BuilderLogo /> : <HackMark id="en-mark" label="" />}</span> : null}

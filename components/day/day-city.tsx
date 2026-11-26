@@ -1,6 +1,6 @@
 'use client';
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { CITIES, EPOCH, sched, tOf } from '@/lib/day-data';
+import { CITIES, EPOCH, EVENT, sched, tOf } from '@/lib/day-data';
 import { slugOf, type CityWorld, type Row, type Votes } from '@/lib/city';
 import { realMinute } from '@/lib/clock';
 import { hhmm } from '@/lib/format';
@@ -41,6 +41,7 @@ import { AirCity, AIR_CITY_CHOICES, AIR_CITY_DEF, type AirCityCfg } from '@/comp
 import { clampAir, type AirParts } from '@/components/air/devices';
 import { clampWheel } from '@/components/wheel/config';
 import { routes, projectSlugIn } from '@/lib/routes';
+import { DEMO } from '@/lib/demo';
 import wheelSaved from '@/saved/wheel.config.json';
 import partsSaved from '@/saved/parts.config.json';
 
@@ -61,11 +62,13 @@ export type CityDir = 'base' | 'mix' | 'facing' | 'board' | 'scope' | 'wall';
 export type DayCityCfg = { dir: CityDir; pylon: number; spark: number; rows: number; how: number } & PicCfg & Partial<Omit<AirCityCfg, 'first' | 'rank'>>;
 type State = DayCityCfg & { city: string; t: number; live: number; speed: number; worst: number };
 const DIRS_ALL: [string, string][] = [['base', 'Baseline'], ['mix', 'Board, pylon and facing'], ['facing', 'Facing'], ['board', 'Board and pylon'], ['scope', 'Scope'], ['wall', 'Wall']];
-const MOMENTS: [string, string][] = [['before', 'Before'], ['build', 'Building'], ['hidden', 'Votes hidden'], ['vote', 'Last votes'], ['last', 'Last minutes'], ['reveal', 'Reveal'], ['closed', 'Closed'], ['picked', 'Picked']];
+const MOMENTS: [string, string][] = [['before', 'Before'], ['build', 'Building'], ['hidden', 'Votes hidden'], ['vote', 'Votes shown'], ['last', 'Last minutes'], ['reveal', 'Reveal'], ['closed', 'Closed'], ['picked', 'Picked']];
 const momentsOf = (city: string, worst: number): [string, string, number][] => {
   const d = dayOf(worst), S = sched(d), x = S.cs[CITIES.findIndex((c) => c.id === city)];
-  /* hidden: past minute 70; reveal: five seconds before voting closes, so a running clock plays the reveal */
-  const at: Record<string, number> = { before: x.start - 30, build: x.start + d.buildMin * 0.45, hidden: x.start + Math.min(d.buildMin - 5, 80), vote: x.buildEnd + d.voteAfter * 0.4, last: x.end - 2, reveal: x.end - 5 / 60, closed: x.end + Math.max(10, (S.pickAt - x.end) / 3), picked: S.pickAt + 10 };
+  /* build: before voting opens; hidden: voting open, counts hidden (45 to 60); vote: counts shown, judges in (60 on);
+     reveal: five seconds before everything closes, so a running clock plays it */
+  const show = x.start + (EVENT.showAt ?? 60), open = x.start + (EVENT.publicAt ?? 0);
+  const at: Record<string, number> = { before: x.start - 30, build: x.start + Math.min(open - x.start - 5, d.buildMin * 0.45), hidden: Math.min(show - 5, (open + show) / 2), vote: Math.min(x.end - 10, show + 10), last: x.end - 2, reveal: x.end - 5 / 60, closed: x.end + Math.max(10, (S.pickAt - x.end) / 3), picked: S.pickAt + 10 };
   return MOMENTS.map(([id, label]) => [id, label, at[id]]);
 };
 const rowBySlug = (W: CityWorld, slug: string | null | undefined): Row | null => (slug ? W.rows.find((r) => slugOf(r.p) === slug) ?? null : null);
@@ -82,7 +85,8 @@ export function DayCity({ saved, parts, q, page, base, foot, live }: {
   /* the footer's look: saved/footer.config.json, or the footer lab's knobs */
   foot?: Partial<FootCfg>;
 }) {
-  const P = clampParts(parts), real = !!page, admin = !real || q.admin !== undefined;
+  /* demo: the sample day (lib/demo.ts); the page draws the seeded day, opens the panel and keeps the switch on its links */
+  const P = clampParts(parts), real = !!page, demo = real && q[DEMO] !== undefined, admin = !real || demo || q.admin !== undefined;
   const DIRS = real ? DIRS_ALL.slice(1) : DIRS_ALL;
   const CHOICES: Record<string, string[]> = { dir: DIRS.map(([d]) => d), city: CITIES.map((c) => c.id), pics: PIC_MODES.map(([m]) => m), ...AIR_CITY_CHOICES };
   const LABELS: Record<string, string> = { ...Object.fromEntries(DIRS_ALL), ...Object.fromEntries(CITIES.map((c) => [c.id, c.name])), ...Object.fromEntries(PIC_MODES), hatch: 'Hatch', blocks: 'Block eighths', none: 'None', header: 'In the header', pylon: 'The pylon', equator: 'The equator', rule: 'A rule', decay: 'Decays', on: 'On', off: 'Off', dock: 'Docked', row: 'In its row' };
@@ -101,7 +105,8 @@ export function DayCity({ saved, parts, q, page, base, foot, live }: {
     if (!real && q.city && CHOICES.city.includes(q.city)) c.city = q.city;
     if (q.worst === '0') c.worst = 0; else if (q.worst === '1') c.worst = 1;
     const ms = momentsOf(c.city, c.worst);
-    c.t = page ? realMinute(page.nowMs) : ms[2][2];
+    /* the sample day opens with the counts shown and the judges in */
+    c.t = page && !demo ? realMinute(page.nowMs) : page ? ms[3][2] : ms[2][2];
     if (q.m && isFinite(+q.m)) c.t = +q.m;
     if (q.moment) { const m = ms.find((x) => x[0] === q.moment); if (m) c.t = m[2]; }
     if (q.still === '1') c.live = 0;
@@ -113,7 +118,7 @@ export function DayCity({ saved, parts, q, page, base, foot, live }: {
   const [replay, setReplay] = useState(0);
   const day = dayOf(cfg.worst), S = sched(day), i = CITIES.findIndex((c) => c.id === cfg.city);
   const ms = momentsOf(cfg.city, cfg.worst);
-  const clock = useLabClock(cfg.t, !!cfg.live, cfg.speed), bm = useTick(clock, cfg.t, P.tick), moved = useRealClock(clock, real, q);
+  const clock = useLabClock(cfg.t, !!cfg.live, cfg.speed), bm = useTick(clock, cfg.t, P.tick), moved = useRealClock(clock, real && !demo, q);
   const [view, setView] = useState<RankView>(q.view === 'time' ? 'time' : 'list'), [hot, setHot] = useState<number | null>(null);
 
   /* votes: the real page keeps them in the forms' store per city and seed (the same key the old page used); the lab
@@ -164,7 +169,7 @@ export function DayCity({ saved, parts, q, page, base, foot, live }: {
     return () => window.removeEventListener('popstate', on);
   }, [real]);
 
-  /* the one Ant and Copple picked, when it is from this city */
+  /* the one the Supabase team picked, when it is from this city */
   const pk = H.picked && H.final.city.i === i ? { id: H.final.p.id, name: H.final.p.name, place: H.final.place } : null;
   const { save, msg, rail } = useLabSave('day-city', 'lab-day-city-saved');
   const doSave = useCallback(() => save({ dir: cfg.dir, pylon: cfg.pylon, spark: cfg.spark, rows: cfg.rows, how: cfg.how ? 1 : 0, ...clampPics(cfg), bars: cfg.bars, top: cfg.top, cut: cfg.cut, trail: cfg.trail, gauge: cfg.gauge, you: cfg.you, rowsFirst: cfg.rowsFirst }), [cfg, save]);
@@ -182,7 +187,7 @@ export function DayCity({ saved, parts, q, page, base, foot, live }: {
     return () => window.clearTimeout(id);
   }, [cfg.dir, cfg.city, cfg.worst, bare]);
 
-  const carry = (m: number) => real ? pageQuery({ m: moved || admin || !cfg.live ? m.toFixed(2) : null, still: cfg.live ? null : '1', worst: cfg.worst ? '1' : null, admin: admin ? '' : null })
+  const carry = (m: number) => real ? pageQuery({ m: moved || admin || !cfg.live ? m.toFixed(2) : null, still: cfg.live ? null : '1', worst: cfg.worst ? '1' : null, admin: admin && !demo ? '' : null, [DEMO]: demo ? '' : null })
     : '&m=' + m.toFixed(2) + '&dir=' + cfg.dir + (cfg.worst ? '' : '&worst=0') + (cfg.live ? '' : '&still=1');
   const href = (id: string) => real ? '/city/' + id + carry(bm) : '/lab/day-city?city=' + id + carry(bm);
   const flap = { flipMs: P.flipMs, flaps: P.flaps, stagger: P.stagger, mode: P.flap, onStep: () => step(P.sound === 'steps') };
@@ -230,10 +235,10 @@ export function DayCity({ saved, parts, q, page, base, foot, live }: {
       )}
       {bare ? null : (
         <>
-          <LabPanel tab={real ? 'Admin' : 'Lab'} title={real ? W.city.name + ': admin' : 'Day city lab'} cfg={{ ...cfg, seed: day.seed }} bounds={bounds} choices={CHOICES} groups={GROUPS} set={set} moments={ms} momentIdx={cur} out={out}
+          <LabPanel closed={demo} tab={demo ? 'Sample day' : real ? 'Admin' : 'Lab'} title={demo ? W.city.name + ': sample day' : real ? W.city.name + ': admin' : 'Day city lab'} cfg={{ ...cfg, seed: day.seed }} bounds={bounds} choices={CHOICES} groups={GROUPS} set={set} moments={ms} momentIdx={cur} out={out}
             optionLabel={(_k, v) => LABELS[v] || v} meter={meter} msg={msg} rail={rail} railLabel={(s) => LABELS[String(s.dir)] + (s.pylon ? ', pylon' : '') + ', ' + String(s.pics ?? 'none')}
-            apply={(s) => setCfg((c) => ({ ...c, ...(s as Partial<DayCityCfg>) }))} buttons={real ? [['Now', () => set('t', realMinute(Date.now()))], ['Save', doSave, true]] : labButtons} />
-          <LayoutPicker modes={DIRS} mode={cfg.dir} setMode={(m) => set('dir', m)} replay={() => clock.set(cfg.t)} />
+            apply={(s) => setCfg((c) => ({ ...c, ...(s as Partial<DayCityCfg>) }))} buttons={demo ? [] : real ? [['Now', () => set('t', realMinute(Date.now()))], ['Save', doSave, true]] : labButtons} />
+          {demo ? null : <LayoutPicker modes={DIRS} mode={cfg.dir} setMode={(m) => set('dir', m)} replay={() => clock.set(cfg.t)} />}
         </>
       )}
     </>

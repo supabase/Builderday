@@ -86,6 +86,12 @@
 .en-names [data-on] { color: var(--en-ink); }
 @media (hover: hover) and (pointer: fine) { .en-names a:hover, .en-names button:hover { color: var(--en-ink); } }
 
+/* a tablet: Register takes its own row, the three facts under it, so no fact breaks mid-phrase */
+@media (min-width: 641px) and (max-width: 1000px) {
+  .en-cells { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .en-reg { grid-column: 1 / -1; min-height: 72px; }
+}
+
 /* ---------- a phone: the map as dots, the cities as keys, the whole ending on one screen ---------- */
 @media (max-width: 640px) {
   .en { gap: calc(var(--bd-u, 8px) * 2); padding-top: calc(var(--bd-u, 8px) * 3); padding-bottom: max(calc(var(--bd-u, 8px) * 3), env(safe-area-inset-bottom)); }

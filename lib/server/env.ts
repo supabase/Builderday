@@ -25,6 +25,11 @@ export function siteUrl(req?: Request): string {
 
 export const devMail = () => process.env.NODE_ENV !== 'production' && process.env.HACKDAY_DEV_MAIL === '1';
 
+/* signing in (lib/signin.ts): a supabase.com account always; the email and six-digit code only while EMAIL_SIGNIN=on
+   (an emergency switch); a stand-in Supabase account only on a dev server with HACKDAY_FAKE_SUPABASE=1 */
+export const emailSignIn = () => (process.env.EMAIL_SIGNIN || '').trim().toLowerCase() === 'on';
+export const fakeSupabase = () => process.env.NODE_ENV !== 'production' && process.env.HACKDAY_FAKE_SUPABASE === '1';
+
 export function superAdmins(): string[] {
   return (process.env.SUPER_ADMINS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
 }
@@ -36,10 +41,9 @@ export function ipOf(req: Request): string | null {
   return /^[0-9a-f.:]+$/i.test(ip) ? ip : null;
 }
 
-/* the hold on place emails (owner, 2026-11-19, narrowed 2026-11-23: sign-in codes and other emails a person asks for
-   go out; the place emails sent to the whole list, by Luma's webhook or the desk, wait). On unless MAIL_HOLD=off: a
-   held email still becomes an outbox row (not sent), so nothing is lost; once lifted, the desk's "send unsent links"
-   catches up the places whose link never went out. */
+/* the hold on emails sent to many people at once (owner, 2026-11-19). Place emails are gone (owner, 2026-11-25: people
+   sign in with Supabase, nothing goes out when they register on Luma); what is left under the hold is Remind me. On
+   unless MAIL_HOLD=off: a held email still becomes an outbox row (not sent), so nothing is lost. */
 export function mailHeld(): boolean { return (process.env.MAIL_HOLD || '').trim().toLowerCase() !== 'off'; }
 
 /* the test list (MAIL_ALLOW): addresses, or whole domains written as @example.com, that get place emails while the

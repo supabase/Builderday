@@ -1,8 +1,8 @@
 /* POST /api/auth/confirm (form): the button on /in/confirm, from the link in the code email. With no page asked for, it
-   lands where the personal link would: the preview page on the person's city before the day, their city after. */
+   lands on the preview page on the person's city before the day, their city after. */
 import { NextResponse } from 'next/server';
 import { confirmToken } from '@/lib/server/auth';
-import { backendOn, siteUrl } from '@/lib/server/env';
+import { backendOn, emailSignIn, siteUrl } from '@/lib/server/env';
 import { passOf } from '@/lib/server/people';
 import { landing } from '@/lib/server/gate';
 import { unbase } from '@/lib/routes';
@@ -10,6 +10,7 @@ import { unbase } from '@/lib/routes';
 export async function POST(req: Request) {
   const base = siteUrl(req);
   if (!backendOn()) return NextResponse.redirect(base + '/in?e=offline', 303);
+  if (!emailSignIn()) return NextResponse.redirect(base + '/in?e=supabase', 303);
   const f = await req.formData().catch(() => null);
   const th = String(f?.get('th') || ''), next = unbase(String(f?.get('next') || ''));
   const r = await confirmToken(th);

@@ -465,10 +465,10 @@ function content(x: X, S: Score, o: View, L: Lay, t: number, k: number, evOnly: 
   });
 
   /* ----- the caption: the act's rule, in one fixed slot ----- */
-  const prize = x.f.prize ?? '$10,000', fin = cs.length * top - (x.f.empty?.length ?? 0);
-  /* who votes and from when (anyone, from the first minute of building), and who picks (the event's own pickers) */
+  const fin = cs.length * top - (x.f.empty?.length ?? 0);
+  /* who votes and from when (anyone, from the event's minute), and who picks (the event's own pickers) */
   const pickers = (x.f.pickers ?? 'the judges').toUpperCase();
-  const caps: [number, string][] = [[0, x.f.buildMin + ' MINUTES TO BUILD'], [S.B, 'ANYONE CAN VOTE · MINUTE 0 TO ' + (x.f.buildMin + x.f.voteAfter)], [S.Fs, fin + ' FINALISTS · ' + pickers + ' PICK ONE'], [F.p2, 'PICKED BY ' + pickers + ' · ' + prize], [S.loop - 0.25, x.f.buildMin + ' MINUTES TO BUILD']];
+  const caps: [number, string][] = [[0, x.f.buildMin + ' MINUTES TO BUILD'], [S.B, 'ANYONE CAN VOTE · MINUTE ' + (x.f.publicAt ?? 0) + ' TO ' + (x.f.buildMin + x.f.voteAfter)], [S.Fs, fin + ' FINALISTS · ' + pickers + ' PICK 3'], [F.p2, '1ST, 2ND AND 3RD · PICKED BY ' + pickers], [S.loop - 0.25, x.f.buildMin + ' MINUTES TO BUILD']];
   if (!evOnly) caps.forEach(([t0, s], i) => {
     const t1 = caps[i + 1]?.[0] ?? Infinity, a = (i ? cl((t - t0 - 0.1) / 0.15) : 1) * (t >= t1 ? 1 - cl((t - t1) / 0.1) : 1);
     if (t >= t0 && a > 0) word(x, s, 16, L.cy, fs, i === 3 ? GREEN : LABEL, a * k, 'left', { k: 'cap' });

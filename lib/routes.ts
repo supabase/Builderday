@@ -18,5 +18,12 @@ export const routes = {
   labHome: () => BASE + '/lab/day-home',
   labCity: (id: string) => BASE + '/lab/day-city?city=' + id,
 };
+/* a project's address from its city's link as a page builds it (/city/<id>?m=…&demo): the same query, so the
+   project opens at the same moment, with the same switches; a lab's link has no project page and gets the plain one */
+export const projectVia = (cityHref: string, id: string, slug: string): string => {
+  const h = unbase(cityHref), q = h.indexOf('?'), path = q < 0 ? h : h.slice(0, q);
+  return path === '/city/' + id ? at(path + '/p/' + slug + (q < 0 ? '' : h.slice(q))) : routes.project(id, slug);
+};
+
 /* the project's slug from an address (/city/<id>/p/<slug>), with or without the base */
 export const projectSlugIn = (path: string): string | null => { const m = path.slice(BASE.length).match(/^\/city\/[^/]+\/p\/([^/]+)/); return m ? decodeURIComponent(m[1]) : null; };

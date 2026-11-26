@@ -1,0 +1,192 @@
+/* How it works, walked. Class prefix wk-. The preview's tokens where the page has them (pf-*, wh-*), the same values
+   as fallbacks elsewhere (the lab). Green only for the cut and the leader; blue only for votes in, not shown yet.
+   Motion: the minute follows the scroll with no easing; a step's own change runs on transitions (interruptible) of
+   --wk-beat; rows move with an in-out curve, things arriving with an out curve; reduced motion turns all of it off. */
+
+.wk {
+  --wk-ink: var(--pf-ink, #f4f4f2); --wk-soft: var(--pf-soft, #c9c9c5); --wk-muted: var(--pf-muted, #b4b4af);
+  --wk-rule: var(--pf-rule, #6b6c6b); --wk-hair: var(--pf-hair, #2b2c2c); --wk-ground: var(--bd-ground, #0c0d0d);
+  --wk-green: #3ecf8e; --wk-blue: #4272f5;
+  --wk-sans: var(--wh-sans, ui-sans-serif, system-ui, sans-serif); --wk-mono: var(--wh-mono, ui-monospace, 'SF Mono', Menlo, monospace);
+  --wk-top: var(--pf-hdr, 0px); --wk-out: cubic-bezier(0.23, 1, 0.32, 1); --wk-move: cubic-bezier(0.65, 0, 0.35, 1);
+  --wk-hatch: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='15' height='11'%3E%3Ctext x='0' y='9' font-family='monospace' font-size='10' fill='rgba(244,244,242,0.32)'%3E::%7C%3C/text%3E%3C/svg%3E");
+  color: var(--wk-ink); font-family: var(--wk-sans);
+}
+.wk-h { margin: 0; font: 500 clamp(32px, 4vw, 56px)/1.02 var(--wk-sans); letter-spacing: -0.035em; text-wrap: balance; }
+
+.wk-grid { display: grid; grid-template-columns: calc(var(--wk-share) * 1% - 28px) calc((100 - var(--wk-share)) * 1% - 28px); gap: 56px; margin-top: 32px; }
+.wk[data-side='right'] .wk-stage { order: 2; }
+
+/* the stage: stays put while the steps pass */
+.wk-stage { position: sticky; top: calc(var(--wk-top) + 20px); align-self: start; display: grid; gap: 16px; min-width: 0; padding: 20px; border: 1px solid var(--wk-hair); background: var(--wk-ground); }
+.wk-stage[data-click] { cursor: pointer; }
+.wk-clock { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; margin: 0; }
+.wk-clock b { font: 500 28px/1 var(--wk-mono); font-variant-numeric: tabular-nums; }
+.wk-clock span { font: 400 12px/1.3 var(--wk-mono); color: var(--wk-muted); }
+
+/* the rail */
+.wk-rail { position: relative; padding-bottom: 34px; }
+.wk-track { position: relative; height: 6px; border: 1px solid var(--wk-rule); overflow: hidden; }
+.wk-hid { position: absolute; top: 0; bottom: 0; background: var(--wk-hatch) repeat-x 0 -3px; }
+.wk-fill { position: absolute; inset: 0; background: var(--wk-ink); transform-origin: left center; opacity: 0.85; }
+.wk-rail ol { list-style: none; margin: 0; padding: 0; }
+.wk-rail li { position: absolute; top: 12px; display: flex; gap: 6px; align-items: baseline; white-space: nowrap; color: var(--wk-muted); font: 400 11px/1.2 var(--wk-mono); }
+.wk-rail li::before { content: ''; position: absolute; top: -12px; width: 1px; height: 10px; background: var(--wk-rule); }
+.wk-rail li[data-a='l'] { translate: 0 0; } .wk-rail li[data-a='l']::before { left: 0; }
+.wk-rail li[data-a='r'] { translate: -100% 0; } .wk-rail li[data-a='r']::before { right: 0; }
+.wk-rail li b { font-weight: 500; }
+.wk-rail li[data-on] { color: var(--wk-ink); }
+.wk-short { display: none; }
+
+/* the two views share one cell, so swapping them never changes the stage's height */
+.wk-views { display: grid; }
+.wk-view { grid-area: 1 / 1; display: grid; gap: 14px; align-content: start; min-width: 0; transition: opacity var(--wk-beat) var(--wk-out), visibility 0s; }
+.wk-view[data-off] { opacity: 0; visibility: hidden; transition: opacity calc(var(--wk-beat) * 0.75) var(--wk-out), visibility 0s calc(var(--wk-beat) * 0.75); }
+
+/* the race chart */
+.wk-chart { position: relative; height: clamp(96px, calc(100svh - var(--wk-top) - 470px), var(--wk-chart-h)); margin-top: 4px; }
+.wk-chart[data-strip] { height: 64px; }
+.wk-chart svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.wk-base { stroke: var(--wk-rule); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.wk-line { fill: none; stroke: rgb(244 244 242 / 0.3); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.wk-line[data-you] { stroke: var(--wk-ink); stroke-width: 2; }
+.wk-tick { fill: var(--wk-blue); }
+.wk-cut { stroke: var(--wk-green); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+.wk-cut[data-lock] { stroke-dasharray: none; stroke-width: 1.5; }
+.wk-head { stroke: rgb(244 244 242 / 0.32); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.wk-box { position: absolute; top: 0; bottom: 0; background: var(--wk-hatch); border-left: 1px solid var(--wk-rule); }
+.wk-judge { position: absolute; width: 4px; height: 4px; margin: -2px 0 0 -2px; background: rgb(244 244 242 / 0.45); }
+.wk-judge[data-you] { width: 6px; height: 6px; margin: -3px 0 0 -3px; background: var(--wk-ink); }
+.wk-in { position: absolute; bottom: 0; width: 1px; height: 8px; background: rgb(244 244 242 / 0.45); }
+.wk-in[data-you] { width: 2px; height: 14px; margin-left: -0.5px; background: var(--wk-ink); }
+.wk-lead { position: absolute; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; background: var(--wk-green); border-radius: 50%; }
+.wk-tag { position: absolute; translate: 8px -50%; padding: 3px 6px; border: 1px solid var(--wk-ink); background: var(--wk-ground); font: 500 11px/1 var(--wk-mono); white-space: nowrap; }
+.wk-tag[data-flip] { translate: calc(-100% - 8px) -50%; }
+
+.wk-legend { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0; padding: 0; font: 400 11px/1.3 var(--wk-mono); color: var(--wk-muted); }
+.wk-legend li { display: flex; align-items: center; gap: 6px; }
+.wk-legend i { display: inline-block; flex: none; }
+.wk-k-line { width: 14px; height: 2px; background: var(--wk-ink); }
+.wk-k-bar { width: 14px; height: 8px; background: var(--wk-soft); }
+.wk-k-blue { width: 2px; height: 9px; background: var(--wk-blue); }
+.wk-k-judge { width: 5px; height: 5px; background: var(--wk-ink); }
+.wk-k-hatch { width: 14px; height: 8px; background: var(--wk-hatch); border: 1px solid var(--wk-rule); }
+.wk-k-cut { width: 14px; height: 0; border-top: 1px dashed var(--wk-green); }
+
+/* the board */
+.wk-board { min-width: 0; font: 400 13px/1 var(--wk-sans); }
+.wk-board ol { position: relative; list-style: none; margin: 0; padding: 0; overflow: hidden; border-top: 1px solid var(--wk-hair); }
+.wk-board li { position: absolute; left: 0; right: 0; top: 0; height: 30px; display: grid; grid-template-columns: 26px minmax(0, 1fr) auto auto; align-items: center; gap: 10px; background: var(--wk-ground); color: var(--wk-soft);
+  transition: transform var(--wk-beat) var(--wk-move), opacity calc(var(--wk-beat) * 0.75) var(--wk-out); }
+.wk-board li[data-you] { color: var(--wk-ink); font-weight: 500; }
+.wk-rank { font: 400 11px/1 var(--wk-mono); color: var(--wk-muted); }
+.wk-board li[data-top] .wk-rank { color: var(--wk-green); }
+.wk-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wk-n { display: grid; justify-items: end; gap: 3px; min-width: 28px; font: 500 13px/1 var(--wk-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.wk-n[data-q] { color: var(--wk-blue); }
+.wk-n small { font: 400 11px/1 var(--wk-mono); color: var(--wk-muted); }
+.wk-prize { font: 400 11px/1 var(--wk-mono); color: var(--wk-green); white-space: nowrap; opacity: 0; translate: -4px 0; transition: opacity var(--wk-beat) var(--wk-out), translate var(--wk-beat) var(--wk-out); }
+.wk-prize[data-on] { opacity: 1; translate: 0 0; }
+.wk-board .wk-empty { display: block; height: auto; transform: none; position: static !important; color: var(--wk-muted); font: 400 12px/30px var(--wk-mono); }
+.wk-foot { margin: 0; padding-top: 8px; border-top: 1px solid var(--wk-hair); font: 400 11px/1.3 var(--wk-mono); color: var(--wk-muted); }
+
+/* tower: the board leads, bigger rows with the distance to the cut */
+.wk-board[data-tower] { font-size: 16px; }
+.wk-board[data-tower] li { height: 40px; grid-template-columns: 30px minmax(0, 1fr) auto auto auto; }
+.wk-board[data-tower] .wk-rank { font-size: 13px; }
+.wk-board[data-tower] .wk-n { font-size: 16px; min-width: 96px; }
+.wk-gap { font: 400 11px/1 var(--wk-mono); color: var(--wk-muted); white-space: nowrap; }
+
+/* ledger: a bar per project */
+.wk-ledger li { height: 34px; grid-template-columns: 26px 104px minmax(0, 1fr) 34px; }
+.wk-bar { grid-column: 3; grid-row: 1; position: relative; height: 12px; }
+.wk-bar i { position: absolute; inset: 0; background: var(--wk-soft); transform-origin: left center; }
+.wk-ledger li[data-you] .wk-bar:not([data-q]) i { background: var(--wk-ink); }
+.wk-bar[data-q] i { background: var(--wk-hatch); opacity: 0.9; }
+.wk-ledger .wk-bar { height: 14px; }
+/* the prize is printed on the bar: white in difference, so it reads dark on the bar and light past its end */
+.wk-ledger .wk-prize { grid-column: 3; grid-row: 1; justify-self: start; padding-left: 6px; color: #fff; mix-blend-mode: difference; }
+.wk-cutline { position: absolute; z-index: 120; top: 0; bottom: 0; left: calc(26px + 104px + 20px); right: calc(34px + 10px); pointer-events: none; }
+.wk-cutline::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; border-left: 1px dashed var(--wk-green); }
+.wk-cutline[data-lock]::before { border-left-style: solid; }
+
+/* the final */
+.wk-final { display: grid; gap: 14px; align-content: start; }
+.wk-view-final { align-content: start; }
+.wk-codes { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-top: 1px solid var(--wk-hair); border-left: 1px solid var(--wk-hair); }
+.wk-codes li { display: grid; gap: 4px; padding: 8px 6px 6px; border-right: 1px solid var(--wk-hair); border-bottom: 1px solid var(--wk-hair); font: 400 11px/1 var(--wk-mono); color: var(--wk-muted); }
+.wk-codes b { font-weight: 500; letter-spacing: 0.04em; }
+.wk-codes span { font-size: 8px; letter-spacing: 1px; }
+.wk-codes li[data-mine] { background: var(--wk-ink); color: var(--wk-ground); }
+.wk-final-k { margin: 6px 0 0; font: 400 11px/1.2 var(--wk-mono); color: var(--wk-muted); }
+.wk-mine { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.wk-mine li { display: flex; gap: 10px; font: 400 16px/1.2 var(--wk-sans); color: var(--wk-soft); }
+.wk-mine span { font: 400 11px/1.5 var(--wk-mono); color: var(--wk-green); }
+.wk-mine li[data-you] { color: var(--wk-ink); font-weight: 500; }
+.wk-slots { list-style: none; margin: 6px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--wk-hair); }
+.wk-slots li { display: grid; gap: 6px; padding: 12px; font: 500 16px/1.15 var(--wk-sans); }
+.wk-slots li + li { border-left: 1px solid var(--wk-hair); }
+.wk-slots span { font: 400 11px/1 var(--wk-mono); color: var(--wk-muted); }
+
+/* the steps */
+.wk-steps { list-style: none; margin: 0; padding: 0; }
+.wk-steps li { height: var(--wk-step, 90vh); }
+.wk-steps li:last-child { height: calc(var(--wk-step, 90vh) * 0.7); }
+/* a step's words stay in view for the whole step: pinned beside the stage, then pushed on by the next step */
+.wk-card { position: sticky; top: calc(var(--wk-top) + 44px); margin-bottom: 72px; padding-top: 4px; transition: opacity var(--wk-beat) var(--wk-out); }
+.wk-steps li:not([data-on]) .wk-card { opacity: 0.65; }
+.wk-key { margin: 0 0 12px; font: 500 12px/1.3 var(--wk-mono); color: var(--wk-muted); }
+.wk-steps li[data-on] .wk-key { color: var(--wk-ink); }
+.wk-steps h3 { margin: 0 0 12px; font: 500 clamp(26px, 2.6vw, 36px)/1.08 var(--wk-sans); letter-spacing: -0.025em; text-wrap: balance; }
+.wk-p { margin: 0; max-width: 40ch; font: 400 17px/1.5 var(--wk-sans); color: var(--wk-soft); text-wrap: pretty; }
+
+@media (max-width: 1100px) { .wk-grid { gap: 36px; grid-template-columns: calc(var(--wk-share) * 1% - 18px) calc((100 - var(--wk-share)) * 1% - 18px); } }
+
+/* phone: the stage fills the screen under the header; the steps are cards that slide up over its lower part, with
+   room between them to see the drawing */
+@media (max-width: 760px) {
+  .wk-grid { display: block; margin-top: 24px; }
+  /* the stage is as tall as what it draws and sits above the steps: a card that is done slides away under it */
+  .wk-stage { top: var(--wk-top); z-index: 3; align-content: start; padding: 12px 0 14px; border: 0; border-bottom: 1px solid var(--wk-hair); gap: 12px; }
+  .wk-clock { flex-direction: column; align-items: flex-start; }
+  .wk-clock b { font-size: 22px; }
+  .wk-long { display: none; } .wk-short { display: inline; }
+  .wk-chart { height: clamp(80px, calc(100svh - var(--wk-top) - 600px), var(--wk-chart-hp)); }
+  /* each card pins just under the stage for its step, then the next one pushes it up under the stage */
+  .wk-steps { position: relative; z-index: 1; pointer-events: none; }
+  .wk-card { top: calc(var(--wk-stage-b, 60vh) + 12px); margin-bottom: 0; pointer-events: auto; padding: 14px 16px 16px; border: 1px solid var(--wk-rule); background: var(--wk-ground); }
+  .wk-key { margin-bottom: 8px; }
+  .wk-steps h3 { margin-bottom: 8px; }
+  .wk-steps li:not([data-on]) .wk-card { opacity: 1; }
+  /* a card that is done fades as it slides under the stage, so no strip of it shows below */
+  .wk-steps li[data-past] .wk-card { opacity: 0; }
+  .wk-gap { display: none; }
+  .wk-steps h3 { font-size: 22px; }
+  .wk-p { font-size: 15px; line-height: 1.45; }
+  .wk-legend { gap: 4px 12px; }
+  .wk-stage { gap: 10px; }
+  .wk-rail { padding-bottom: 28px; }
+  .wk-board[data-tower] { font-size: 15px; }
+  .wk-board[data-tower] li { height: 40px; }
+  .wk-gap[data-final] { display: none; }
+  .wk-ledger li { grid-template-columns: 24px 88px minmax(0, 1fr) 30px; gap: 8px; }
+  .wk-cutline { left: calc(24px + 88px + 16px); right: calc(30px + 8px); }
+  .wk-slots li { font-size: 14px; padding: 10px 8px; }
+}
+
+/* a small phone keeps only the number at 60 */
+@media (max-width: 379px) {
+  .wk-rail li[data-x='60'] span { display: none; }
+  .wk-board[data-tower] .wk-n { min-width: auto; }
+}
+/* a short phone: the stage keeps the clock, the rail and the list, and the card drops the minutes the clock already
+   shows, so the step's words fit under it */
+@media (max-width: 760px) and (max-height: 700px) {
+  .wk-legend, .wk-foot, .wk-chart, .wk-key { display: none; }
+  .wk-final .wk-mine, .wk-final-k { display: none; }
+  .wk-final { gap: 10px; }
+}
+/* a narrower desktop: the short key, on one line */
+@media (min-width: 761px) and (max-width: 1300px) { .wk-legend .wk-long { display: none; } .wk-legend .wk-short { display: inline; } }
+
+@media (prefers-reduced-motion: reduce) { .wk *, .wk *::before { transition: none !important; } }

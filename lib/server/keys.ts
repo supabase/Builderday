@@ -30,8 +30,8 @@ export function readKey(use: KeyUse, key: string): { pass: string; check: (versi
   return { pass, check: (version) => { const want = mac(use, pass, version); return timingSafeEqual(want, sig); } };
 }
 
-/* the desk's mark: set only when a person signs in with the six-digit code (never by a link or the room code), bound
-   to their Auth user, so a session that a personal link made cannot open the desk */
+/* the desk's mark: set when a person signs in with their Supabase account (or the six-digit code while that switch is
+   on), bound to their Auth user, so only a session that proved the email opens the desk */
 export const DESK_COOKIE = 'hd_desk';
 export function deskMark(authUser: string): string { return createHmac('sha256', need('HACKDAY_KEY_SECRET')).update('desk:' + authUser).digest('base64url'); }
 export function deskMarkOk(authUser: string, mark: string | undefined): boolean {

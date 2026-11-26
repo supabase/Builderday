@@ -1,0 +1,19 @@
+{
+  "mode": "race",
+  "seed": 4201,
+  "projects": 9,
+  "youArrive": 34,
+  "youPlace": 2,
+  "judges": 3,
+  "stepH": 0.9,
+  "scrubTo": 0.6,
+  "line": 0.5,
+  "beatMs": 240,
+  "revealMs": 1400,
+  "side": "left",
+  "stageShare": 58,
+  "rows": 5,
+  "rowsPhone": 3,
+  "chartH": 230,
+  "chartHPhone": 150
+}

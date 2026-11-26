@@ -10,6 +10,7 @@ import { drawOf, type Ranked, type World } from '@/lib/stage/world';
 import { click, unlock } from '@/components/wheel/click';
 import { Door, In, Num, Others, Pic, Countdown, Words, mmss, bare } from './parts';
 import type { SceneProps } from './intro';
+import type { BoardView } from '@/lib/stage/types';
 import { useWall } from './use';
 import { hasFinal, hasVote, type WallEvent } from '@/lib/stage/event';
 
@@ -17,7 +18,9 @@ import { hasFinal, hasVote, type WallEvent } from '@/lib/stage/event';
    tick (the ranking, which re-sorts on a tick and glides). Each survives the worst cases: no entries, 182 entries, the
    longest name, and a tie at third. */
 
-export type LiveProps = SceneProps & { ranked: World; chart: boolean; talkEnds: number | null; spin: { at: number; seed: number } | null };
+export type LiveProps = SceneProps & { ranked: World; chart: boolean; talkEnds: number | null; spin: { at: number; seed: number } | null;
+  /* the host's picks on the frame's boards: the view (null: they take turns) and the showcase's project (null: it walks) */
+  view?: BoardView | null; show?: number | null };
 
 /* 14. Building: the countdown as the largest thing on the wall, the door, entries arriving with their pictures, the
    count, the other nine; on the switch, the chart in place of the arrivals */
@@ -34,7 +37,7 @@ export function Building({ city, world, ranked, url, chart }: LiveProps) {
       {/* the plan's Building has the QR and the code; the address is on Doors, Submit, Questions and the QR key */}
       <div className="st-build-door">
         <Door url={url} code={city.room_code} addr={false} />
-        <p className="st-l st-key">To submit: the email you gave Luma and the room code.</p>
+        <p className="st-l st-key">To submit: sign in with Supabase, get checked in at the door.</p>
       </div>
       <div className="st-build-b">
         {chart && hasVote(ev) && !ranked.hidden ? <Chart w={ranked} /> : <Arrivals world={world} />}
@@ -175,7 +178,7 @@ function Row({ r, cut, hidden }: { r: Ranked; cut: number; hidden?: boolean }) {
 }
 
 /* the top ten over time, as steps, with the names at the line ends (pushed apart so none overlap) */
-function Chart({ w }: { w: World }) {
+export function Chart({ w }: { w: World }) {
   const W = 1300, H = 560, L = 70, R = 980, T = 16, B = 500;
   const { series, span, max } = w.chart;
   const top = Math.max(5, Math.ceil(max / 5) * 5);
@@ -213,9 +216,10 @@ const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + '…'
    there; each one after lands like a step (st-in: in and 12px up, the stage's enter time, ease-out), the one before
    is cut. Under reduced motion each is simply swapped. The next picture is laid out unseen so it is ready when it
    comes. */
-export function Showcase({ world, now, url }: LiveProps) {
+export function Showcase({ world, now, url, show }: LiveProps) {
   const { cfg, ev } = useWall(), list = world.all, n = list.length, tickMs = cfg.tick * 1000;
-  const i = n ? Math.floor(now / tickMs) % n : -1, p = i >= 0 ? list[i] : null, next = n > 1 ? list[(i + 1) % n] : null;
+  /* the host's presses pick the project; left alone it walks them */
+  const i = !n ? -1 : show !== null && show !== undefined ? ((show % n) + n) % n : Math.floor(now / tickMs) % n, p = i >= 0 ? list[i] : null, next = n > 1 ? list[(i + 1) % n] : null;
   /* the first entry shown is there on arrival; any change after that lands */
   const [seen, setSeen] = useState<{ id: number | null; moved: boolean }>({ id: p?.id ?? null, moved: false });
   if ((p?.id ?? null) !== seen.id) setSeen({ id: p?.id ?? null, moved: true });

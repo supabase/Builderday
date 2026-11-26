@@ -38,7 +38,6 @@ export function DeskLab({ who: who0, moment: m0, tab }: { who: Who; moment: Mome
       case 'guest.remove': upd((s) => ({ ...s, guests: s.guests.filter((g) => g.person !== p.person) })); return { ok: true };
       case 'entry.hide': case 'entry.show': upd((s) => ({ ...s, entries: s.entries.map((e) => (e.no === p.no ? { ...e, hidden: action === 'entry.hide' } : e)) })); return { ok: true };
       case 'entry.picture': return { ok: true };
-      case 'door.code': { const code = 'Q' + Math.floor(Math.random() * 900 + 100); upd((s) => ({ ...s, cities: s.cities.map((c) => (c.id === p.city ? { ...c, roomCode: code } : c)) })); return { ok: true, code }; }
       case 'clock.start': setMoment('build'); return { ok: true };
       case 'clock.add': case 'clock.end': return { ok: true };
       case 'scene.update': upd((s) => ({ ...s, scenes: s.scenes.map((x) => (x.id === p.id ? { ...x, hidden: !!p.hidden } : x)) })); return { ok: true };

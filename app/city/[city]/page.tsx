@@ -10,8 +10,9 @@ import { backendOn } from '@/lib/server/env';
 import { pageSnaps } from '@/lib/server/snapshot';
 import { DayCity, type DayCityCfg } from '@/components/day/day-city';
 import { EVENT } from '@/lib/day-data';
+import { demoRobots, isDemo } from '@/lib/demo';
 
-const DESCRIPTION = (c: City) => 'Build for 90 minutes from ' + cityStartLocal(c) + ' local time. Voting is open from the start until 30 minutes after building ends, and the top 3 by votes go to the final.';
+const DESCRIPTION = (c: City) => 'Build for 90 minutes from ' + cityStartLocal(c) + ' local time. The votes are shown from minute 60, and the top 3 by votes go to the global final.';
 
 /* The ten cities are known, so any other id is a 404 */
 export const dynamicParams = false;
@@ -19,9 +20,11 @@ export function generateStaticParams() { return CITY_IDS.map((city) => ({ city }
 
 type Q = Record<string, string | string[] | undefined>;
 type Props = { params: Promise<{ city: string }>; searchParams: Promise<Q> };
-export async function generateMetadata({ params }: Props) {
+export async function generateMetadata({ params, searchParams }: Props) {
   const c = cityById((await params).city);
-  return c ? pageMeta(c.name + ' · ' + EVENT.name, DESCRIPTION(c)) : {};
+  if (!c) return {};
+  const m = pageMeta(c.name + ' · ' + EVENT.name, DESCRIPTION(c));
+  return isDemo(await searchParams) ? { ...m, robots: demoRobots } : m;
 }
 
 /* Dynamic: the first frame is drawn at the real time of the request (or the moment the URL asks for: ?moment=, ?m=),
@@ -37,11 +40,12 @@ export default async function City({ params, searchParams }: Props) {
     const rest = new URLSearchParams(); Object.entries(q).forEach(([k, v]) => { if (k !== 'p' && v != null) rest.set(k, v); });
     redirect('/city/' + city + '/p/' + encodeURIComponent(q.p) + (rest.size ? '?' + rest : ''));
   }
-  /* with a backend, the page arrives with the city's real numbers (lib/source.ts) */
-  const live = backendOn() ? await pageSnaps(city) : undefined;
+  /* with a backend, the page arrives with the city's real numbers (lib/source.ts); ?demo keeps the seeded day */
+  const on = backendOn() && !isDemo(q);
+  const live = on ? await pageSnaps(city) : undefined;
   return (
     <>
-      <FormsProvider live={backendOn()}><DayCity saved={saved as Partial<DayCityCfg>} parts={parts as Partial<PartsCfg>} q={q} page={{ nowMs: requestTime(), city }} live={live} /></FormsProvider>
+      <FormsProvider live={on}><DayCity saved={saved as Partial<DayCityCfg>} parts={parts as Partial<PartsCfg>} q={q} page={{ nowMs: requestTime(), city }} live={live} /></FormsProvider>
       <noscript><p className="m-0 p-8 text-lg text-ink-2">This page needs JavaScript to follow the clock and to vote.</p></noscript>
     </>
   );

@@ -19,14 +19,10 @@ function jar() {
     },
   };
 }
-async function byCode(email) {
-  const j = jar();
-  let s = await j.go('/api/auth/code', { email });
-  if (s.status === 429 && s.body?.wait) { await sleep((s.body.wait + 1) * 1000); s = await j.go('/api/auth/code', { email }); }
-  if (s.status !== 200) throw new Error('code for ' + email + ': ' + JSON.stringify(s.body));
-  const [row] = await rest(e, 'outbox?to_email=eq.' + encodeURIComponent(email) + '&template=eq.code&order=created_at.desc&limit=1&select=data');
-  const v = await j.go('/api/auth/verify', { email, code: row.data.code });
-  if (v.status !== 200) throw new Error('verify for ' + email + ': ' + JSON.stringify(v.body));
+/* sign in with the stand-in Supabase account for this email (the site runs with HACKDAY_FAKE_SUPABASE=1) */
+async function signIn(email) {
+  const j = jar(), r = await j.go('/api/auth/supabase', { token: 'fake.' + email });
+  if (r.status !== 200) throw new Error('Supabase sign-in for ' + email + ': ' + JSON.stringify(r.body) + ' (is HACKDAY_FAKE_SUPABASE=1 set on the site?)');
   return j;
 }
 function check(what, ok, more = '') { n++; if (!ok) bad++; console.log((ok ? 'ok   ' : 'FAIL ') + what + (ok || !more ? '' : '  · ' + more)); }
@@ -46,7 +42,7 @@ async function dropLogins() {
   for (const u of users.filter((u) => (u.email || '').endsWith(D))) await fetch(e.NEXT_PUBLIC_SUPABASE_URL + '/auth/v1/admin/users/' + u.id, { method: 'DELETE', headers: { apikey: e.SUPABASE_SERVICE_ROLE_KEY, Authorization: 'Bearer ' + e.SUPABASE_SERVICE_ROLE_KEY } });
 }
 await rest(e, 'people?email=like.*' + encodeURIComponent(D), { method: 'DELETE' }); await dropLogins();
-const sup = await byCode('owner@hackday.test');
+const sup = await signIn('owner@hackday.test');
 const today = new Date().toISOString().slice(0, 10);
 let ev = null, place = null, owner = null;
 try {
@@ -60,8 +56,8 @@ try {
   const start = new Date(Date.now() - 10 * 60000).toISOString();
   const pl = await act(sup, { action: 'place.add', event: ev, name: 'Events Test Lisbon', zone: 'Europe/Lisbon', start }, 200, 'super: place.add');
   place = pl.body?.id;
-  const [prow] = await rest(e, 'cities?id=eq.' + place + '&select=event,offset_min,build_min,room_code,stage(scene),scenes(id)');
-  check('the place is in the event, with its offset, room code, stage and deck', prow.event === ev && prow.offset_min === 0 && /^[A-Z0-9]{4}$/.test(prow.room_code || '') && prow.scenes.length > 3 && prow.stage, JSON.stringify({ ...prow, scenes: prow.scenes.length }));
+  const [prow] = await rest(e, 'cities?id=eq.' + place + '&select=event,offset_min,build_min,stage(scene),scenes(id)');
+  check('the place is in the event, with its offset, stage and deck', prow.event === ev && prow.offset_min === 0 && prow.scenes.length > 3 && prow.stage, JSON.stringify({ ...prow, scenes: prow.scenes.length }));
   await act(sup, { action: 'place.add', event: ev, name: 'Nowhere', zone: 'Mars/Olympus', start }, 400, 'super: place.add with a made-up zone');
 
   // 2. roles: an event admin, a judge of the whole event, a judge of one place
@@ -69,7 +65,7 @@ try {
   await act(sup, { action: 'role.add', event: ev, email: 'judge.all' + D, role: 'judge' }, 200, 'super: role.add judge (whole event)');
   await act(sup, { action: 'role.add', email: 'judge.one' + D, role: 'judge', roleCity: place }, 200, 'super: role.add judge (one place, event from the place)');
   await act(sup, { action: 'role.add', event: 'builder-day-2026', email: 'judge.x' + D, role: 'judge', roleCity: place }, 404, 'super: role.add with a place from another event');
-  const adm = await byCode('admin' + D);
+  const adm = await signIn('admin' + D);
   const as = await adm.go('/api/desk/state');
   check('the event admin sees only their event, and runs it', as.body.events.length === 1 && as.body.events[0].id === ev && as.body.can.admin, JSON.stringify({ events: as.body.events?.map((x) => x.id), can: as.body.can }));
   const bd = await adm.go('/api/desk/state?event=builder-day-2026');
@@ -94,7 +90,7 @@ try {
   owner = p.id;
   const [en] = await rest(e, 'entries', { method: 'POST', body: JSON.stringify({ city: place, owner, slug: 'thing', name: 'Thing', pitch: 'A thing', repo: 'https://github.com/supabase/supabase' }) });
   check('an entry gets its event from its place, and a demo link is optional', en.event === ev && en.url === null, JSON.stringify({ event: en.event, url: en.url }));
-  const ja = await byCode('judge.all' + D), jo = await byCode('judge.one' + D);
+  const ja = await signIn('judge.all' + D), jo = await signIn('judge.one' + D);
   const js = await ja.go('/api/desk/state?event=' + ev + '&city=' + place);
   check('the judge of the whole event sees the place, its entries and the criteria', js.body.city === place && js.body.entries.length === 1 && !!js.body.judging?.scores, JSON.stringify({ city: js.body.city, n: js.body.entries?.length, judging: js.body.judging }));
   await act(ja, { action: 'judge.score', city: place, no: en.no, crit: 'idea', val: 4 }, 200, 'judge (event): score idea 4');

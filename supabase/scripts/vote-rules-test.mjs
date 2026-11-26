@@ -1,8 +1,8 @@
 // vote-rules-test.mjs: who may vote when, what a judge's vote counts, and ties at the top, against the real routes on
-// the local stack. London's clock is set three ways: 30 minutes in (only builders on London's list vote), 65 minutes
-// in (everyone and the judges vote; a judge's vote counts 5) and after the close (a host settles a tie for first).
-// Then London and the event are put back and everything made here is removed. Needs the dev server on the local stack
-// (SITE, default http://localhost:4320).
+// the local stack. London's clock is set four ways: 30 minutes in (nobody votes yet, not even a builder on the list),
+// 50 minutes in (everyone votes; judges not yet), 65 minutes in (the judges vote too; a judge's vote counts 5) and after
+// the close at 90 (nobody votes; a host settles a tie for first). Then London and the event are put back and
+// everything made here is removed. Needs the dev server on the local stack (SITE, default http://localhost:4320).
 //   node supabase/scripts/vote-rules-test.mjs
 import { env, rest } from './env.mjs';
 
@@ -23,14 +23,10 @@ function jar() {
     },
   };
 }
-async function byCode(email) {
-  const j = jar();
-  let s = await j.go('/api/auth/code', { email });
-  if (s.status === 429 && s.body?.wait) { await sleep((s.body.wait + 1) * 1000); s = await j.go('/api/auth/code', { email }); }
-  if (s.status !== 200) throw new Error('code for ' + email + ': ' + JSON.stringify(s.body));
-  const [row] = await rest(e, 'outbox?to_email=eq.' + encodeURIComponent(email) + '&template=eq.code&order=created_at.desc&limit=1&select=data');
-  const v = await j.go('/api/auth/verify', { email, code: row.data.code });
-  if (v.status !== 200) throw new Error('verify for ' + email + ': ' + JSON.stringify(v.body));
+/* sign in with the stand-in Supabase account for this email (the site runs with HACKDAY_FAKE_SUPABASE=1) */
+async function signIn(email) {
+  const j = jar(), r = await j.go('/api/auth/supabase', { token: 'fake.' + email });
+  if (r.status !== 200) throw new Error('Supabase sign-in for ' + email + ': ' + JSON.stringify(r.body) + ' (is HACKDAY_FAKE_SUPABASE=1 set on the site?)');
   return j;
 }
 
@@ -51,23 +47,23 @@ async function dropAll() {
 }
 
 const [city0] = await rest(e, 'cities?id=eq.' + CITY + '&select=build_start,build_end,vote_end,voting_paused,submissions_paused');
-const [ev0] = await rest(e, 'events?id=eq.' + EV + '&select=open,hide_at,public_at,judge_weight,judge_budget');
+const [ev0] = await rest(e, 'events?id=eq.' + EV + '&select=open,show_at,public_at,judge_at,judge_weight,judge_budget');
 if (!city0 || !ev0) { console.error('London or Builder Day is not in the local database.'); process.exit(2); }
-check('Builder Day: everyone from minute 60, a judge has 10 votes worth 5 each', ev0.public_at === 60 && ev0.judge_weight === 5 && ev0.judge_budget === 10, JSON.stringify(ev0));
+check('Builder Day: everyone from the start, judges from 60, counts shown from 60, a judge has 10 votes worth 5 each', ev0.public_at === 0 && ev0.judge_at === 60 && ev0.show_at === 60 && ev0.judge_weight === 5 && ev0.judge_budget === 10, JSON.stringify(ev0));
 await dropAll();
 
-/* the city's clock: building started `ago` minutes ago, 90 minutes of building, 30 more of voting */
+/* the city's clock: building started `ago` minutes ago; building and voting both close at 90 */
 async function clock(ago) {
   const s = Date.now() - ago * MIN;
-  await rest(e, 'cities?id=eq.' + CITY, { method: 'PATCH', body: JSON.stringify({ build_start: iso(s), build_end: iso(s + 90 * MIN), vote_end: iso(s + 120 * MIN), voting_paused: false, submissions_paused: false }) });
+  await rest(e, 'cities?id=eq.' + CITY, { method: 'PATCH', body: JSON.stringify({ build_start: iso(s), build_end: iso(s + 90 * MIN), vote_end: iso(s + 90 * MIN), voting_paused: false, submissions_paused: false }) });
   await sleep(2300);   /* the server keeps a snapshot two seconds */
 }
 const snap = async () => (await jar().go('/api/city/' + CITY + '/snapshot')).body;
 const tallyOf = async (id) => (await rest(e, 'tally?entry=eq.' + id + '&select=votes,judge_votes'))[0];
 
 try {
-  /* no hiding here (hide_at off), so every count can be read; hidden-test.mjs covers that */
-  await rest(e, 'events?id=eq.' + EV, { method: 'PATCH', body: JSON.stringify({ open: 'open', hide_at: null }) });
+  /* no hiding here (show_at off), so every count can be read; hidden-test.mjs covers that */
+  await rest(e, 'events?id=eq.' + EV, { method: 'PATCH', body: JSON.stringify({ open: 'open', show_at: null }) });
   await sleep(5200);   /* the day's gate is kept five seconds */
   const mk = async (who) => (await rest(e, 'people', { method: 'POST', body: JSON.stringify({ email: who + D, name: who[0].toUpperCase() + who.slice(1) }) }))[0];
   const [amy, ben, cal, peer, judge, host] = [await mk('amy'), await mk('ben'), await mk('cal'), await mk('peer'), await mk('judge'), await mk('host')];
@@ -76,23 +72,32 @@ try {
   await rest(e, 'passes', { method: 'POST', body: JSON.stringify({ person: peer.id, city: CITY, source: 'host', list_email: 'peer' + D }) });
   await rest(e, 'roles', { method: 'POST', body: JSON.stringify({ person: judge.id, role: 'judge', event: EV, city: CITY, budget: 10 }) });
   await rest(e, 'roles', { method: 'POST', body: JSON.stringify({ person: host.id, role: 'host', event: EV, city: CITY }) });
-  const P = await byCode('peer' + D), V = await byCode('visitor' + D), J = await byCode('judge' + D), H = await byCode('host' + D);
+  const P = await signIn('peer' + D), V = await signIn('visitor' + D), J = await signIn('judge' + D), H = await signIn('host' + D);
   const s0 = await snap(), no = (en) => s0.entries.find((x) => x.slug === en.slug).no;
-  check('the snapshot says when everyone may vote and what a judge counts', s0.city.publicAt === 60 && s0.city.judgeWeight === 5, JSON.stringify({ publicAt: s0.city.publicAt, judgeWeight: s0.city.judgeWeight }));
+  check('the snapshot says when everyone and the judges vote, and what a judge counts', s0.city.publicAt === 0 && s0.city.judgeAt === 60 && s0.city.judgeWeight === 5, JSON.stringify({ publicAt: s0.city.publicAt, judgeAt: s0.city.judgeAt, judgeWeight: s0.city.judgeWeight }));
 
-  // 1. 30 minutes in: only the builders on London's list vote
+  // 1. 30 minutes in: nobody votes, not even a builder on London's list
   await clock(30);
   const p1 = await P.go('/api/vote', { city: CITY, entry: no(A), on: true });
-  check('minute 30: a builder on the list votes', p1.status === 200 && p1.body?.votes === 1, JSON.stringify([p1.status, p1.body]));
+  check('minute 30: a builder on the list is told when voting opens', p1.status === 409 && /voting in london opens at \d\d:\d\d/i.test(p1.body?.error || ''), JSON.stringify([p1.status, p1.body]));
   const v1 = await V.go('/api/vote', { city: CITY, entry: no(A), on: true });
-  check('minute 30: a visitor is told when everyone can vote', v1.status === 409 && /only the builders/i.test(v1.body?.error || ''), JSON.stringify([v1.status, v1.body]));
+  check('minute 30: a visitor is told when voting opens', v1.status === 409 && /opens at/i.test(v1.body?.error || ''), JSON.stringify([v1.status, v1.body]));
   const j1 = await J.go('/api/desk', { action: 'judge.vote', event: EV, city: CITY, no: no(A), delta: 1 });
-  check('minute 30: a judge is told when judges vote', j1.status === 409 && /judges in london vote from/i.test(j1.body?.error || ''), JSON.stringify([j1.status, j1.body]));
+  check('minute 30: a judge is told when judges vote', j1.status === 409 && /judges in london vote from \d\d:\d\d/i.test(j1.body?.error || ''), JSON.stringify([j1.status, j1.body]));
 
-  // 2. 65 minutes in: everyone, and the judges; a judge's vote counts 5
-  await clock(65);
+  // 2. 50 minutes in: everyone votes, builders and visitors alike; judges wait
+  await clock(50);
+  const p2 = await P.go('/api/vote', { city: CITY, entry: no(A), on: true });
+  check('minute 50: a builder on the list votes', p2.status === 200 && p2.body?.votes === 1, JSON.stringify([p2.status, p2.body]));
   const v2 = await V.go('/api/vote', { city: CITY, entry: no(A), on: true });
-  check('minute 65: a visitor votes', v2.status === 200 && v2.body?.votes === 2, JSON.stringify([v2.status, v2.body]));
+  check('minute 50: a visitor votes', v2.status === 200 && v2.body?.votes === 2, JSON.stringify([v2.status, v2.body]));
+  const own = await jar().go('/api/vote', { city: CITY, entry: no(A), on: true });
+  check('minute 50: without signing in, no vote', own.status === 401, String(own.status));
+  const j2a = await J.go('/api/desk', { action: 'judge.vote', event: EV, city: CITY, no: no(B), delta: 1 });
+  check('minute 50: a judge still waits for 60', j2a.status === 409 && /judges in london vote from/i.test(j2a.body?.error || ''), JSON.stringify([j2a.status, j2a.body]));
+
+  // 3. 65 minutes in: the judges too; a judge's vote counts 5
+  await clock(65);
   const j2 = await J.go('/api/desk', { action: 'judge.vote', event: EV, city: CITY, no: no(B), delta: 2 });
   const tB = await tallyOf(B.id);
   check('minute 65: a judge\'s 2 votes count 10', j2.status === 200 && tB.votes === 10 && tB.judge_votes === 10, JSON.stringify([j2.status, j2.body, tB]));
@@ -106,8 +111,12 @@ try {
   /* make A and C tie for second, under B: A has 2; C gets 2 */
   await P.go('/api/vote', { city: CITY, entry: no(C), on: true }); await V.go('/api/vote', { city: CITY, entry: no(C), on: true });
 
-  // 3. after the close: the host settles the tie
-  await clock(130);
+  // 4. after the close at 90: nobody votes; the host settles the tie
+  await clock(95);
+  const v4 = await V.go('/api/vote', { city: CITY, entry: no(B), on: true });
+  check('minute 95: voting has closed for everyone', v4.status === 409 && /has closed/i.test(v4.body?.error || ''), JSON.stringify([v4.status, v4.body]));
+  const j4 = await J.go('/api/desk', { action: 'judge.vote', event: EV, city: CITY, no: no(C), delta: 1 });
+  check('minute 95: and for the judges', j4.status === 409 && /has closed/i.test(j4.body?.error || ''), JSON.stringify([j4.status, j4.body]));
   const s3 = await snap(), rank3 = s3.entries.slice().sort((x, y) => y.votes - x.votes || (x.tie == null ? (y.tie == null ? 0 : 1) : y.tie == null ? -1 : x.tie - y.tie) || x.reached - y.reached).map((x) => x.slug).filter((x) => x.startsWith('rul-'));
   check('closed: A and C tie on 2, not settled yet', s3.entries.filter((x) => x.slug === 'rul-a' || x.slug === 'rul-c').every((x) => x.votes === 2 && x.tie === null), JSON.stringify(s3.entries.filter((x) => x.slug.startsWith('rul-')).map((x) => [x.slug, x.votes, x.tie])));
   const notTied = await H.go('/api/desk', { action: 'tie.settle', event: EV, city: CITY, order: [no(B), no(C)] });
@@ -130,7 +139,7 @@ try {
   bad++; console.log('FAIL ' + (err && err.stack || err));
 } finally {
   await rest(e, 'cities?id=eq.' + CITY, { method: 'PATCH', body: JSON.stringify(city0) });
-  await rest(e, 'events?id=eq.' + EV, { method: 'PATCH', body: JSON.stringify({ open: ev0.open, hide_at: ev0.hide_at }) });
+  await rest(e, 'events?id=eq.' + EV, { method: 'PATCH', body: JSON.stringify({ open: ev0.open, show_at: ev0.show_at }) });
   await dropAll();
   const left = await rest(e, 'people?email=like.*' + encodeURIComponent(D) + '&select=id');
   check('cleaned up (London, the event, our people)', left.length === 0);

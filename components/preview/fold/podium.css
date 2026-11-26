@@ -1,0 +1,50 @@
+/* The prizes as a podium (podium.tsx). Class prefix pz-. The fold's tokens (pf-*), the wheel's faces; green only on
+   1st (the global 1st's plinth and label, the city's 1st). */
+.pz { --pz-green: #3ecf8e; --pz-ground: var(--pf-ground, var(--pf-paper, #0b0c0c)); display: grid; gap: 0; }
+.pz > .pf-h { margin-bottom: 28px; }
+.pz-k { margin: 0; padding: 16px max(0px, 100% - 72ch) 0 0; border-top: 1px solid var(--pf-hair); font: 400 16px/1.45 var(--wh-sans); color: var(--pf-muted); text-wrap: pretty; }
+.pz-k b { font-weight: 500; color: var(--pf-ink); }
+.pz-place { margin: 0; font: 500 11px/1 var(--wh-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--pf-soft); }
+.pz-place[data-green] { color: var(--pz-green); }
+.pz-thing { margin: 0; font: 500 clamp(34px, 3.4vw, 50px)/0.98 var(--wh-sans); letter-spacing: -0.045em; color: var(--pf-ink); text-wrap: balance; }
+.pz-thing-s { font-size: clamp(28px, 2.6vw, 38px); }
+.pz-spec { margin: 0; font: 400 13px/1.3 var(--wh-mono); color: var(--pf-muted); }
+.pz-plus { margin: 0; font: 400 16px/1.4 var(--wh-sans); color: var(--pf-soft); text-wrap: pretty; }
+.pz-words { display: grid; align-content: start; gap: 10px; min-width: 0; }
+.pz-art { width: 100%; }
+/* an amount stands in for a picture: credits have no product to show */
+.pz-amount { margin: 0; display: flex; align-items: flex-end; font: 500 clamp(64px, 8vw, 120px)/0.85 var(--wh-sans); letter-spacing: -0.06em; color: var(--pf-ink); font-variant-numeric: tabular-nums; }
+
+.pz-steps { list-style: none; margin: 32px 0 56px; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: auto auto; column-gap: 28px; }
+.pz-steps > li { display: grid; grid-row: span 2; grid-template-rows: subgrid; min-width: 0; }
+/* the photo stands on its plinth; the stands line up at the bottom, so the tops step down 1, 2, 3 */
+.pz-stand { align-self: end; display: grid; }
+/* the plinth: the site's dotted grid in a block whose height is the place; the number sits at its top */
+.pz-plinth { --pz-h: 120px; align-self: end; height: var(--pz-h); margin-top: -2px; border-top: 1px solid var(--pf-rule);
+  background-image: radial-gradient(circle at 1px 1px, #3a3b3b 1px, transparent 1.4px); background-size: 8px 8px; background-position: 0 6px; }
+.pz-steps li[data-place='1'] .pz-plinth { border-top-color: var(--pz-green); }
+.pz-steps li[data-place='2'] .pz-plinth { --pz-h: 76px; }
+.pz-steps li[data-place='3'] .pz-plinth { --pz-h: 40px; }
+.pz-plinth span { display: inline-block; padding: 8px 10px 0 0; background: var(--pz-ground); font: 500 13px/1 var(--wh-mono); color: var(--pf-ink); }
+.pz-steps .pz-words { padding-top: 18px; }
+.pz-city { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto auto; column-gap: 28px; padding-top: 24px; }
+/* the picture row and the words row are shared, so both labels sit on one line */
+.pz-city-one, .pz-city-two { display: grid; grid-row: span 2; grid-template-rows: subgrid; row-gap: 18px; min-width: 0; }
+.pz-city-one .pz-art { max-width: 440px; }
+.pz-city-two .pz-amount { height: 100%; min-height: 160px; }
+@media (max-width: 900px) {
+  .pz-city { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; row-gap: 40px; }
+  .pz-city-one, .pz-city-two { grid-row: auto; grid-template-rows: none; }
+}
+@media (max-width: 720px) {
+  /* 1st across the width, 2nd and 3rd side by side under it, on shared rows (stands, then words) so their words
+     line up; the plinths keep their steps, smaller */
+  .pz-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(4, auto); column-gap: 16px; margin-bottom: 36px; }
+  .pz-steps > li[data-place='1'] { grid-column: 1 / -1; }
+  .pz-steps > li:not([data-place='1']) .pz-stand { margin-top: 32px; }
+  .pz-steps li .pz-plinth { --pz-h: 56px; }
+  .pz-steps li[data-place='2'] .pz-plinth { --pz-h: 36px; }
+  .pz-steps li[data-place='3'] .pz-plinth { --pz-h: 20px; }
+  .pz-steps li:not([data-place='1']) .pz-thing { font-size: clamp(20px, 6.4vw, 26px); white-space: nowrap; }
+  .pz-city-two .pz-amount { min-height: 0; }
+}

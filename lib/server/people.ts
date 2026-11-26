@@ -55,7 +55,7 @@ export async function passByListEmail(email: string, event: string = EVENT_ID): 
 export type LumaFacts = { guestId?: string | null; status?: string | null; registeredAt?: string | null };
 export type Ensured = { pass: Pass; made: boolean; moved: string | null; kept?: 'later' | 'checked-in' | 'held' };
 
-/* A place on a city's list (from Luma or a host; never from the room code), matched on the address it is listed
+/* A place on a city's list (from Luma or a host), matched on the address it is listed
    under. One per address and one per account in the event.
    - Listed already in this city: Luma's facts are brought up to date.
    - Listed in another city: a host's add moves it; a Luma registration moves it only when it is the later one

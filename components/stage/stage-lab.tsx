@@ -1,12 +1,12 @@
 'use client';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CITIES, CITY_IDS } from '@/lib/day-data';
-import { STAGE_BOUNDS, STAGE_DIRS, clampStage, type StageCfg, type StageDir } from '@/lib/stage/config';
+import { STAGE_BOUNDS, STAGE_DIRS, clampStage, isCover, type StageCfg, type StageDir } from '@/lib/stage/config';
 import { defaultDeck } from '@/lib/stage/deck';
 import { createLocalDriver, type Clock } from '@/lib/stage/driver';
 import { MOMENTS, atMoment, labCity } from '@/lib/stage/lab';
 import { CONTENTS, type Content } from '@/lib/stage/world';
-import type { Link } from '@/lib/stage/types';
+import type { BoardView, Link } from '@/lib/stage/types';
 import { LabPanel, useLabSave, type Group } from '@/components/admin/kit';
 import { StageWall } from './wall';
 import { StageRemote } from './remote';
@@ -24,13 +24,15 @@ const GROUPS: Group[] = [
   { name: 'Direction', knobs: [{ k: 'dir', kind: 'select', label: 'Direction' }] },
   { name: 'The room', knobs: [{ k: 'city', kind: 'select', label: 'City' }, { k: 'content', kind: 'select', label: 'Content' }, { k: 'link', kind: 'select', label: 'Link' }, { k: 'hold', kind: 'toggle', label: 'Hold the clock' }, { k: 'speed', kind: 'select', label: 'Clock speed' }, { k: 'sup', kind: 'toggle', label: 'Signed in as a super admin' }] },
   { name: 'The screen', knobs: [{ k: 'lines', kind: 'range', label: 'Line darkness' }, { k: 'pitch', kind: 'range', label: 'Line pitch, px' }, { k: 'fringe', kind: 'range', label: 'Colour step, px' }, { k: 'grain', kind: 'range', label: 'Grain' }, { k: 'safe', kind: 'range', label: 'Safe margin' }, { k: 'ink2', kind: 'range', label: 'Second ink, lightness' }] },
+  { name: 'The cover', knobs: [{ k: 'globeInk', kind: 'range', label: 'Globe ink' }, { k: 'globeSize', kind: 'range', label: 'Globe size' }, { k: 'globeStep', kind: 'range', label: 'Globe turns a step, ms' }, { k: 'globeMove', kind: 'range', label: 'Globe moves, ms' }, { k: 'guide', kind: 'toggle', label: 'Centre guide on the cover' }, { k: 'hosted', kind: 'toggle', label: 'Hosted by along the bottom' }] },
+  { name: 'The boards', knobs: [{ k: 'viewSec', kind: 'range', label: 'Each view shows, s' }, { k: 'pulseBin', kind: 'range', label: 'Pulse column, min' }, { k: 'barCells', kind: 'range', label: 'Leader\'s bar, characters' }] },
   { name: 'The beam', knobs: [{ k: 'beam', kind: 'range', label: 'Spot, px' }, { k: 'bright', kind: 'range', label: 'Brightness' }] },
   { name: 'Timings, ms', knobs: [{ k: 'enterMs', kind: 'range', label: 'A step lands' }, { k: 'drawMs', kind: 'range', label: 'A line draws' }, { k: 'foldMs', kind: 'range', label: 'The seven fold' }, { k: 'lineMs', kind: 'range', label: 'Prototype to Petabyte' }, { k: 'glideMs', kind: 'range', label: 'A row overtakes' }, { k: 'spinMs', kind: 'range', label: 'The tombola spins' }] },
   { name: 'Live scenes', knobs: [{ k: 'tick', kind: 'range', label: 'Ranking re-sorts, s' }, { k: 'talkMin', kind: 'range', label: 'Talk timer, min' }, { k: 'arrivals', kind: 'range', label: 'Arrivals shown' }, { k: 'rows', kind: 'range', label: 'Ranking rows' }, { k: 'sound', kind: 'toggle', label: 'Tombola clicks' }] },
 ];
-const DIR_LABEL: Record<string, string> = { tube: 'Tube: big type, beam drawings, flaps for numbers', board: 'Board: the whole wall is the departures board', plain: 'Plain: type only, the floor' };
+const DIR_LABEL: Record<string, string> = { cover: 'Cover: the Figma frames, the globe behind the cover and the one-liners', orbit: 'Orbit: the frames, the globe on every scene, moving to a new place each time', print: 'Print: the frames, each headline printed in the globe\'s characters', tube: 'Tube: big type, beam drawings, flaps for numbers', board: 'Board: the whole wall is the departures board', plain: 'Plain: type only, the floor' };
 
-export type LabStart = { cfg: StageCfg; first: number; seed: number; city: string; moment: string; step: number; content: Content; hold: boolean; speed: number; origin: string; scene: string; only: '' | 'wall' | 'remote'; qr: boolean; rt: boolean };
+export type LabStart = { cfg: StageCfg; first: number; seed: number; city: string; moment: string; step: number; content: Content; hold: boolean; speed: number; origin: string; scene: string; only: '' | 'wall' | 'remote'; qr: boolean; rt: boolean; view?: BoardView | null; show?: number | null };
 
 export function StageLab({ start }: { start: LabStart }) {
   const [cfg, setCfg] = useState<StageCfg>(start.cfg);
@@ -58,6 +60,9 @@ export function StageLab({ start }: { start: LabStart }) {
     if (pick) { pick.hidden = false; s.row.scene = pick.id; }
     if (start.step) s.row.step = start.step;
     if (start.qr) s.row.timer = { ...s.row.timer, qr: true };
+    /* ?view= holds a board's view, ?show= the showcase's project (for stills) */
+    if (start.view) s.row.timer = { ...s.row.timer, view: start.view };
+    if (start.show !== null && start.show !== undefined) s.row.timer = { ...s.row.timer, show: start.show };
     return createLocalDriver({ ...s, clock, talkMin: start.cfg.talkMin, channel: 'hackday-stage-lab' });
   });
   useEffect(() => () => driver.close(), [driver]);
@@ -86,7 +91,7 @@ export function StageLab({ start }: { start: LabStart }) {
 
   /* a still of one side alone: the wall filling the window, or the remote filling a phone */
   if (start.only === 'wall') return <main className="sl-only"><StageWall driver={driver} cfg={cfg} name={name} url={url} seed={start.seed} content={content} first={start.first} keys /></main>;
-  if (start.only === 'remote') return <main className="sl-only sl-only-rm"><StageRemote driver={driver} name={name} first={start.first} /></main>;
+  if (start.only === 'remote') return <main className="sl-only sl-only-rm"><StageRemote driver={driver} name={name} first={start.first} boards={isCover(cfg.dir)} /></main>;
   return (
     <>
       <main className="sl">
@@ -102,7 +107,7 @@ export function StageLab({ start }: { start: LabStart }) {
             <StageWall driver={driver} cfg={cfg} name={name} url={url} seed={start.seed} content={content} first={start.first} keys framed />
           </section>
           <section className="sl-phone" aria-label="The remote, 390 by 844">
-            <StageRemote driver={driver} name={name} first={start.first} />
+            <StageRemote driver={driver} name={name} first={start.first} boards={isCover(cfg.dir)} />
           </section>
         </div>
       </main>

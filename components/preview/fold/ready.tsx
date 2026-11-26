@@ -28,8 +28,8 @@ function DryRun({ city, cityId, auto, step, hold }: { city: string; cityId: stri
   const box = useRef<HTMLElement>(null), [run, setRun] = useState(0), [shown, setShown] = useState<number | null>(null), [take, setTake] = useState<Take>('browser');
   const lines: [string, string][] = [
     ...(take === 'browser'
-      ? [['do', `Open ${city}’s page and press Submit.`], ['ask', 'Type the code shown in the room.'], ['do', 'Add a name, a one-line pitch and the GitHub repo.']] as [string, string][]
-      : [['say', sayIt(city)], ['ask', 'Your editor asks for the code shown in the room.']] as [string, string][]),
+      ? [['do', 'Your host checks you in at the door.'], ['do', `Open ${city}’s page and press Submit.`], ['do', 'Add a name, a one-line pitch and the GitHub repo.']] as [string, string][]
+      : [['do', 'Your host checks you in at the door.'], ['say', sayIt(city)]] as [string, string][]),
     ...RULES.map((r) => ['rule', r] as [string, string]),
     ['link', `Your project’s link: /city/${cityId}/p/your-project`],
   ];

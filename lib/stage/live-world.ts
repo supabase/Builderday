@@ -84,6 +84,7 @@ export function worldFromSnap(o: { snap: CitySnap | null; day: DaySnap | null; c
   }).sort((a, b) => CITIES.findIndex((x) => x.id === a.id) - CITIES.findIndex((x) => x.id === b.id));
   const top3 = new Set(order.slice(0, EVENT.finalists).map((e) => e.no));
   const pool = phase === 'before' ? [] : entries.filter((e) => !top3.has(e.no)).map(projectOf);
-  const every = phase === 'before' ? [] : entries.slice().sort((a, b) => a.created - b.created || a.no - b.no).map(projectOf);
-  return { phase, now, left, total, inNow, arrivals, ranking, chart: { series, span, max }, tieNote, others, pool, all: every, hidden };
+  const oldest = phase === 'before' ? [] : entries.slice().sort((a, b) => a.created - b.created || a.no - b.no);
+  const every = oldest.map(projectOf), times = oldest.map((e) => e.created);
+  return { phase, now, left, total, inNow, arrivals, ranking, chart: { series, span, max }, tieNote, others, pool, all: every, times, hidden };
 }

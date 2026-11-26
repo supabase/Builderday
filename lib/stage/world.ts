@@ -40,6 +40,8 @@ export type World = {
   pool: Project[];
   /* every entry in so far, oldest first (the showcase walks them in turn) */
   all: Project[];
+  /* when each of those came in, ms, in the same order (the pulse counts them) */
+  times: number[];
   /* the counts are hidden (from the event's hideAt until voting closes): the ranking is the order frozen then, with
      later entries under it, and the wall prints no count */
   hidden: boolean;
@@ -87,7 +89,7 @@ export function worldAt(o: { seed: number; content: Content; city: CityLive; now
   /* while hidden, the counts are read at the freeze and the later entries sit under them, in the order they came */
   const hidden = hiddenAt(x, m), mm = hidden ? hideMin(x)! : Math.min(m, x.end);
   /* arrivals: the latest in, newest first */
-  const arrived = phase === 'before' ? [] : all(sd).filter((r) => r.a < inNow).map((r) => ({ p: r.p, at: arriveAt(r, x) })).sort((a, b) => b.at - a.at);
+  const arrived = phase === 'before' ? [] : all(sd).filter((r) => r.a < inNow).map((r) => ({ p: r.p, at: EPOCH + arriveAt(r, x) * 60000 })).sort((a, b) => b.at - a.at);
   const late = hidden ? all(sd).filter((r) => r.a >= inAt(sd, x, mm) && r.a < inNow).sort((a, b) => a.a - b.a).map((r) => ({ r, v: 0, at: arriveAt(r, x) })) : [];
   const now10 = rankAt(sd, x, mm).concat(late), ago = hidden ? now10 : rankAt(sd, x, mm - 10), wasOf = new Map(ago.map((t, i) => [t.r.p.id, i + 1]));
   const ranking: Ranked[] = now10.slice(0, o.rows).map((t, i) => ({ p: t.r.p, v: t.v, j: t.v ? judgeAtMin(t.r, x, mm) : 0, place: i + 1, was: wasOf.get(t.r.p.id) ?? null, tie: false, r: t.r }));
@@ -116,8 +118,8 @@ export function worldAt(o: { seed: number; content: Content; city: CityLive; now
   });
   const top3 = new Set(now10.slice(0, EVENT.finalists).map((t) => t.r.p.id));
   const pool = phase === 'before' ? [] : all(sd).filter((r) => r.a < inNow && !top3.has(r.p.id)).map((r) => r.p);
-  const every = arrived.slice().reverse().map((x) => x.p);
-  return { phase, now, left, total, inNow, arrivals: arrived.slice(0, o.arrivals), ranking, chart: { series, span, max }, tieNote, others, pool, all: every, hidden };
+  const oldest = arrived.slice().reverse(), every = oldest.map((x) => x.p), times = oldest.map((x) => x.at);
+  return { phase, now, left, total, inNow, arrivals: arrived.slice(0, o.arrivals), ranking, chart: { series, span, max }, tieNote, others, pool, all: every, times, hidden };
 }
 
 /* "3 h", "40 min" */

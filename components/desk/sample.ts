@@ -14,7 +14,6 @@ const CITIES: [string, string, number, string][] = [
   ['london', 'London', 0, 'Europe/London'], ['sao-paulo', 'São Paulo', -180, 'America/Sao_Paulo'], ['new-york', 'New York', -300, 'America/New_York'],
   ['san-francisco', 'San Francisco', -480, 'America/Los_Angeles'],
 ];
-const CODES = ['K7QD', 'M4TX', 'R2WF', 'H9PC', 'B3RL', 'L6GZ', 'N8VJ', 'S5PU', 'Y4NK', 'F2SX'];
 
 export type Moment = 'before' | 'build' | 'vote' | 'closed';
 export const MOMENTS: { id: Moment; label: string }[] = [{ id: 'before', label: 'Before the start' }, { id: 'build', label: 'Building' }, { id: 'vote', label: 'Voting' }, { id: 'closed', label: 'Closed' }];
@@ -27,10 +26,10 @@ export function timesFor(c: DeskCity, m: Moment): { city: DeskCity; now: number 
   return { city: live, now: m === 'build' ? at(9, 52, c.offset) : m === 'vote' ? at(10, 41, c.offset) : at(11, 20, c.offset) };
 }
 
-const cities: DeskCity[] = CITIES.map(([id, name, offset, zone], i) => ({
+const cities: DeskCity[] = CITIES.map(([id, name, offset, zone]) => ({
   id, event: EV, prize: '', name, offset, zone, venue: id === 'berlin' ? 'Factory Görlitzer Park' : id === 'london' ? 'Shoreditch Works' : '', luma: id === 'berlin' ? 'https://lu.ma/hackday-berlin' : '', lumaEvent: id === 'berlin' ? 'evt-hackday-berlin' : '', editor: '',
   planned: at(9, 0, offset), buildMin: 90, voteAfter: 30, buildStart: null, buildEnd: null, voteEnd: null,
-  roomCode: CODES[i], submissionsPaused: false, votingPaused: id === 'lagos',
+  submissionsPaused: false, votingPaused: id === 'lagos',
 }));
 
 const N = ['Mara Kowalski', 'Tomasz Nowak', 'Femi Adeyemi', 'Hana Sato', 'Lena Vogel', 'Jonas Richter', 'Aylin Demir', 'Paul Weber', 'Ines Costa', 'Kofi Mensah', 'Sara Lindqvist', 'Omar Haddad'];
@@ -68,7 +67,7 @@ const people: DeskPerson[] = [
   { role: 'r4', kind: 'judge', city: null, budget: 50, event: EV, scored: 0, person: 'a4', email: 'judge.all@example.com', name: 'Copple', signedIn: false, used: 0 },
 ];
 const outbox: DeskOutbox[] = [
-  { id: 'o1', to: 'omar@example.com', template: 'link', city: 'berlin', status: 'not_sent', error: '', at: at(8, 40, 60), link: 'http://localhost:4320/in/sample-link-omar', code: '' },
+  { id: 'o1', to: 'omar@example.com', template: 'claim', city: 'berlin', status: 'not_sent', error: '', at: at(8, 40, 60), link: '', code: '204611' },
   { id: 'o2', to: 'host.berlin@example.com', template: 'code', city: null, status: 'not_sent', error: '', at: at(8, 35, 60), link: '', code: '482913' },
   { id: 'o3', to: 'judge.all@example.com', template: 'role', city: null, status: 'failed', error: 'The address bounced', at: at(7, 50, 60), link: 'http://localhost:4320/', code: '' },
 ];
@@ -95,7 +94,7 @@ export function sampleState(role: Role): DeskState {
     finalists: sup ? ranked(entries, BUILDER_DAY).slice(0, 3).map((e, i) => ({ no: e.no, name: e.name, city: 'berlin', by: e.by, value: rankValue(e, BUILDER_DAY), place: i + 1, picture: null, url: e.url })) : [],
     judging: role === 'judge' ? { budget: 50, used: 12, per: { '2': 6, '3': 6 } } : null,
     supers: sup ? [people[0]] : [],
-    counts: { listed: 142, opened: 118, signedIn: 96, inRoom: 88, entries: entries.length, votes: entries.reduce((a, e) => a + e.votes, 0), editors: 61, unsent: 3 },
+    counts: { listed: 142, opened: 118, signedIn: 96, inRoom: 88, entries: entries.length, votes: entries.reduce((a, e) => a + e.votes, 0), editors: 61 },
     guests: host ? guests : [], entries: entries.map((e) => (host ? e : { ...e, byEmail: '' })), scenes: host ? scenes : [],
     people: sup ? people : [], outbox: host ? (sup ? outbox : outbox.filter((o) => o.template !== 'code' && o.city === 'berlin')) : [], log: sup ? log : [],
     pick: null, mail: 'outbox', devCodes: true, luma: true, hook: true,

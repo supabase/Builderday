@@ -23,7 +23,7 @@ const VOTE_MARKS = [1000, 2000, 5000];
 const CACHE = new Map<string, WireEvent[]>();
 /* one city's events across its session */
 export function cityEvents(sd: SeedCity, x: CitySched): WireEvent[] {
-  const key = sd.seed + ':' + sd.i + ':' + x.start + ':' + x.buildEnd + ':' + x.end + ':' + x.hide;
+  const key = sd.seed + ':' + sd.i + ':' + x.start + ':' + x.buildEnd + ':' + x.end + ':' + x.show;
   const hit = CACHE.get(key); if (hit) return hit;
   const nm = x.city.name, i = sd.i, N = sd.entries, ev: WireEvent[] = [];
   ev.push({ m: x.start, city: i, kind: 'open', text: nm + ' opens. Building and voting start now.' });

@@ -9,10 +9,11 @@ import { FOLD_GROUPS, FOLD_LABELS } from './knobs';
 
 /* The preview page's ?admin panel, in its own file so a visitor without ?admin never downloads it (preview-page.tsx
    loads it on demand). The panel also holds the wheel's mark and globe (the BUILD mark or the Builder Day pixel globe;
-   the glass ball, the text globe or none), saved on their own to saved/wheel.config.json. */
+   the glass ball, the text globe or none) and the first screen's layout (one column on the left, or the cells at the
+   active name with the link in the corner), saved on their own to saved/wheel.config.json. */
 /* the panel's keys for the wheel's knobs, prefixed so they never meet the page's own (the page has a "globe" too) */
-const W_KEYS: Record<string, keyof WheelCfg> = { wMark: 'mark', wGlobe: 'globe', wFps: 'globeFps', wEdge: 'globeEdge', wShift: 'globeShift', wBare: 'bareShift' };
-const W_GROUP: Group = { name: 'Mark and globe', knobs: [{ k: 'wMark', kind: 'select', label: 'Mark' }, { k: 'wGlobe', kind: 'select', label: 'Globe' },
+const W_KEYS: Record<string, keyof WheelCfg> = { wLayout: 'layout', wMark: 'mark', wGlobe: 'globe', wFps: 'globeFps', wEdge: 'globeEdge', wShift: 'globeShift', wBare: 'bareShift' };
+const W_GROUP: Group = { name: 'Hero, mark and globe', knobs: [{ k: 'wLayout', kind: 'select', label: 'Hero layout' }, { k: 'wMark', kind: 'select', label: 'Mark' }, { k: 'wGlobe', kind: 'select', label: 'Globe' },
   { k: 'wFps', kind: 'range', label: 'Text frames / s' }, { k: 'wEdge', kind: 'range', label: 'Text globe smear' }, { k: 'wShift', kind: 'range', label: 'Text globe left' }, { k: 'wBare', kind: 'range', label: 'No globe: hub right' }] };
 const W_BOUNDS = Object.fromEntries(Object.entries(W_KEYS).filter(([, w]) => WHEEL_BOUNDS[w]).map(([k, w]) => [k, WHEEL_BOUNDS[w]]));
 
@@ -30,9 +31,9 @@ export default function AdminPanel({ cfg, setCfg, w, setW }: { cfg: FoldCfg; set
   }, [doSave]);
   const out = (k: string) => { const v = (panelCfg as Record<string, unknown>)[k]; return typeof v === 'number' ? (FOLD_INT.has(k) || k === 'wFps' ? String(v) : String(+v.toFixed(3))) : String(v); };
   return (
-    <LabPanel tab="Admin" title="Preview: admin" cfg={panelCfg} bounds={{ ...FOLD_BOUNDS, ...W_BOUNDS }} choices={{ ...FOLD_CHOICES, dir: ['line'], wMark: WHEEL_CHOICES.mark, wGlobe: WHEEL_CHOICES.globe }} groups={[W_GROUP, ...FOLD_GROUPS]} set={setAny} moments={[]} momentIdx={-1}
+    <LabPanel tab="Admin" title="Preview: admin" cfg={panelCfg} bounds={{ ...FOLD_BOUNDS, ...W_BOUNDS }} choices={{ ...FOLD_CHOICES, dir: ['line'], wLayout: WHEEL_CHOICES.layout, wMark: WHEEL_CHOICES.mark, wGlobe: WHEEL_CHOICES.globe }} groups={[W_GROUP, ...FOLD_GROUPS]} set={setAny} moments={[]} momentIdx={-1}
       out={out} optionLabel={(k, v) => (W_KEYS[k] ? WHEEL_LABELS[v] : FOLD_LABELS[v]) || v} meter={{ text: 'The page as saved in saved/fold.config.json.', bad: false }}
       msg={wheelSave.msg || msg} rail={rail} railLabel={(s) => `${s.dir}, ${s.order}, ${s.glass}, ${s.globe}, ${s.jump}, ${s.cities}`} apply={(s) => setCfg({ ...clampFold(s), dir: 'line' })}
-      buttons={[['Save', doSave, true], ['Save mark and globe', doSaveWheel, false]]} />
+      buttons={[['Save', doSave, true], ['Save hero, mark and globe', doSaveWheel, false]]} />
   );
 }

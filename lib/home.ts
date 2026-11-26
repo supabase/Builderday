@@ -64,8 +64,8 @@ export type HomeCity = CityState & { win?: { p: CityState['list'][number]['p']; 
 export type HomeWorld = {
   S: Sched; now: number; cs: HomeCity[]; live: HomeCity[]; done: HomeCity[]; allDone: boolean; picked: boolean; archived: boolean; early: boolean;
   pick: HomeCity & { win: { p: CityState['list'][number]['p']; v: number } }; total: number;
-  /* the final: every finalist in so far (three per closed city, east to west, first place first), and the one Ant and
-     Copple pick, which is one of the thirty (today's page reads pick, which is that city's first place) */
+  /* the final: every finalist in so far (three per closed city, east to west, first place first), and the one the
+     Supabase team picks, which is one of the finalists (today's page reads pick, which is that city's first place) */
   finalists: (Top & { city: HomeCity })[];
   final: Top & { city: HomeCity };
 };
@@ -131,8 +131,8 @@ export function action(W: HomeWorld, c: HomeCfg, href: (x: HomeCity) => string):
 export function slotText(x: HomeCity, W: HomeWorld): { k: string; a: string; b: string } {
   if (x.state === 'next') return { k: 'Starts in', a: dur(x.wait!, true), b: 'Entries open then' };
   if (!x.lead) return x.state === 'done' ? { k: 'Closed', a: 'No entries', b: '' } : { k: 'Building', a: 'No entries yet', b: '' };
-  /* while the counts are hidden the leader is the one at the freeze, said as such, with no count */
-  if (x.hidden && (x.state === 'build' || x.state === 'vote')) return { k: 'Leading at ' + (x.hideAt! - x.start) + ' min', a: x.lead!.p.name, b: 'Votes hidden · ' + (x.state === 'build' ? plural(x.n!, 'project') : dur(x.left!, true) + ' left') };
+  /* while the counts are hidden there is no leader to name: the count of projects in, and when the counts appear */
+  if (x.hidden && (x.state === 'build' || x.state === 'vote')) return { k: 'Votes hidden', a: plural(x.n!, 'project'), b: 'Counts at ' + hhmm(x.showAt! + x.city.offset) + ' · ' + dur(x.left!, true) + ' left' };
   if (x.state === 'build') return { k: 'Leading', a: x.lead!.p.name, b: plural(x.lead!.v, 'vote') + ' · ' + plural(x.n!, 'project') };
   if (x.state === 'vote') return { k: 'Leading', a: x.lead!.p.name, b: plural(x.lead!.v, 'vote') + ' · ' + dur(x.left!, true) + ' left' };
   const pk = W.picked && W.pick === x;

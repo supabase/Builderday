@@ -1,0 +1,20 @@
+{
+  "ramp": "fine",
+  "pitch": 0.62,
+  "span": 3.2,
+  "lightYaw": 0.6,
+  "ambient": 0.08,
+  "gamma": 1.7,
+  "floor": 6,
+  "shadow": true,
+  "rim": false,
+  "edges": true,
+  "aspect": 2,
+  "cols": 72,
+  "rows": 28,
+  "yaw": -0.55,
+  "dragTurn": 3.2,
+  "drag": true,
+  "coast": true,
+  "show": "pro"
+}

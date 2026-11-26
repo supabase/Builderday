@@ -1,8 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { backendOn } from '@/lib/server/env';
+import { COOKIE_PATH } from '@/lib/server/supabase';
 import { dayGate, seesEarly } from '@/lib/server/gate';
 import { CITY_IDS } from '@/lib/day-data';
+import { DEMO } from '@/lib/demo';
 
 /* Two jobs.
    1. The old city address: /city.html?city=<id>&moment=vote becomes /city/<id>?moment=vote, every other parameter
@@ -10,7 +12,8 @@ import { CITY_IDS } from '@/lib/day-data';
    2. The gate. Before the day pages open, the home (/) shows the preview page under its own address (a rewrite), the
       city pages (a project's own address too) redirect to it with the wheel on that city (/?city=<i>), and the old
       /preview address redirects to /. Once they open, / is the day home, with no change of address. A signed-in host, judge
-      or super admin passes; so does ?admin on a site without the backend, and on the local dev server. The desk, the
+      or super admin passes; so does ?admin on a site without the backend, and on the local dev server; so does ?demo
+      everywhere, since it draws only the seeded day (lib/demo.ts). The desk, the
       stage, /in, the labs and the API are not gated. */
 const GATED = /^\/(?:city\/([^/]+)(?:\/p\/[^/]+)?\/?)?$/, PREVIEW = /^\/preview\/?$/;
 
@@ -25,6 +28,8 @@ export async function proxy(req: NextRequest) {
 
   const m = GATED.exec(url.pathname), old = PREVIEW.test(url.pathname);
   if (!m && !old) return NextResponse.next();
+  /* the sample day: seeded numbers only, so it passes on any host; never indexed */
+  if (!old && url.searchParams.has(DEMO)) { const r = NextResponse.next(); r.headers.set('X-Robots-Tag', 'noindex, nofollow'); return r; }
   const on = backendOn();
   if (!old && url.searchParams.has('admin') && (!on || process.env.NODE_ENV !== 'production')) return NextResponse.next();
   if ((await dayGate()).open) return NextResponse.next();
@@ -34,6 +39,7 @@ export async function proxy(req: NextRequest) {
   if (on && req.cookies.getAll().some((c) => c.name.startsWith('sb-'))) {
     try {
       const sb = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+        cookieOptions: { path: COOKIE_PATH },
         cookies: {
           getAll: () => req.cookies.getAll(),
           setAll: (list) => {

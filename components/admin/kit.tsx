@@ -64,21 +64,26 @@ export function togglePanel() {
   document.querySelector('.lab-toggle')?.setAttribute('aria-expanded', String(open));
 }
 
-export function LabPanel({ tab = 'Lab', title, cfg, bounds, choices, groups, set, moments, momentIdx, out, optionLabel, buttons, meter, msg, rail, railLabel, apply, children }: {
-  tab?: string; title: string; cfg: Cfg; bounds: Record<string, [number, number, number]>; choices: Record<string, string[]>; groups: Group[];
+export function LabPanel({ tab = 'Lab', title, cfg, bounds, choices, groups, set, moments, momentIdx, out, optionLabel, buttons, meter, msg, rail, railLabel, apply, children, closed = false }: {
+  /* closed: start closed on every screen (the sample day, where the page is the point and the tab opens the moments) */
+  closed?: boolean; tab?: string; title: string; cfg: Cfg; bounds: Record<string, [number, number, number]>; choices: Record<string, string[]>; groups: Group[];
   set: (k: string, v: unknown) => void; moments: [string, string, number][]; momentIdx: number;
   out: (k: string) => string; optionLabel?: (k: string, v: string) => string;
   buttons: [string, () => void, boolean?][]; meter: { text: string; bad: boolean }; msg: string; rail: Cfg[]; railLabel: (s: Cfg) => string; apply: (s: Cfg) => void; children?: ReactNode;
 }) {
   /* on a phone the panel would cover the page: it starts closed there, and the toggle opens it */
+  /* a panel that starts closed is held hidden until the page's class says so, so it never shows for a frame */
+  const aside = useRef<HTMLElement>(null);
   useEffect(() => {
-    if (!window.matchMedia('(max-width: 640px)').matches) return;
-    document.documentElement.classList.add('lab-closed');
-    document.querySelector('.lab-toggle')?.setAttribute('aria-expanded', 'false');
-  }, []);
+    if (closed || window.matchMedia('(max-width: 640px)').matches) {
+      document.documentElement.classList.add('lab-closed');
+      document.querySelector('.lab-toggle')?.setAttribute('aria-expanded', 'false');
+    }
+    aside.current?.removeAttribute('hidden');
+  }, [closed]);
   return (
     <>
-      <aside className="lab" aria-label={title}>
+      <aside ref={aside} className="lab" aria-label={title} hidden={closed}>
         <div className="lab-h"><h2>{title}</h2>{cfg.seed === undefined || cfg.seed === '–' ? null : <span className="lab-seed">Seed {String(cfg.seed)}</span>}</div>
         <div className="lab-moments">{moments.map((m, i) => <button key={m[0]} type="button" aria-pressed={i === momentIdx} onClick={() => set('t', m[2])}>{m[1]}</button>)}</div>
         {groups.map((g) => (
@@ -96,7 +101,7 @@ export function LabPanel({ tab = 'Lab', title, cfg, bounds, choices, groups, set
         <p className="lab-msg">{msg}</p>
         <div className="lab-rail">{rail.map((s, i) => <button key={i} type="button" title="Apply this saved config" onClick={() => apply(s)}>{railLabel(s)}</button>)}</div>
       </aside>
-      <button type="button" className="lab-toggle" aria-expanded="true" onClick={togglePanel}>{tab}</button>
+      <button type="button" className="lab-toggle" aria-expanded={!closed} onClick={togglePanel}>{tab}</button>
     </>
   );
 }

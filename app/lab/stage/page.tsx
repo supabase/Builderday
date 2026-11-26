@@ -5,6 +5,7 @@ import day from '@/saved/day.config.json';
 import { CITY_IDS } from '@/lib/day-data';
 import { clampStage, type StageCfg } from '@/lib/stage/config';
 import { CONTENTS, type Content } from '@/lib/stage/world';
+import { BOARD_VIEWS, type BoardView } from '@/lib/stage/types';
 import { serverNow } from '@/lib/stage/lab';
 import { loadStage } from '@/lib/stage/server';
 import { StageLab } from '@/components/stage/stage-lab';
@@ -25,5 +26,5 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   /* whether the real pages can run on Realtime here: the stage tables exist and answer */
   const rt = q.only ? false : (await loadStage(city, { hidden: false, code: false })) !== null;
   const first = Number(q.at) || (hold ? Date.UTC(2026, 11, 10, 8, 20) : serverNow());
-  return <StageLab start={{ cfg, first, seed: Number((day as { seed?: number }).seed) || 17, city, moment: q.m || 'doors', step: Number(q.step) || 0, content, hold, speed: [1, 10, 60].includes(Number(q.speed)) ? Number(q.speed) : 1, origin: proto + '://' + host, scene: q.scene || '', only: q.only === 'wall' || q.only === 'remote' ? q.only : '', qr: q.qr === '1', rt }} />;
+  return <StageLab start={{ cfg, first, seed: Number((day as { seed?: number }).seed) || 17, city, moment: q.m || 'doors', step: Number(q.step) || 0, content, hold, speed: [1, 10, 60].includes(Number(q.speed)) ? Number(q.speed) : 1, origin: proto + '://' + host, scene: q.scene || '', only: q.only === 'wall' || q.only === 'remote' ? q.only : '', qr: q.qr === '1', rt, view: BOARD_VIEWS.some(([v]) => v === q.view) ? (q.view as BoardView) : null, show: q.show !== undefined && Number.isInteger(Number(q.show)) ? Number(q.show) : null }} />;
 }

@@ -36,7 +36,8 @@ export function useWrite(root: RefObject<HTMLElement | null>, step: number, shar
 export function useConverge(root: RefObject<HTMLElement | null>, on: boolean, key: unknown) {
   useEffect(() => {
     const el = root.current; if (!el) return;
-    const hs = Array.from(el.querySelectorAll<HTMLElement>('h2'));
+    /* a part marked still (Get ready) keeps its headings plain: no red and blue split on them */
+    const hs = Array.from(el.querySelectorAll<HTMLElement>('h2')).filter((h) => !h.closest('[data-still]'));
     if (!on || reducedMotion()) return;
     /* a heading already on screen when the page starts (the first part's, in the peek) is left as it is: splitting it
        then would show it sharp, split, and settling, all before anyone scrolled */

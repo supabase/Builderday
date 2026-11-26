@@ -50,7 +50,7 @@ export function dayWord(W: HomeWorld, d: Day): StateWord {
 const LEAD_MIN = 10, LEAD_HOLD = 2, ENTRY_MARKS = [50, 100, 150], VOTE_MARKS = [1000, 2000, 5000];
 const EVENTS = new Map<string, WireEvent[]>();
 function eventsOf(sd: SeedCity, x: CitySched): WireEvent[] {
-  const key = [sd.seed, sd.i, sd.entries, sd.list.map((r) => r.p.name).join('|'), x.start, x.buildEnd, x.end, String(x.hide)].join(':');
+  const key = [sd.seed, sd.i, sd.entries, sd.list.map((r) => r.p.name).join('|'), x.start, x.buildEnd, x.end, String(x.show)].join(':');
   const hit = EVENTS.get(key); if (hit) return hit;
   const nm = x.city.name, i = sd.i, N = sd.entries, ev: WireEvent[] = [];
   ev.push({ m: x.start, city: i, kind: 'open', text: nm + ' opens. Building and voting start now.' });

@@ -388,6 +388,25 @@ button.wh-cta { appearance: none; margin: 0; padding: 0; border: 0; background: 
 .wh-pin[data-dock] .wh-reg-verb { justify-items: start; }
 /* a narrow phone (360): the stub gives up width and the words step down, so the longest city still fits its line */
 @media (max-width: 380px) { .wh-pin[data-dock] .wh-ticket { --stub: 128px; } .wh-pin[data-dock] .wh-reg { font-size: 18px; } .wh-pin[data-dock] .wh-stub { padding-right: 10px; } }
+.wh-stub-t-short { display: none; }
+/* ...or, docked on its line (data-hero-dock='line'): the words stay under the header, but the ticket stays on the active
+   name's line and takes the wheel's name, as on a wide screen. It undoes the foot (--wh-row-dock: 0, --wh-lands: 1) and
+   slims down so the box's name starts where the wheel's names start: a narrow stub (the code, the hours, the state; no
+   serial, no "local"), no small globe, and the verb set small over the name, so the name alone stands on the line. The
+   box's name size is the wheel's names' size (the engine takes it from the box). */
+.wh-pin[data-dock][data-hero-dock='line'] .wh-reg-at { --wh-row-dock: 0; --wh-cell: 52px; top: 0; left: 0; right: auto; bottom: auto; max-width: none; transform: translateY(-50%); flex-wrap: nowrap; }
+.wh-fixed:not(.wh-rides)[data-dock][data-hero-dock='line'] .wh-reg-at { top: 0; bottom: auto; transform: translateY(-50%); }
+.wh-pin[data-dock][data-hero-dock='line'] .wh-ticket { --stub: var(--hero-stub-phone, 100px); width: auto; }
+.wh-pin[data-dock][data-hero-dock='line'] .wh-stub { --wh-cell: 1.15em; padding: 4px 8px 4px 12px; font-size: 11px; line-height: 1.15; gap: 1px; }
+.wh-pin[data-dock][data-hero-dock='line'] .wh-stub .wh-drum { --h: 1.15em; }
+.wh-pin[data-dock][data-hero-dock='line'] .wh-stub-code { font-size: 15px; line-height: 1.05; }
+.wh-pin[data-dock][data-hero-dock='line'] .wh-stub-t { display: none; }
+.wh-pin[data-dock][data-hero-dock='line'] .wh-stub-t-short { display: block; }
+.wh-pin[data-dock][data-hero-dock='line'] .wh-reg { --wh-lands: 1; flex: none; padding: 0 14px 0 10px; font-size: var(--hero-name-phone, 20px); white-space: nowrap; line-height: 1.1; }
+.wh-pin[data-dock][data-hero-dock='line'] .wh-reg .en-lens { display: none; }
+.wh-pin[data-dock][data-hero-dock='line'] .wh-reg-ghost { display: block; }
+.wh-pin[data-dock][data-hero-dock='line'] .en-reg-t { position: relative; }
+.wh-pin[data-dock][data-hero-dock='line'] .wh-reg-verb { position: absolute; left: 0; bottom: 100%; margin-bottom: 2px; font: 500 10px/1.2 var(--wh-mono); color: rgb(12 13 13 / 0.6); }
 /* the wheel's names run behind the words up here: the ground fades in behind them, down to a little under the date */
 .wh-pin[data-dock] .wh-col::before { content: ''; position: absolute; z-index: -1; left: calc(var(--wh-gutter) * -1); right: calc(var(--wh-gutter) * -1); top: calc(var(--wh-dock, 96px) * -1); bottom: -40px;
   background: linear-gradient(var(--wh-paper) calc(100% - 64px), #0000); pointer-events: none; }

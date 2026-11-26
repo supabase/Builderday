@@ -46,9 +46,10 @@ import { bothTimes, useYourTime } from '@/components/kit/time';
    - The results page: the entries as a printout (place, picture, name and maker, the vote bar in hatch, the count,
      the change in 10 minutes, the vote key), the cut under 3rd as the globe's dotted equator, the first rows then
      "Print all" on a press. A row moves by whole rows on the tick and leaves a trail that decays.
-   - Votes hidden from minute 70 (the model's W.hidden): the counts print the placeholder, the bars dim, the order is
-     the one at the freeze and new entries sit at the bottom as New; one rule line says when it all appears. When
-     voting closes, the reveal: counts print from the bottom up, the rows take their places, the top 3 print [3]. */
+   - Votes hidden until minute 60 (the model's W.hidden, from the start until W.showAt): the counts print the
+     placeholder, the bars dim, the entries stand in the order they came; one rule line says when the counts appear.
+     At showAt, the reveal: counts print from the bottom up, the rows take their places, the top 3 print [3]; from then
+     the counts are live until the close at 90. */
 
 export type AirCityCfg = { first: 'mix' | 'facing' | 'board'; rank: 'print'; bars: 'hatch' | 'blocks' | 'none'; top: 'header' | 'pylon'; cut: 'equator' | 'rule'; trail: 'decay' | 'none'; gauge: 'on' | 'off'; you: 'dock' | 'row'; rowsFirst: number };
 export const AIR_CITY_DEF: AirCityCfg = { first: 'mix', rank: 'print', bars: 'hatch', top: 'pylon', cut: 'equator', trail: 'decay', gauge: 'on', you: 'dock', rowsFirst: 10 };
@@ -70,10 +71,9 @@ type Ctx = {
   replay?: number; children?: ReactNode;
 };
 
-/* who may vote now: the builders on the city's list from the start, everyone else (the judges too) from publicAt */
+/* who may vote now: everyone alike, from publicAt (the start) until the close; judges from judgeAt */
 function useGate(W: CityWorld) {
-  const me = meNow(), peer = me?.pass?.city === W.city.id;
-  return { can: W.voting && (W.publicOpen || peer), peer, early: W.voting && !W.publicOpen, from: hhmm(W.publicAt + W.off) };
+  return { can: W.voting && W.publicOpen, early: W.voting && !W.publicOpen, from: hhmm(W.publicAt + W.off) };
 }
 
 export function AirCity(c: Ctx) {
@@ -103,7 +103,7 @@ export function AirCity(c: Ctx) {
       foot={<Ending cfg={end} wheel={wheel} cities={endCities} start={W.i} last={lastLine(H)} date={EVENT.date} sound links={{ how: '#how', prizes: '#prizes', questions: '#questions' }} markMode={wheel.mark} states={states} label="Open a city" />}>
       {cfg.first === 'mix' ? <Mix {...c} hidden={hidden} action={action} gate={gate} /> : <Facing {...c} hidden={hidden} action={action} onVote={scrollTo('ranking')} />}
       <Results {...c} hidden={hidden} />
-      {W.state === 'next' ? <div id="ready" className="pf-part" data-part="ready"><FoldReady city={W.city.name} cityId={W.city.id} mode={fold.ready} auto={false} step={fold.dryStep} hold={fold.dryHold} /></div> : null}
+      {W.state === 'next' ? <div id="ready" className="pf-part" data-part="ready"><FoldReady city={W.city.name} cityId={W.city.id} mode={fold.ready === 'list' || fold.ready === 'short' ? 'dry' : fold.ready} auto={false} step={fold.dryStep} hold={fold.dryHold} /></div> : null}
       {air.wireAt === 'page' ? <div className="pf-part"><Wire items={c.wire} rate={air.wireRate} hold={air.wireHold} label={wireLabel} empty={wireEmpty} paused={!c.live} /></div> : null}
       <div className="pf-part" data-part="how"><HowItWorks f={c.day} id="how" day={{ ...dayFinalOf(H), city: W.city.id }} /></div>
       <div className="pf-part pf-prize" data-part="prizes"><PrizeBlock id="prizes" text={wheel.globe === 'ascii' ? wheel : undefined} day={dayFinalOf(H)} winner={H.picked ? H.final.p.name + ', ' + H.final.city.name : null} /></div>
@@ -139,7 +139,7 @@ function Facing({ W, H, clock, first, wheel, pick, elsewhere, hidden, action, on
         <p className="oa-face-t" aria-live="off">{time}</p>
         {pick ? <p className="oa-face-lead"><b>{EVENT.pickers} picked {pick.name}</b>, {ord(pick.place)} here.</p>
           : lead ? (
-            <p className="oa-face-lead"><Picture p={lead.p} cls="oa-pic" /><span>{W.state === 'done' ? '1st' : hidden ? 'Leading at ' + ((W.hideAt ?? W.x.start) - W.x.start) + ' min' : 'Leading'}: <b>{lead.p.name}</b>{hidden || lead.votes == null ? null : <span className="oa-tab">, {lead.votes} votes</span>}</span></p>
+            <p className="oa-face-lead"><Picture p={lead.p} cls="oa-pic" /><span>{W.state === 'done' ? '1st' : 'Leading'}: <b>{lead.p.name}</b>{hidden || lead.votes == null ? null : <span className="oa-tab">, {lead.votes} votes</span>}</span></p>
           ) : <p className="oa-face-lead">{W.state === 'next' ? 'No entries until it opens.' : 'No entries yet.'}</p>}
         {elsewhere ? <p className="oa-face-lead">The pick went to {elsewhere.name}, {elsewhere.city}.</p> : null}
         <div className="oa-face-acts">
@@ -164,8 +164,9 @@ function Mix({ W, H, clock, first, wheel, pick, elsewhere, hidden, action, gate 
   const n = W.arrived.length, name = W.city.name;
   const at = (m: number) => bothTimes(hhmm(m + W.off), name, yours ? yours(m) : null);
   const note: ReactNode = W.state === 'next' ? <>Building and voting start at <b>{at(W.x.start)}</b>.</>
-    : gate.early ? (gate.peer ? <>You vote now, as a builder here. Everyone else votes from <b>{at(W.publicAt)}</b>.</> : <>Everyone votes from <b>{at(W.publicAt)}</b>. The builders on {name}’s list vote now.</>)
-    : W.state === 'build' ? <>Building until {hhmm(W.x.buildEnd + W.off)}. Votes close at <b>{at(W.x.end)}</b>.</>
+    : gate.early ? <>Building until {hhmm(W.x.buildEnd + W.off)}. Voting opens at <b>{at(W.publicAt)}</b>, for everyone.</>
+    : hidden && W.showAt != null ? <>Voting is open. The counts are hidden until <b>{at(W.showAt)}</b>.</>
+    : W.state === 'build' ? <>Building and voting until <b>{at(W.x.end)}</b>.</>
     : W.state === 'vote' ? <>Entries are closed. Votes close at <b>{at(W.x.end)}</b>.</>
     : <>Closed at {hhmm(W.x.end + W.off)} local. The top {EVENT.finalists} are in the final.</>;
   const globe = <FacingGlobe wheel={wheel} cities={cities} active={W.i} minute={s} print={0} label={`The world in characters, turned to face ${name}, marked in green.`} />;
@@ -189,7 +190,7 @@ function Mix({ W, H, clock, first, wheel, pick, elsewhere, hidden, action, gate 
         {W.state === 'done' ? null : <LiveSegment className="oa-mix-seg" clock={clock} first={first} x={{ state: W.state, start: W.x.start, buildEnd: W.x.buildEnd, end: W.x.end }} withSecs={!!partsSaved.segSecs} name={name} />}
         {/* the leader as one line, the same size as any other: a big first place would draw the votes to it */}
         {pick ? <p className="oa-mix-lead"><span className="oa-leader-k">Picked</span> <b>{pick.name}</b>, {ord(pick.place)} here</p>
-          : lead ? <p className="oa-mix-lead"><span className="oa-leader-k">{W.state === 'done' ? '1st' : hidden ? 'Leading at ' + ((W.hideAt ?? W.x.start) - W.x.start) + ' min' : 'Leading'}</span> <b>{lead.p.name}</b>{votes != null ? <span className="oa-tab"> · {votes} votes</span> : null}</p> : null}
+          : lead ? <p className="oa-mix-lead"><span className="oa-leader-k">{W.state === 'done' ? '1st' : 'Leading'}</span> <b>{lead.p.name}</b>{votes != null ? <span className="oa-tab"> · {votes} votes</span> : null}</p> : null}
         {elsewhere ? <p className="oa-mix-lead">The pick went to {elsewhere.name}, {elsewhere.city}.</p> : null}
         <div className="oa-face-acts">
           {action.press ? <Key onClick={action.press} popup={action.words !== 'Reminder set'}>{action.words}</Key> : <Key href={action.href}>{action.words}</Key>}
@@ -211,7 +212,7 @@ function TopTen({ W, W10, hidden, show, frozen }: { W: CityWorld; W10: CityWorld
   if (frozen) { const by = new Map(W.ranked.map((o) => [o.p.id, o])); list = frozen.split(',').map((id) => by.get(Number(id))!).filter(Boolean); }
   return (
     <aside className="oa-pylon" aria-label={'Top ten in ' + W.city.name}>
-      <p className="oa-pylon-k">Top ten{hidden ? ' · order at ' + ((W.hideAt ?? W.x.start) - W.x.start) + ' min' : ''}</p>
+      <p className="oa-pylon-k">{hidden ? 'In the order they came' : 'Top ten'}</p>
       <ol>
         {list.slice(0, 10).map((o, k) => (
           <li key={o.p.id} data-cut={k === 2 ? '' : undefined}>
@@ -292,8 +293,8 @@ function Results({ W, W10, bm, vote, show, pick, air, cfg, hidden, replay }: Ctx
   const dockText = y ? (hidden ? `You · votes hidden · ${voted} of yours in` : `You, ${ord(y.rank)} · ${third && y.rank > 3 ? third.v - y.v + 1 + ' votes to the final' : 'in the top 3'}`) : '';
   const rank = W.state === 'next' ? null : (
     <>
-      {hidden ? <Notice className="oa-notice">Votes are hidden until <b>{at(W.x.end)}</b>, when all the counts appear. Voting goes on.</Notice>
-        : told ? <Notice className="oa-notice" live>Votes were hidden from {hhmm((W.hideAt ?? W.x.start) + W.off)}. The counts are in.</Notice>
+      {hidden ? <Notice className="oa-notice">{W.now < W.publicAt ? <>Voting opens at <b>{at(W.publicAt)}</b>. </> : null}The counts are hidden until <b>{at(W.showAt ?? W.x.end)}</b>, then shown live until the close.</Notice>
+        : told ? <Notice className="oa-notice" live>The counts are in, live until the close. A judge’s vote counts {W.judgeWeight}.</Notice>
         : null}
       <div className="oa-tools">
         <div className="oa-ctrl" role="group" aria-label="Order and search">
@@ -326,7 +327,7 @@ function Results({ W, W10, bm, vote, show, pick, air, cfg, hidden, replay }: Ctx
         </ol>
       )}
       {!time && !all && !filtered && rows.length > cfg.rowsFirst ? <Key kind="second" className="oa-more" onClick={() => setAll(true)}>Print all {rows.length}</Key> : null}
-      {W.voting ? <p className="oa-rule" style={{ marginTop: 16 }}>A judge’s vote counts {W.judgeWeight}. One vote per entry. Your votes count at once; press again to take one back. Votes close at {hhmm(W.x.end + W.off)} local.{voted ? ` You have voted for ${voted}.` : ''}</p> : null}
+      {W.voting ? <p className="oa-rule" style={{ marginTop: 16 }}>A judge’s vote counts {W.judgeWeight}. One vote per entry. Your votes count at once; press again to take one back. Everything closes at {hhmm(W.x.end + W.off)} local.{voted ? ` You have voted for ${voted}.` : ''}</p> : null}
       {y ? <Dock show={dock && W.state !== 'done'} text={dockText} onPress={() => youRow.current?.scrollIntoView({ block: 'center' })} /> : null}
     </>
   );
@@ -335,7 +336,7 @@ function Results({ W, W10, bm, vote, show, pick, air, cfg, hidden, replay }: Ctx
     <section id="ranking" className="pf-part oa-part" data-part="ranking" data-pylon={pylon ? '' : undefined} aria-labelledby="ranking-h">
       <div className="oa-rank-main">
         <h2 id="ranking-h" className="pf-h">{W.state === 'done' ? 'The results' : 'The ranking'}</h2>
-        <p className="pf-lede">{W.state === 'next' ? `Entries show up here from ${hhmm(W.x.start + W.off)} local. Voting opens then too.` : `The top ${EVENT.finalists} by votes go to the final.${W.state === 'done' ? '' : ' Voting closes at ' + hhmm(W.x.end + W.off) + ' local.'}`}</p>
+        <p className="pf-lede">{W.state === 'next' ? `Entries show up here from ${hhmm(W.x.start + W.off)} local. Voting opens at ${hhmm(W.publicAt + W.off)}.` : `The top ${EVENT.finalists} by votes go to the final.${W.state === 'done' ? '' : ' Voting closes at ' + hhmm(W.x.end + W.off) + ' local.'}`}</p>
         {rank}
       </div>
       {pylon}

@@ -8,13 +8,14 @@ import type { Who } from './sign-in-sheet';
 import { FromEditor } from '@/components/day/get-ready';
 import { RULES, SERVER } from '@/lib/hackday-server';
 import { submit } from '@/lib/submit';
-import { ROOM_HOST, ROOM_NOT_SAVED, notListedAnywhere, roomCodeOK, roomStep } from '@/lib/event/rule';
+import { NOT_SAVED, checkInStep, notListedAnywhere } from '@/lib/event/rule';
 
 /* Submit: one entry per person. The same sheet edits it until building closes, then says so. A new entry gets two
    parts under one sentence about the rules: from your editor first (the sentence to say), then in the browser (this
    form). Both run the same checks. Editing an entry is the form alone.
-   On a site with the backend, a person on a list who has not typed the room code yet is asked for it first (rule 7c),
-   one field, then the form; a refusal for the same reason later brings the step back with everything typed kept. */
+   On a site with the backend, a person on a list whom no host has checked in yet sees that step first (rule 7c): it
+   looks again by itself and opens the form the moment the host has done it; a refusal for the same reason later
+   brings the step back with everything typed kept. */
 export type SubmitOpts = { city?: string; cityName?: string; deadline?: Date | string; off?: number };
 type Fields = { name: string; pitch: string; repo: string; demo: string; video: string; rules: boolean };
 const NAMES: FieldName[] = ['name', 'pitch', 'repo', 'demo', 'video', 'rules'];
@@ -25,7 +26,7 @@ export function SubmitSheet({ o, who, done, again, share }: { o: SubmitOpts; who
   const edit = !!mine, saved = useRef<Entry | null>(null), nameRef = useRef<HTMLInputElement>(null);
   const cityName = edit ? (mine!.cityName || cityLabel(mine!.city)) : (o.cityName || cityLabel(o.city));
   const [doneEntry, setDoneEntry] = useState<Entry | null>(null), [gone, setGone] = useState(false);
-  const [needRoom] = useState(() => { const m = meNow(); return store.isLive() && !!m?.pass && !m.pass.checkedIn; }), roomRef = useRef<HTMLInputElement>(null);
+  const [needRoom] = useState(() => { const m = meNow(); return store.isLive() && !!m?.pass && !m.pass.checkedIn; }), roomRef = useRef<HTMLButtonElement>(null);
   /* signed in but on no city's list: they can vote, and the sheet says how to get on a list rather than show a form */
   const [unlisted] = useState(() => store.isLive() && !mine && !meNow()?.pass);
   return (
@@ -41,7 +42,7 @@ export function SubmitSheet({ o, who, done, again, share }: { o: SubmitOpts; who
 function deadlineOf(edit: boolean, mine: Entry | null, o: SubmitOpts) { return edit ? (mine!.deadline || o.deadline) : o.deadline; }
 function until(edit: boolean, mine: Entry | null, o: SubmitOpts) { const d = deadlineOf(edit, mine, o); return d ? atCity(d, o.off) : ''; }
 
-function SubmitForm({ o, who, mine, cityName, nameRef, roomRef, needRoom, onSaved, onDeleted }: { o: SubmitOpts; who: Who; mine: Entry | null; cityName: string; nameRef: React.RefObject<HTMLInputElement | null>; roomRef: React.RefObject<HTMLInputElement | null>; needRoom: boolean; onSaved: (e: Entry) => void; onDeleted: () => void }) {
+function SubmitForm({ o, who, mine, cityName, nameRef, roomRef, needRoom, onSaved, onDeleted }: { o: SubmitOpts; who: Who; mine: Entry | null; cityName: string; nameRef: React.RefObject<HTMLInputElement | null>; roomRef: React.RefObject<HTMLButtonElement | null>; needRoom: boolean; onSaved: (e: Entry) => void; onDeleted: () => void }) {
   const { id, busy: busyRef, open: openRef, focus } = useSheet(), edit = !!mine;
   const city = edit ? mine!.city : o.city, deadline = deadlineOf(edit, mine, o), untilT = until(edit, mine, o);
   const otherCity = edit && o.city && mine!.city !== o.city;
@@ -59,33 +60,23 @@ function SubmitForm({ o, who, mine, cityName, nameRef, roomRef, needRoom, onSave
   const fileRef = useRef<HTMLInputElement>(null), formRef = useRef<HTMLFormElement>(null), headRef = useRef<HTMLHeadingElement>(null);
   const urlRef = useRef('');
   useEffect(() => () => { if (urlRef.current) URL.revokeObjectURL(urlRef.current); }, []);
-  /* the room code step: shown first when needed, and again if the server says so; the form below keeps its values */
-  const [room, setRoom] = useState(needRoom), [code, setCode] = useState(''), [codeErr, setCodeErr] = useState(''), [checking, setChecking] = useState(false), [inNote, setInNote] = useState('');
+  /* the check-in step: shown first when needed, and again if the server says so; the form below keeps its values */
+  const [room, setRoom] = useState(needRoom), [inNote, setInNote] = useState('');
   const [why, setWhy] = useState(''), [hostSaid, setHostSaid] = useState('');
   const roomCity = meNow()?.pass?.cityName || cityName;
-  const toRoom = (reason: string) => { setRoom(true); setWhy(reason); setHostSaid(''); setCode(''); setCodeErr(''); window.setTimeout(() => roomRef.current?.focus(), 0); };
+  const toRoom = (reason: string) => { setRoom(true); setWhy(reason); setHostSaid(''); window.setTimeout(() => roomRef.current?.focus(), 0); };
   const leaveRoom = () => {
     setRoom(false); setWhy(''); setHostSaid(''); setFormErr(''); setInNote('Checked in. You can submit until the end of building.'); emit();
     window.setTimeout(() => focus(document.getElementById(id + '-name')), 0);
   };
-  const onCode = (e: FormEvent) => {
-    e.preventDefault(); if (busyRef.current) return;
-    if (!roomCodeOK(code)) { setCodeErr('The code on the screen is four letters and numbers.'); roomRef.current?.focus(); return; }
-    busyRef.current = true; setChecking(true); setCodeErr('');
-    store.checkIn(code).then((r) => {
-      busyRef.current = false; setChecking(false); if (!openRef.current) return;
-      if (!r.ok) { setCodeErr(r.error || 'That code did not work. Check the screen and try again.'); roomRef.current?.focus(); return; }
-      leaveRoom();
-    });
-  };
-  /* a host may mark the person in the room at the desk while this step is open: look again when the step shows, when
-     the page comes back into view, and when they say so */
+  /* a host checks the person in at the desk while this step is open: look again when the step shows, every few
+     seconds, when the page comes back into view, and when they say so */
   const [looking, setLooking] = useState(false);
   const hostChecked = () => {
     if (looking) return; setLooking(true); setHostSaid('');
     store.refresh().then(() => {
       setLooking(false); if (!openRef.current) return;
-      if (meNow()?.pass?.checkedIn) leaveRoom(); else setHostSaid('Not checked in yet. Ask the host at the desk to mark you in the room, then press this again.');
+      if (meNow()?.pass?.checkedIn) leaveRoom(); else setHostSaid('Not checked in yet. Show a host at the door your Supabase email, then press this again.');
     });
   };
   useEffect(() => {
@@ -93,8 +84,9 @@ function SubmitForm({ o, who, mine, cityName, nameRef, roomRef, needRoom, onSave
     let on = true;
     const look = () => { if (document.visibilityState !== 'visible') return; store.refresh().then(() => { if (on && meNow()?.pass?.checkedIn) { on = false; setRoom(false); setWhy(''); setHostSaid(''); setFormErr(''); setInNote('Checked in. You can submit until the end of building.'); window.setTimeout(() => focus(document.getElementById(id + '-name')), 0); } }); };
     look();
+    const iv = window.setInterval(look, 8000);
     window.addEventListener('focus', look); document.addEventListener('visibilitychange', look);
-    return () => { on = false; window.removeEventListener('focus', look); document.removeEventListener('visibilitychange', look); };
+    return () => { on = false; window.clearInterval(iv); window.removeEventListener('focus', look); document.removeEventListener('visibilitychange', look); };
   }, [room, live, focus, id]);
 
   const check = (n: FieldName, v: string | boolean) => { const m = CHECKS[n](v); setErr((e) => ({ ...e, [n]: m })); return !m; };
@@ -126,7 +118,7 @@ function SubmitForm({ o, who, mine, cityName, nameRef, roomRef, needRoom, onSave
       const fld = x.field || '';
       if (fld === 'closed') { setClosed(true); setFormErr(x.message); headRef.current?.focus(); return { verdict: null, entry: null, handled: true }; }
       if (fld === 'by') { setByErr(x.message); byRef.current?.focus(); return { verdict: null, entry: null, handled: true }; }
-      if (fld === 'room') { toRoom(ROOM_NOT_SAVED); return { verdict: null, entry: null, handled: true }; }
+      if (fld === 'room') { toRoom(NOT_SAVED); return { verdict: null, entry: null, handled: true }; }
       if (fld === 'name' || fld === 'pitch' || fld === 'repo' || fld === 'demo' || fld === 'video' || fld === 'picture') {
         setErr((e) => ({ ...e, [fld]: x.message })); (fld === 'picture' ? fileRef.current : formRef.current?.elements.namedItem(fld) as HTMLElement | null)?.focus();
       } else setFormErr(x.message);
@@ -157,21 +149,13 @@ function SubmitForm({ o, who, mine, cityName, nameRef, roomRef, needRoom, onSave
   return (
     <>
       {room ? (
-        <form className={FM_FORM} data-step="room" noValidate onSubmit={onCode}>
-          <h2 className={FM_H} id={id + '-h'} tabIndex={-1}>Type the code on the screen</h2>
-          <p className={FM_P} id={id + '-rp'}>{why ? <><b className="font-medium text-ink">{why}</b> </> : null}{roomStep(roomCity)}</p>
-          <div className={FM_F}>
-            <label className={FM_L} htmlFor={id + '-rc'}>Code on the screen</label>
-            <input ref={roomRef} className="fm-i fm-room" id={id + '-rc'} name="room" type="text" inputMode="text" autoComplete="off" autoCapitalize="characters" autoCorrect="off" spellCheck={false} maxLength={4} enterKeyHint="go"
-              data-1p-ignore data-lpignore="true" aria-describedby={id + '-rp ' + id + '-re'} aria-invalid={codeErr ? true : undefined} value={code} readOnly={checking}
-              onChange={(e) => { setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '')); if (codeErr) setCodeErr(''); }} />
-            <ErrBox id={id + '-re'} msg={codeErr} live />
-          </div>
-          <div className={FM_ACT}><button className="fm-b g" type="submit" disabled={checking} aria-busy={checking || undefined}>{checking ? 'Checking code…' : 'Check in'}</button></div>
-          <p className={FM_NOTE}>{ROOM_HOST}</p>
-          <div className={FM_ACT}><button className={FM_T} type="button" disabled={looking} aria-busy={looking || undefined} onClick={hostChecked}>{looking ? 'Looking…' : 'The host checked me in'}</button></div>
+        <div className={FM_FORM} data-step="room">
+          <h2 className={FM_H} id={id + '-h'} tabIndex={-1}>Get checked in at the door</h2>
+          <p className={FM_P} id={id + '-rp'}>{why ? <><b className="font-medium text-ink">{why}</b> </> : null}{checkInStep(roomCity)}</p>
+          <p className={FM_NOTE}>Show the host the email you signed in with: <b className="font-medium text-ink">{who.email}</b>.</p>
+          <div className={FM_ACT}><button ref={roomRef} className="fm-b g" type="button" disabled={looking} aria-busy={looking || undefined} onClick={hostChecked}>{looking ? 'Looking…' : 'The host checked me in'}</button></div>
           <p className={FM_NOTE + (hostSaid ? '' : ' sr-only')} role="status">{hostSaid}</p>
-        </form>
+        </div>
       ) : null}
       <p className="sr-only" role="status">{room ? '' : inNote}</p>
       <div hidden={room}>

@@ -261,7 +261,7 @@ export function Rules({ step }: SceneProps) {
       {/* the last press: who may submit and who may vote, side by side so the room does not mix them up */}
       {step >= RULES.length ? (
         <In i={RULES.length} as="dl" className="st-who">
-          <div><dt className="st-k">Submit</dt><dd className="st-b">People on the Luma list: the email you gave Luma and the room code.</dd></div>
+          <div><dt className="st-k">Submit</dt><dd className="st-b">People on the Luma list, signed in with Supabase and checked in at the door.</dd></div>
           <div><dt className="st-k">Vote</dt><dd className="st-b">Anyone: give an email and confirm it once.</dd></div>
         </In>
       ) : null}
@@ -329,10 +329,10 @@ export function Submit({ s, step, city, url }: SceneProps) {
       <div className="st-submit-l">
         <h1 className="st-d3">From {editorOf(s)}, say:</h1>
         <p className="st-d3 st-say">“{sayIt(name)}”</p>
-        <p className="st-b st-2">It asks for the email you gave Luma and the room code.</p>
+        <p className="st-b st-2">It works once a host has checked you in at the door.</p>
       </div>
       {/* the web half holds its place from the first step, so the second press lands it without moving the first */}
-      <div className={'st-submit-r' + (step >= 1 ? (fresh(1) ? ' st-in' : '') : ' st-hide')} aria-hidden={step < 1}><p className="st-h">{url ? 'Or on the web' : 'With the room code'}</p><Door url={url} code={city.room_code} /><p className="st-l st-key">{TO_SUBMIT}</p></div>
+      <div className={'st-submit-r' + (step >= 1 ? (fresh(1) ? ' st-in' : '') : ' st-hide')} aria-hidden={step < 1}><p className="st-h">{url ? 'Or on the web' : 'At the door'}</p><Door url={url} code={city.room_code} /><p className="st-l st-key">{TO_SUBMIT}</p></div>
     </div>
   );
 }

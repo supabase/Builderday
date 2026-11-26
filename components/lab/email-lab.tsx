@@ -20,19 +20,17 @@ const LABELS: Record<string, string> = {
   pass: 'Pass: a ticket stub, as the sheets', board: 'Board: the departures row', globe: 'Globe: a poster, globe over word', plain: 'Plain: words only',
   none: 'None: the black ticket on the inbox’s white', night: 'Night', paper: 'Paper', solid: 'Green block', bracket: '[ Mono in brackets ]', outline: 'Hairline box',
   globe_h: 'Globe hatch ::|', dense: 'Dense :|:|', dots: 'Dots ::',
-  code: 'Sign-in code', link: 'Your place', again: 'Your link again', reminder: 'Starts soon', role: 'Host / judge', claim: 'Move your place',
+  code: 'Sign-in code (fallback)', reminder: 'Starts soon', role: 'Host / judge', claim: 'Add an email',
 };
 const SAMPLE: Record<Template, MailData> = {
   code: { code: '595017', link: 'https://hackday-seven.vercel.app/in/confirm?th=0395470bab3c&next=%2Fpreview' },
-  link: { city: 'London', when: '18:00 on 10 December', link: 'https://hackday-seven.vercel.app/in/k7Qm2', name: 'Ana' },
-  again: { city: 'Seoul', link: 'https://hackday-seven.vercel.app/in/k7Qm2', name: 'Min' },
   reminder: { city: 'Mexico City', when: '18:00 on 10 December', link: 'https://hackday-seven.vercel.app/city/mexico-city', name: 'Luis' },
   role: { city: 'Singapore', role: 'host', link: 'https://hackday-seven.vercel.app/desk', name: 'Wei' },
   claim: { city: 'Toronto', code: '204611', account: 'sam@work.example' },
 };
 
 export function EmailLab({ saved }: { saved: EmailLook }) {
-  const [cfg, setCfg] = useState<EmailLook>(saved), [tpl, setTpl] = useState<Template>('code'), [inv, setInv] = useState(false);
+  const [cfg, setCfg] = useState<EmailLook>(saved), [tpl, setTpl] = useState<Template>('claim'), [inv, setInv] = useState(false);
   const set = useCallback((k: string, v: unknown) => setCfg((c) => clampEmail({ ...c, [k]: v })), []);
   const { save, msg, rail } = useLabSave('email', 'lab-email-saved');
   const reseed = useCallback(() => setCfg((c) => ({ ...c, seed: 1 + Math.floor(Math.random() * 99998) })), []);

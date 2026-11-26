@@ -13,7 +13,7 @@ function localIso(ms: number, offsetMin: number) {
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:00${offsetMin < 0 ? '-' : '+'}${pad(Math.floor(a / 60))}:${pad(a % 60)}`;
 }
 
-export function previewLd(o: { url: string; description: string; how: [string, string][] }) {
+export function previewLd(o: { url: string; description: string }) {
   const span = (day.buildMin + day.voteAfter) * 60000;
   const organizer = { '@type': 'Organization', name: 'Supabase', url: 'https://supabase.com' };
   const cities = CITIES.map((c) => {
@@ -34,7 +34,6 @@ export function previewLd(o: { url: string; description: string; how: [string, s
     location: cities.map((c) => c.location), organizer, subEvent: cities,
     ...(PRIZES.global.what ? { award: PRIZES.global.what } : {}),
   };
-  const faq = { '@type': 'FAQPage', url: o.url, mainEntity: o.how.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) };
   /* "<" escaped so no text in the data can close the script tag */
-  return JSON.stringify({ '@context': 'https://schema.org', '@graph': [event, faq] }).replace(/</g, '\\u003c');
+  return JSON.stringify({ '@context': 'https://schema.org', '@graph': [event] }).replace(/</g, '\\u003c');
 }

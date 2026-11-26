@@ -30,7 +30,7 @@ export default function Image() {
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 30 }}>
             <span>{`Most from ${cityStartLocal({ start: USUAL_START })} local time, east to west`}</span>
-            {PRIZES.global.what ? <span style={{ color: C.green }}>{PRIZES.global.what} to the winner</span> : null}
+            {PRIZES.global.what ? <span style={{ color: C.green }}>A MacBook Pro, a Mac mini and a MacBook Neo to win</span> : null}
           </div>
         </div>
       </div>

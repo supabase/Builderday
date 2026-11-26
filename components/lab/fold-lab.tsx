@@ -20,7 +20,9 @@ import { FOLD_GROUPS as GROUPS, FOLD_LABELS as LABELS } from '@/components/previ
 
 export function FoldLab({ saved, wheel, ours, q, nowMs }: { saved: Partial<FoldCfg>; wheel: WheelCfg; ours: OurWheel; q: Record<string, string | undefined>; nowMs: number }) {
   const [cfg, setCfg] = useState<FoldCfg>(() => {
-    const c = clampFold({ ...saved, ...(q.dir ? { dir: q.dir } : {}), ...(q.acct ? { acct: q.acct } : {}), ...(q.acctTop ? { acctTop: q.acctTop } : {}) });
+    /* ?howBuild=, ?howLink=, ?howHatch=, ?howPrize=, ?howAuto= try How it works' modes without saving */
+    const how = Object.fromEntries(Object.entries(q).filter(([k, v]) => k.startsWith('how') && v !== undefined && isNaN(Number(v))));
+    const c = clampFold({ ...saved, ...how, ...(q.dir ? { dir: q.dir } : {}), ...(q.acct ? { acct: q.acct } : {}), ...(q.acctTop ? { acctTop: q.acctTop } : {}) });
     return q.still === '1' ? { ...c, arrive: 'none' } : c;
   });
   const set = useCallback((k: string, v: unknown) => setCfg((c) => clampFold({ ...c, [k]: v })), []);
