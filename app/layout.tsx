@@ -5,13 +5,10 @@ import dayCfg from '@/saved/day.config.json';
 import cityCfg from '@/saved/city.config.json';
 import motionCfg from '@/saved/motion.config.json';
 import { clampMotion, motionCss } from '@/lib/motion';
-import familyCfg from '@/saved/family.config.json';
-import { clampFamily, familyCss } from '@/lib/family';
 import { headScript } from '@/components/ground/head-script';
 import { SITE_URL } from '@/lib/site';
 import { EVENT } from '@/lib/day-data';
 import './globals.css';
-import '@/components/kit/kit.css';
 
 /* Geist 400/500/600 and Geist Mono 500 are the page faces; globals.css reads them through these two variables.
    Manrope 600 is the Builder Day name in the logo. */
@@ -27,8 +24,6 @@ const HEAD = headScript({
 
 /* the motion tokens, from the motion tuning page's saved config */
 const MOTION = motionCss(clampMotion(motionCfg));
-/* the family's sizes (the kit's tokens), from the specimen lab's saved config */
-const FAMILY = familyCss(clampFamily(familyCfg));
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -45,7 +40,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" data-paper="night" className={geist.variable + ' ' + geistMono.variable + ' ' + manrope.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: HEAD }} />
-        <style dangerouslySetInnerHTML={{ __html: MOTION + FAMILY }} />
+        <style dangerouslySetInnerHTML={{ __html: MOTION }} />
       </head>
       <body>{children}</body>
     </html>

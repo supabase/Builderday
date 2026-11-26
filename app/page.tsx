@@ -1,30 +1,40 @@
-import saved from '@/saved/day-home.config.json';
-import parts from '@/saved/parts.config.json';
-import type { PartsCfg } from '@/components/board/config';
-import { DayHome, type DayHomeCfg } from '@/components/day/day-home';
+import saved from '@/saved/fold.config.json';
+import wheel from '@/saved/wheel.config.json';
+import { clampWheel } from '@/components/wheel/config';
+import { ourWheel } from '@/components/preview/facts';
+import type { FoldCfg } from '@/components/preview/fold/config';
+import { FoldPreview } from '@/components/preview/fold/preview-page';
+import { BACK_SCRIPT } from '@/components/preview/fold/arrive';
 import { pageMeta } from '@/lib/meta';
-import { flatQuery as flat } from '@/components/day/day';
-import { backendOn } from '@/lib/server/env';
-import { pageSnaps } from '@/lib/server/snapshot';
-import { EVENT, CITY_WORD, CITY_WORD_CAP, FINALIST_COUNT } from '@/lib/day-data';
-import { FormsProvider } from '@/components/forms/forms-provider';
+import { EVENT, CITY_WORD, CITY_WORD_CAP } from '@/lib/day-data';
+import { signups } from '@/lib/server/signups';
+import { headers } from 'next/headers';
+import type { Metadata, Viewport } from 'next';
+import { SITE_URL } from '@/lib/site';
+import { previewLd } from '@/lib/structured';
 
-export const metadata = pageMeta(
-  `${EVENT.name}: ${CITY_WORD} cities, one day`,
-  `${CITY_WORD_CAP} cities, east to west on one day. Each builds for 90 minutes, and voting runs from the start until 30 minutes after building ends. The top 3 in each city go to the final, and Ant and Copple pick one of the ${FINALIST_COUNT}.`,
-);
+const TITLE = `${EVENT.name}: ${CITY_WORD} cities, one day`;
+const DESCRIPTION = `${CITY_WORD_CAP} cities, east to west on 10 December 2026. Build for 90 minutes from your city’s local start. Register for your city on Luma.`;
+/* one address for every ?city= and ?at= variant; the share image is opengraph-image.tsx beside this file */
+export const metadata: Metadata = { ...pageMeta(TITLE, DESCRIPTION), alternates: { canonical: '/' }, twitter: { card: 'summary_large_image' } };
+/* the status bar takes the page's own paper (fold.tsx PaperStyle: rgb(p, p+1, p+1)), not the site-wide ground */
+const hex = (n: number) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0');
+const P = clampWheel(wheel).paper;
+export const viewport: Viewport = { themeColor: '#' + hex(P) + hex(P + 1) + hex(P + 1) };
+const LD = previewLd({ url: SITE_URL + '/', description: DESCRIPTION });
 
-/* Dynamic: the first frame is drawn at the real time of the request (or the moment the URL asks for: ?moment=, ?m=,
-   ?t=), so the page arrives finished. ?still=1 stops the clock; ?admin shows the panel. */
-function requestTime() { return Date.now(); }
-type Q = Record<string, string | string[] | undefined>;
+/* The page: the city wheel, one screen (saved/fold.config.json). ?city= opens on a city by its place in the list (from
+   0), ?gl=0 draws without WebGL. */
 
-export default async function Home({ searchParams }: { searchParams: Promise<Q> }) {
-  const live = backendOn() ? { day: (await pageSnaps(null)).day } : undefined;
-  return (
-    <>
-      <FormsProvider live={backendOn()}><DayHome saved={saved as Partial<DayHomeCfg>} parts={parts as Partial<PartsCfg>} q={flat(await searchParams)} page={{ nowMs: requestTime() }} live={live} /></FormsProvider>
-      <noscript><p className="m-0 p-8 text-lg text-ink-2">The day needs JavaScript to follow the clock. {EVENT.name} runs in {CITY_WORD} cities on Dec 10, 2026.</p></noscript>
-    </>
-  );
+/* where the visitor is: the host's IP lookup (Vercel sends the position as headers), or ?at=lat,lon to try one. With
+   neither, the nearest city is found by time zone. */
+function whereFrom(h: Headers, at?: string) {
+  const [a, b] = at ? at.split(',').map(Number) : [Number(h.get('x-vercel-ip-latitude')), Number(h.get('x-vercel-ip-longitude'))];
+  return h.get('x-vercel-ip-latitude') || at ? (Number.isFinite(a) && Number.isFinite(b) && Math.abs(a) <= 90 && Math.abs(b) <= 180 ? { lat: a, lon: b } : null) : null;
+}
+
+export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const q = await searchParams, here = whereFrom(await headers(), q.at), ours = ourWheel(await signups());
+  /* the line before the first paint that marks a return in the same tab, so the first screen plays its quiet arrival */
+  return <><script dangerouslySetInnerHTML={{ __html: BACK_SCRIPT }} /><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: LD }} /><FoldPreview saved={saved as Partial<FoldCfg>} wheel={clampWheel(wheel)} ours={ours} here={here} q={q} /></>;
 }

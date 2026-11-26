@@ -1,10 +1,9 @@
 import { ImageResponse } from 'next/og';
 import { CITIES, EVENT, CITY_WORD, USUAL_START, cityStartLocal } from '@/lib/day-data';
-import { PRIZES } from '@/lib/prizes';
 import { CODE } from '@/lib/places';
 import day from '@/saved/day.config.json';
 
-/* The preview page's share image: the name, the day in one line, the cities east to west and the prize. The colours
+/* The page's share image: the name, the day in one line and the cities east to west. The colours
    are the share card's (as in the project share image), as hex for the image renderer. */
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
@@ -28,9 +27,8 @@ export default function Image() {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, fontSize: 24, color: C.ink2, letterSpacing: 1 }}>
             {codes.map((c) => <span key={c}>{c}</span>)}
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 30 }}>
+          <div style={{ display: 'flex', fontSize: 30 }}>
             <span>{`Most from ${cityStartLocal({ start: USUAL_START })} local time, east to west`}</span>
-            {PRIZES.global.what ? <span style={{ color: C.green }}>{PRIZES.global.what} to the winner</span> : null}
           </div>
         </div>
       </div>

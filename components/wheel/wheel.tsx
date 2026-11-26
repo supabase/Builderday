@@ -4,9 +4,6 @@ import { MONO, PHONE_WHEEL, SANS, fitWheel, type WheelCfg, type WheelMark } from
 import { createWheel, type WheelCity, type WheelEngine, type WheelFlow } from './engine';
 import { mountDotGlobes } from './dot-globes';
 import { HackMark } from './mark';
-import familySaved from '@/saved/family.config.json';
-import { clampFamily, showPeople } from '@/lib/family';
-const FAMILY = clampFamily(familySaved);
 import { BuilderLogo } from './builder-logo';
 import { EVENT } from '@/lib/day-data';
 import { SupabaseMark } from '@/components/shared/supabase-mark';
@@ -21,9 +18,7 @@ import { at, away } from '@/lib/routes';
    a row of cells before its name. The screen lines are drawn over all of it, with holes for the two globes.
    A screen reader gets the cities as a table, and hears the city once the wheel stops on it. */
 
-export type WheelFact = WheelCity & { id: string; code?: string; session: string; count: string; href: string; action: string; soon?: string;
-  /* people as a number: the count cell shows only from the family's threshold up (an empty room reads as a dead one) */
-  people?: number;
+export type WheelFact = WheelCity & { id: string; code?: string; session: string; href: string; action: string; soon?: string;
   /* a page's own press in place of the link (the preview: the person's own city opens their account) */
   press?: () => void };
 /* hack: the mark alone; both: the Supabase mark beside it; name: the mark with the event's name written beside it;
@@ -181,8 +176,8 @@ function Prism({ k, dir, status, width, children }: { k: string; dir: number; st
 export function wheelVars(c: WheelCfg): CSSProperties {
   return {
     '--wh-paper': `rgb(${c.paper} ${c.paper + 1} ${c.paper + 1})`, '--wh-line-a': c.lineAlpha, '--wh-line-p': c.linePeriod + 'px',
-    /* the words in the page are Geist, as everywhere else (the family's sans); the canvas names keep the study's face */
-    '--wh-sans': FAMILY.sans === 'geist' ? SANS.geist : SANS[c.font], '--wh-mono': FAMILY.sans === 'geist' ? MONO.geist : MONO[c.font], '--wh-vig': c.vignette,
+    /* the words in the page are Geist; the canvas names keep the study's face */
+    '--wh-sans': SANS.geist, '--wh-mono': MONO.geist, '--wh-vig': c.vignette,
   } as CSSProperties;
 }
 
@@ -246,7 +241,7 @@ function OneWheel({ cities, cfg, start = 0, noGl = false, cells = true, mark = '
   useLayoutEffect(() => { eng.current?.measure(); }, [cur, cities, cells, cfg.font, cfg.layout, mark, foot, lead, hero]);
   /* a screen reader hears the city after the wheel comes to rest, not each city on the way */
   useEffect(() => {
-    const t = window.setTimeout(() => setSaid([city.name, city.session, city.people == null || showPeople(FAMILY, city.people) ? city.count : '', STATUS_LABEL[city.status]].filter(Boolean).join(', ')), cfg.statusDelay);
+    const t = window.setTimeout(() => setSaid([city.name, city.session, STATUS_LABEL[city.status]].filter(Boolean).join(', ')), cfg.statusDelay);
     return () => window.clearTimeout(t);
   }, [city, cfg.statusDelay]);
 
@@ -335,7 +330,6 @@ function OneWheel({ cities, cfg, start = 0, noGl = false, cells = true, mark = '
             <dl ref={cellsEl} className="wh-cells" data-status={city.status}>
               <div className="sr-only"><dt>City</dt><dd>{city.name}</dd></div>
               <div><dt className="sr-only">Session, local time</dt><dd>{city.session}</dd></div>
-              {city.people == null || showPeople(FAMILY, city.people) ? <div><dt className="sr-only">People</dt><dd>{city.count}</dd></div> : null}
               {city.soon ? <div className="wh-soon"><dt className="sr-only">Opens</dt><dd>{city.soon}</dd></div> : null}
               <div className="wh-status"><dt className="sr-only">Status</dt><StatusIcon status={city.status} /><dd>{STATUS_LABEL[city.status]}</dd></div>
             </dl>
@@ -346,8 +340,8 @@ function OneWheel({ cities, cfg, start = 0, noGl = false, cells = true, mark = '
       {flow ? null : (
         <table className="sr-only">
           <caption>{caption}</caption>
-          <thead><tr><th scope="col">City</th><th scope="col">Session, local time</th><th scope="col">People</th><th scope="col">Status</th></tr></thead>
-          <tbody>{cities.map((c) => <tr key={c.id}><th scope="row">{c.name}</th><td>{c.session}</td><td>{c.count}</td><td>{STATUS_LABEL[c.status]}</td></tr>)}</tbody>
+          <thead><tr><th scope="col">City</th><th scope="col">Session, local time</th><th scope="col">Status</th></tr></thead>
+          <tbody>{cities.map((c) => <tr key={c.id}><th scope="row">{c.name}</th><td>{c.session}</td><td>{STATUS_LABEL[c.status]}</td></tr>)}</tbody>
         </table>
       )}
       {children}

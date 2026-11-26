@@ -1,20 +1,15 @@
-/* signups.ts: each city's sign-up facts for the preview's board and the wheel, at most five minutes old.
-   - people: the places on the city's list in our database (the Luma webhook, the desk's Sync and the hosts fill it;
-     a place goes when Luma says cancelled or declined).
-   - status, from the city's Luma event: Sold out while its registration is closed (Luma shows it so), Waiting list when it is full,
-     Filling up under 15% of the spots left, else Open. Without the Luma key, or when Luma does not answer, Open. */
+/* signups.ts: each city's state for the wheel, from its Luma event, at most five minutes old: Sold out while its
+   registration is closed (Luma shows it so), Waiting list when it is full, Filling up under 15% of the spots left, else
+   Open. Without the Luma key, or when Luma does not answer, Open. */
 import { unstable_cache } from 'next/cache';
 import type { WheelStatus } from '@/components/wheel/click';
-import { EVENT } from '@/lib/day-data';
-import { admin } from './supabase';
-import { lumaOn } from './luma';
+import { CITIES } from '@/lib/day-data';
+import { lumaId } from '@/lib/luma';
 
-export type Signup = { people: number; status: WheelStatus };
-
-type LumaEvent = { registration_open?: boolean; max_capacity?: number | null; spots_remaining?: number | null; waitlist_status?: string };
-async function lumaStatus(eventId: string): Promise<WheelStatus> {
+type LumaEvent = { registration_open?: boolean; max_capacity?: number | null; spots_remaining?: number | null };
+async function lumaStatus(eventId: string, key: string): Promise<WheelStatus> {
   try {
-    const r = await fetch('https://public-api.luma.com/v1/event/get?api_id=' + encodeURIComponent(eventId), { headers: { accept: 'application/json', 'x-luma-api-key': process.env.LUMA_API_KEY || '' }, signal: AbortSignal.timeout(5000) });
+    const r = await fetch('https://public-api.luma.com/v1/event/get?api_id=' + encodeURIComponent(eventId), { headers: { accept: 'application/json', 'x-luma-api-key': key }, signal: AbortSignal.timeout(5000) });
     if (!r.ok) return 'open';
     const e = ((await r.json()) as { event?: LumaEvent }).event || {};
     if (e.registration_open === false) return 'sold';
@@ -24,21 +19,12 @@ async function lumaStatus(eventId: string): Promise<WheelStatus> {
   } catch { return 'open'; }
 }
 
-async function read(): Promise<Record<string, Signup>> {
-  const db = admin();
-  const { data: cities, error: cityError } = await db.from('cities').select('id, luma_event_id').eq('event', EVENT.id);
-  if (cityError) throw new Error(cityError.message);
-  /* one exact count per city, in parallel: no rows come back, so it holds past the API's 1000-row page */
-  const out: Record<string, Signup> = {};
-  await Promise.all((cities || []).map(async (c: { id: string; luma_event_id: string | null }) => {
-    const [{ count, error }, status] = await Promise.all([
-      db.from('passes').select('id', { count: 'exact', head: true }).eq('event', EVENT.id).eq('city', c.id),
-      lumaOn() && c.luma_event_id ? lumaStatus(c.luma_event_id) : Promise.resolve<WheelStatus>('open'),
-    ]);
-    if (error) throw new Error(error.message);
-    out[c.id] = { people: count || 0, status };
-  }));
+async function read(): Promise<Record<string, WheelStatus> | null> {
+  const key = process.env.LUMA_API_KEY;
+  if (!key) return null;
+  const out: Record<string, WheelStatus> = {};
+  await Promise.all(CITIES.map(async (c) => { const id = lumaId(c.id); out[c.id] = id ? await lumaStatus(id, key) : 'open'; }));
   return out;
 }
 
-export const signups = unstable_cache(async () => { try { return await read(); } catch { return null; } }, ['signups'], { revalidate: 300 });
+export const signups = unstable_cache(async () => { try { return await read(); } catch { return null; } }, ['luma-status'], { revalidate: 300 });
