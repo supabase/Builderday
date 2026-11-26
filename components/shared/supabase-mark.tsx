@@ -26,7 +26,7 @@ function Bolt({ id }: { id: string }) {
 }
 
 /* the bolt alone */
-export function SupabaseMark({ className }: { className?: string }) {
+export function SupabaseMark({ className = 'h-[21px] w-5 flex-none' }: { className?: string }) {
   const id = useId().replace(/:/g, '');
   return (
     <svg viewBox="0 0 116.055 119" fill="none" aria-hidden="true" className={className}>
