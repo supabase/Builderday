@@ -13,7 +13,7 @@ import { FoldHeader } from './header';
 import { flapInto, reducedMotion } from './flap';
 import { BACK_ATTR, arrivePlan } from './arrive';
 import { mountDotGlobes } from '@/components/wheel/dot-globes';
-import { SupabaseMark } from '@/components/shared/supabase-mark';
+import { SupabaseLockup } from '@/components/shared/supabase-mark';
 import screenSaved from '@/saved/screen.config.json';
 import { clampScreen } from '@/components/screen/config';
 import { Screen } from '@/components/screen/screen';
@@ -123,7 +123,7 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, hero: he
   const WEEKDAY = new Date(EPOCH).toLocaleDateString('en-GB', { weekday: 'long', timeZone: 'UTC' });
   const rsvp = LUMA_LIVE && ours.regOpen ? 'RSVP now open' : 'RSVP opens soon';
   const dateLine = heroCfg.weekday ? `${WEEKDAY} ${ours.date}` : ours.date;
-  const head = <><h1><span className="sr-only">{EVENT.name}, {ours.date}: </span>{ours.buildMin}min Build Challenge<span className="sr-only">, in {n} cities</span></h1><p className="wh-lead-muted">Officially hosted by <span className="wh-supabase"><SupabaseMark /><span>supabase</span></span></p></>;
+  const head = <><h1><span className="sr-only">{EVENT.name}, {ours.date}: </span>{ours.buildMin}min Build Challenge<span className="sr-only">, in {n} cities</span></h1><p className="wh-lead-muted">Officially hosted by <SupabaseLockup className="wh-supabase" /></p></>;
   const lead = column ? (heroCfg.words === 'tight'
     ? <div>{head}<p className="wh-lead-date">{dateLine}</p>{heroCfg.rsvp ? <p>{rsvp}</p> : null}</div>
     : <><div>{head}</div><div><p>{dateLine}</p>{heroCfg.rsvp ? <p>{rsvp}</p> : null}</div></>
