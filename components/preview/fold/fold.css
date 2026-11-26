@@ -5,6 +5,10 @@
 .pf {
   --pf-ink: #f4f4f2; --pf-soft: #c9c9c5; --pf-muted: #b4b4af; --pf-rule: #6b6c6b; --pf-hair: #2b2c2c;
   --pf-gutter: max(clamp(20px, 4.6vw, var(--pf-gutter-max)), env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
+  /* the page's one left edge: the sections' column (centred once the window is wider than the page), which the header
+     and the first screen's words stand on too. In % of the box it is used in (the header, the first screen: both the
+     page's full width, less any scrollbar, as the sections are), so it lands on the sections' edge to the pixel */
+  --pf-edge: max(var(--pf-gutter), calc((100% - var(--pf-width, 1600px)) / 2));
   /* the mark's centre at the top of the page (today's), and the header's height in the page's flow */
   --pf-mc: 49px; --pf-hh: calc(var(--pf-mc) + var(--pf-hdr) / 2);
   position: relative; overflow-x: clip; color: var(--pf-ink); font-family: var(--wh-sans);
@@ -21,6 +25,9 @@
 /* ---------- the header ---------- */
 .pf-hdr-wrap { position: sticky; top: calc(var(--pf-hdr) - var(--pf-hh)); z-index: 30; box-sizing: border-box; height: var(--pf-hh); margin-bottom: calc(-1 * var(--pf-hh)); padding-top: calc(var(--pf-mc) - 22px); pointer-events: none; }
 .pf-hdr { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 24px; height: 44px; padding: 0 var(--pf-gutter); }
+/* the first screen's words keep under the header: its mark's centre (--pf-mc, 49px) and half its height (22px), then
+   36px; a plain length, as the wheel's engine reads it as a number */
+.pf .wh-pin { --wh-gutter: var(--pf-edge); --wh-safe-top: 107px; }
 .pf-hdr > * { pointer-events: auto; }
 /* the paper and one rule, in one step, with holes for the globes that pass under it. It rides the sticky header
    (absolute, from the window's top edge once the header is stuck) rather than being fixed to the window: on iPhone a
@@ -234,7 +241,9 @@ button.pf-cell { font: inherit; cursor: pointer; }
 @media (max-width: 640px) { .pf-main { --pf-gap: var(--pf-gap-phone); } }
 .pf-part, .pf-plain-lede { box-sizing: border-box; width: 100%; max-width: calc(var(--pf-width) + 2 * var(--pf-gutter)); margin: 0 auto; padding: 0 var(--pf-gutter); scroll-margin-top: calc(var(--pf-hdr) + 24px); }
 .pf-part > .ex, .pf-part .gr { scroll-margin-top: calc(var(--pf-hdr) + 24px); }
-.pf-h, .pf-main .ex-h { font: 500 clamp(32px, 4vw, 56px)/1.02 var(--wh-sans); letter-spacing: -0.035em; margin: 0; text-wrap: balance; }
+/* a section heading stays a step under the first screen's headline at every size: that one grows with the room the
+   wheel leaves (width) and stays under the header (height), so this one is held by both too */
+.pf-h, .pf-main .ex-h { font: 500 min(clamp(28px, 3.2vw + 4px, 56px), max(28px, 5.6svh))/1.02 var(--wh-sans); letter-spacing: -0.035em; margin: 0; text-wrap: balance; }
 .pf-lede { margin: 20px 0 0; max-width: 56ch; font: 400 19px/1.45 var(--wh-sans); color: var(--pf-soft); text-wrap: pretty; }
 .pf-plain-lede { margin-top: 0; }
 .pf-foot { position: relative; z-index: 3; }
