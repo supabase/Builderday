@@ -1,6 +1,6 @@
 /* The wheel's sound, made with Web Audio: the click of a small metal switch as each name passes the middle, and a
-   short note for the state of the city it stops on. A browser starts audio only after a press or a key, not after
-   the mouse wheel, so nothing plays until then. */
+   short note for the state of the city it stops on. A browser starts audio only after a press, a tap, a swipe let go
+   or a key, never after the mouse wheel or a page scroll, so nothing plays until then. */
 
 let context: AudioContext | null = null;
 let noise: AudioBuffer | null = null;
@@ -15,7 +15,11 @@ export function unlock() {
     const data = noise.getChannelData(0);
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
   }
-  if (context.state === 'suspended') context.resume().catch(() => {});
+  if (context.state === 'suspended') {
+    context.resume().catch(() => {});
+    /* Safari on a phone wakes audio only when a sound starts inside the touch itself: one silent sample does it */
+    try { const s = context.createBufferSource(); s.buffer = context.createBuffer(1, 1, context.sampleRate); s.connect(context.destination); s.start(0); } catch {}
+  }
 }
 
 /* clicks closer than gap seconds are one run: each click of a run is higher, up to top, and a pause brings it down */

@@ -112,6 +112,7 @@ button.wh-cta { appearance: none; margin: 0; padding: 0; border: 0; background: 
 .wh-flow .wh-cells:not([data-placed]) { visibility: hidden; }
 .wh-grip { position: absolute; top: 0; left: 0; width: 0; height: 0; border-radius: 50%; touch-action: none; cursor: grab; }
 .wh-grip:focus-visible { outline: 2px solid var(--wh-ink); outline-offset: 6px; }
+.wh-grip[data-quiet]:focus-visible { outline: none; }
 .wh-grip[data-docked] { pointer-events: none; }
 .wh-fixed .wh-canvas { position: fixed; inset: 0 0 auto 0; width: 100%; height: 100lvh; z-index: 0; }
 .wh-fixed .wh-foot { position: fixed; top: calc(100svh - var(--wh-peek, 0px) - 30px); bottom: auto; transform: translateY(-100%); z-index: 1; }
@@ -329,6 +330,8 @@ button.wh-cta { appearance: none; margin: 0; padding: 0; border: 0; background: 
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.15' numOctaves='2' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2.6 0 0 0 -1.38'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23f)'/%3E%3C/svg%3E") 0 0 / 160px 160px; }
 /* on a 1x screen each grain is a whole device pixel and reads as dirt, so it prints at under half the strength there */
 @media (max-resolution: 1.5dppx) { .wh-ticket::before { opacity: calc(var(--hero-paper, 0) * 0.4); } }
+/* on a phone the ticket is held close: the grain is finer (half the size) and fainter, so it reads as paper, not dust */
+@media (max-width: 700px) { .wh-ticket::before { opacity: calc(var(--hero-paper, 0) * 0.45); background-size: 80px 80px; } }
 .wh-ticket .wh-reg::before { content: ''; position: absolute; inset: 0; }
 .wh-ticket .wh-reg:is(:hover, :active) { background: none; }
 /* the ticket's mask clips anything drawn outside it, so its focus ring is drawn inside, on the stretched press */

@@ -762,6 +762,14 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
     return d ? markAt(d, (x - b.left) * view.ratio, (y - b.top) * view.ratio, 22 * view.ratio) : -1;
   };
   const setHover = (i: number) => { if (i !== tg.hover) { tg.hover = i; if (flow) start(true); } };
+  /* a turn by the mouse (a drag, a press on a name, the mouse wheel) gives the wheel the focus, so Up and Down go on
+     turning it; a press anywhere else takes the focus away again */
+  /* focus given by the mouse draws no ring (it goes when the focus leaves, so a Tab back in draws it) */
+  const take = () => {
+    const g = els.grip; if (!g || document.activeElement === g) return;
+    g.dataset.quiet = ''; g.addEventListener('blur', () => { delete g.dataset.quiet; }, { once: true });
+    g.focus({ preventScroll: true });
+  };
   const onWheel = (ev: WheelEvent) => {
     if (ev.target instanceof Element && ev.target.closest('[data-wheel-skip]')) return;
     const line = ev.deltaMode === 1 ? 16 : 1;
@@ -771,6 +779,7 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
       if (Math.abs(ev.deltaX) > Math.abs(ev.deltaY)) { ev.preventDefault(); wheelSum += ev.deltaX * line; }
       else if (slotAt(ev.clientX, ev.clientY) !== null || (flow.wheelOverGlobe && overGlobe(ev.clientX, ev.clientY))) { ev.preventDefault(); wheelSum += ev.deltaY * line; }
       else return;
+      take();
       const steps = Math.trunc(wheelSum / cfg.wheelPx); wheelSum -= steps * cfg.wheelPx; target += steps;
       if (steps) start(true);
       return;
@@ -822,6 +831,7 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
     const slot = drag.moved ? null : slotAt(ev.clientX, ev.clientY);
     const m = drag.moved || slot !== null || cfg.globePick !== 'on' ? -1 : markUnder(ev.clientX, ev.clientY);
     drag = null; window.clearTimeout(tg.press); tg.invert = -1;
+    if (flow && ev.pointerType === 'mouse') take();
     if (slot !== null) { target = slot; if (flow) start(true); }
     else if (m >= 0) { go(m); if (flow) start(true); } else if (flow) start(true);
   };
@@ -853,7 +863,7 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
   };
   const onVis = () => { if (document.hidden) stop(); else start(); };
   const onReduce = () => { reduced = reduce.matches; clock.cfg = globeClockCfg(cfg, reduced); clock.reset(); };
-  const unlockTypes = ['pointerdown', 'pointerup', 'click', 'touchend', 'keydown'] as const;
+  const unlockTypes = ['pointerdown', 'pointerup', 'click', 'touchstart', 'touchend', 'keydown'] as const;
   /* in a page, audio is set up only while the wheel may be heard (setting it up costs a long frame on the first press) */
   const unlockSound = () => { if (!flow || cfg.sound) unlock(); };
 
