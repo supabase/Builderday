@@ -38,6 +38,8 @@ import { jumpTo, jumpTop, once, useConverge, useWrite } from './motion';
 import { flapInto, reducedMotion } from './flap';
 import { BACK_ATTR, arrivePlan } from './arrive';
 import { mountGlobes } from '@/components/screen/globe';
+import { useLaunch } from '@/components/wheel/use-launch';
+import { LAUNCH, type LaunchCfg } from '@/components/wheel/launch-config';
 import { mountDotGlobes } from '@/components/wheel/dot-globes';
 import { usePref } from '@/components/board/prefs';
 import { tokEase } from '@/components/shared/motion';
@@ -73,6 +75,8 @@ type Props = {
   ending?: EndCfg;
   /* the first screen's left side (saved/hero.config.json unless a lab passes its own) */
   hero?: HeroCfg;
+  /* the Register launch (default: saved/launch.config.json); dry: it plays and Luma does not open (the lab) */
+  launch?: LaunchCfg; dry?: boolean;
   /* the lab's own things over the page (its panel) */
   children?: ReactNode;
   /* proto:under-hero (remove with /proto/under-hero): a prototype's sections in place of the saved ones */
@@ -81,11 +85,13 @@ type Props = {
 /* proto:under-hero: what a prototype under the hero reads from the page */
 export type Under = { city: { id: string; name: string; opens: number; offset: number }; cur: number; nearest: number; section: (id: string) => ReactNode };
 
-export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, ending, hero: heroCfg = HERO, children, under }: Props) {
+export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, ending, hero: heroCfg = HERO, launch = LAUNCH, dry = false, children, under }: Props) {
   const { cities, start } = useOurCities(ours, forced, here), off = useOffset();
   const nearest = off === null ? 0 : nearestCity(ours.cities, off, here);
   const [pick, setPick] = useState<number | null>(null), cur = pick ?? start, city = cities[cur] ?? cities[0];
   const eng = useRef<WheelEngine | null>(null), rm = useReduced();
+  /* pressing the ticket's Register folds it into a rocket that flies to its city, then Luma opens (use-launch.ts) */
+  useLaunch(eng, launch, dry);
   /* the wheel's clicks follow the visitor's Sound and Screen switches, the same ones the day pages use */
   const [snd] = usePref('sound'), [scr] = usePref('screen');
   const wcfg = useMemo(() => (snd && scr ? wheel : { ...wheel, sound: 0 }), [wheel, snd, scr]);

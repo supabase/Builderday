@@ -1,5 +1,5 @@
 import { MONO, SANS, SHADER_KEYS, type WheelCfg } from './config';
-import { drawTextGlobe, loadFrames, loadLand, markAt, subsolar, type Frames, type LandMap, type TextGlobeDraw } from './text-globe';
+import { drawTextGlobe, loadFrames, loadLand, markAt, markPoint, subsolar, type Frames, type LandMap, type TextGlobeDraw } from './text-globe';
 import { GlobeClock } from './globe-clock';
 import { globeClockCfg, globeLook, handoverDrop } from './globe-look';
 import { createCrt, type Crt, type CrtFrame } from './crt';
@@ -62,6 +62,8 @@ export type WheelEngine = {
   /* a page's flow: the hub and radius in CSS px (the wheel at the top of the page), where the wheel is turned to, and
      the wheel's height, where its names are clipped */
   geometry?: () => { x: number; y: number; r: number; at: number; h: number };
+  /* where the active city's mark sits on the text globe, in viewport CSS px (null: no text globe, or behind the limb) */
+  mark?: () => { x: number; y: number } | null;
 };
 
 /* how the text globe comes in with the names (held unseen until then with the flow's hold): it prints in rows over
@@ -932,6 +934,11 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
       dirty = true; lastGl = ''; asciiKey = ''; start(true);
     },
     ...(flow ? { geometry: () => ({ x: view.x / view.ratio, y: view.y / view.ratio, r: view.radius / view.ratio, at: position, h: fl.geomH }) } : {}),
+    mark() {
+      const d = globeDraw(); const p = d && markPoint(d); if (!p) return null;
+      const b = canvas.getBoundingClientRect();
+      return { x: b.left + p[0] / view.ratio, y: b.top + p[1] / view.ratio };
+    },
     measure() { watchCta(); settleHero(); measureEms(); measureCells(); lastLand = ''; measureLens(); lastGl = ''; },
     slot: () => idx(target),
     gl: () => !!crt,
