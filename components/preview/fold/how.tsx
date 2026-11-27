@@ -1,5 +1,5 @@
 'use client';
-import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type PointerEvent as PEvent } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { PRIZE_SHEET } from '@/lib/prizes';
 import { EXAMPLES, END_MIN, HISTORY, OPEN_MIN, PEAK, PROJECTS, RECEIPT, SHOW_MIN, SUBMIT_AT, VOTE_FROM, YOURS, clockAt, hatchRows, order, smooth } from './how-data';
 import { COUNTRY, FLAG_H, FLAG_W, flagPaths } from './flags';
@@ -52,10 +52,12 @@ const HATCH_SVG = hatchRows(15, 140, 311);
 export function FoldHow({ cfg, cities, mine, finalists, buildMin, date }: { cfg: FoldCfg; cities: City[]; mine: number; finalists: number; buildMin: number; date: string }) {
   const reduced = useReduced(), auto = cfg.howAuto === 'view' && !reduced;
   const durs = [cfg.howBuildMs, cfg.howVoteMs, cfg.howFinalMs];
+  /* relay: the next drawing starts howHand through this one (100: once it has finished), after a pause; together: a tenth in */
+  const relay = cfg.howPlay === 'relay', handoff = relay ? cfg.howHand / 100 : HANDOFF, gap = relay ? cfg.howGap : 0;
+  const gapT = useRef(0);
   const blocks = cfg.howBuild === 'blocks' || cfg.howBuild === 'ways';
   const fromOf = useCallback((i: number) => (i === 0 && blocks ? FROM_BLOCKS : FROM[i]), [blocks]);
   const [p, setP] = useState<Done>([1, 1, 1]);
-  const [hl, setHl] = useState<number | null>(null);
   const [way, setWay] = useState<Way>('browser');
   /* the link draws itself only when a drawing has played in this visit, never on the page's first paint */
   const [played, setPlayed] = useState(false);
@@ -76,19 +78,23 @@ export function FoldHow({ cfg, cities, mine, finalists, buildMin, date }: { cfg:
     const t0 = performance.now(), len = Math.max(1, durs[i] * (1 - from));
     const tick = (now: number) => {
       const t = Math.min(1, Math.max(0, (now - t0) / len)); set(i, from + (1 - from) * t);
-      if (busy.current === i && (t >= 1 || from + (1 - from) * t >= HANDOFF)) { busy.current = -1; nextRef.current(); }
+      /* the final never starts before the votes close: the close is what sends the top 3 to it */
+      if (busy.current === i && (t >= 1 || (!(relay && i === 1) && from + (1 - from) * t >= handoff))) {
+        if (gap > 0) { busy.current = -2 - i; clearTimeout(gapT.current); gapT.current = window.setTimeout(() => { if (busy.current === -2 - i) { busy.current = -1; nextRef.current(); } }, gap); }
+        else { busy.current = -1; nextRef.current(); }
+      }
       if (t < 1) { raf.current[i] = requestAnimationFrame(tick); return; }
       playing.current = playing.current.filter((x) => x !== i); setOn([...playing.current]);
     };
     raf.current[i] = requestAnimationFrame(tick);
-  }, [durs[0], durs[1], durs[2], set, stop]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [durs[0], durs[1], durs[2], relay, handoff, gap, set, stop]); // eslint-disable-line react-hooks/exhaustive-deps
   /* the queue: a drawing waiting its turn sits at its start frame, dimmed */
   const next = useCallback(() => {
     /* how much of a drawing's panel is in the window, against most of it (or most of the window for a tall one) */
     const seen = (i: number) => { const f = figs.current[i]; if (!f) return 1; const r = f.getBoundingClientRect(), vh = window.innerHeight; return (Math.min(r.bottom, vh) - Math.max(r.top, 0)) / Math.min(r.height, vh); };
     /* the queue does not wait on a drawing the reader has scrolled past (stacked panels, a quick reader) */
     if (busy.current >= 0 && seen(busy.current) < 0.25) busy.current = -1;
-    while (busy.current < 0 && queue.current.length) {
+    while (busy.current === -1 && queue.current.length) {
       const i = queue.current.shift()!;
       /* one whose panel has left the window by its turn is not played: it stays finished */
       if (seen(i) < 0.25) { state.current[i] = 'done'; set(i, 1); continue; }
@@ -101,7 +107,7 @@ export function FoldHow({ cfg, cities, mine, finalists, buildMin, date }: { cfg:
   /* Replay: plays now from the start and is never played again by the queue */
   const replay = useCallback((i: number) => {
     state.current[i] = 'done'; dequeue(i);
-    if (busy.current < 0) busy.current = i;
+    if (busy.current < 0) { clearTimeout(gapT.current); busy.current = i; }
     run(i);
   }, [dequeue, run]);
 
@@ -125,7 +131,7 @@ export function FoldHow({ cfg, cities, mine, finalists, buildMin, date }: { cfg:
     } }, { rootMargin: '0px 0px 30% 0px', threshold: Array.from({ length: 21 }, (_, k) => k / 20) });
     figs.current.forEach((f) => { if (f) io.observe(f); });
     return () => {
-      io.disconnect(); [0, 1, 2].forEach(stop);
+      io.disconnect(); [0, 1, 2].forEach(stop); clearTimeout(gapT.current);
       state.current = ['new', 'new', 'new']; queue.current = []; busy.current = -1; playing.current = [];
       setWaiting([]); setOn([]); setP([1, 1, 1]);
     };
@@ -192,15 +198,14 @@ export function FoldHow({ cfg, cities, mine, finalists, buildMin, date }: { cfg:
     `The top 3 from every city meet in the final, ${finalists} projects in all. The Supabase team picks the global 1st, 2nd and 3rd and announces them ${PRIZE_SHEET.announce}.`,
   ];
   const titles = ['Build', 'Compete for votes', 'Global final'];
-  const hover = (i: number | null) => (e: PEvent) => { if (e.pointerType === 'mouse') setHl(i); };
 
   return (
-    <section id="how" className="pf-part pf-how" data-part="how" aria-labelledby="how-h" data-hl={hl ?? undefined} style={{ ['--how-step' as string]: cfg.howStep + 'ms' }}>
+    <section id="how" className="pf-part pf-how" data-part="how" aria-labelledby="how-h" style={{ ['--how-step' as string]: cfg.howStep + 'ms', ['--how-dim' as string]: String(cfg.howDim / 100) }}>
       <h2 id="how-h" className="pf-h">How Builder Day works</h2>
       <p className="pf-lede">On {date} every city gets {buildMin} minutes. You build a project, people vote on it, and the top 3 in each city go to a global final.</p>
       <div ref={grid} className="how-grid" data-link={linkMode}>
         {[0, 1, 2].map((i) => (
-          <figure key={i} ref={(el) => { figs.current[i] = el; }} className="how-fig" data-i={i} aria-label={titles[i]} onPointerEnter={hover(i)} onPointerLeave={hover(null)}>
+          <figure key={i} ref={(el) => { figs.current[i] = el; }} className="how-fig" data-i={i} aria-label={titles[i]}>
             <div className="how-tab"><span className="how-n" aria-hidden="true">{i + 1}</span><h3>{titles[i]}</h3></div>
             <figcaption>
               <p>{caps[i]}</p>
@@ -208,8 +213,8 @@ export function FoldHow({ cfg, cities, mine, finalists, buildMin, date }: { cfg:
             </figcaption>
             <div className="how-art" data-wait={waiting.includes(i) ? '' : undefined}>
               {i === 0 ? (cfg.howBuild === 'ways' ? <SubmitWays p={p[0]} look={WAYS_LOOK} way={way} setWay={setWay} you={you} /> : cfg.howBuild === 'blocks' ? <BuildBlocks p={p[0]} look={BUILD_LOOK} way={way} setWay={setWay} you={you} /> : cfg.howBuild === 'chat' ? <ChatArt p={p[0]} /> : cfg.howBuild === 'receipt' ? <ReceiptArt p={p[0]} way={way} setWay={setWay} you={you} /> : <BuildTerm p={p[0]} way={way} setWay={setWay} you={you} />)
-                : i === 1 ? <VoteArt p={p[1]} hatch={cfg.howHatch} prize={cfg.howPrize === 'tags'} />
-                : <FinalArt p={p[2]} cities={cities} top={TOP} you={you} total={finalists} colW={cfg.howColW} fade={cfg.howFade} />}
+                : i === 1 ? <VoteArt p={p[1]} hatch={cfg.howHatch} prize={cfg.howPrize === 'tags'} settle={cfg.howRank === 'settle'} hold={cfg.howReveal / 100} />
+                : <FinalArt p={p[2]} cities={cities} top={TOP} you={you} total={finalists} colW={cfg.howColW} fade={cfg.howFade} one={cfg.howFinalIn === 'one'} />}
             </div>
           </figure>
         ))}
@@ -316,7 +321,7 @@ const path = (X: (m: number) => number, lane: number, a: number, k: number, m: n
 };
 /* at the reveal: the hatch lifts in the first part, then each count lands from the lowest to the leader, then the rows settle */
 const LIFT = 0.4, LAND = 0.86;
-const VoteArt = memo(function VoteArt({ p, hatch, prize }: { p: number; hatch: 'lift' | 'stay'; prize: boolean }) {
+const VoteArt = memo(function VoteArt({ p, hatch, prize, settle, hold }: { p: number; hatch: 'lift' | 'stay'; prize: boolean; settle: boolean; hold: number }) {
   const box = useRef<HTMLDivElement>(null), [w, setW] = useState(300), [measured, setMeasured] = useState(false);
   useEffect(() => {
     const el = box.current; if (!el) return;
@@ -325,11 +330,13 @@ const VoteArt = memo(function VoteArt({ p, hatch, prize }: { p: number; hatch: '
   }, []);
   const X = useMemo(() => xAt(w), [w]);
   const hidden = useMemo(() => HISTORY.map((_, lane) => path(X, lane, OPEN_MIN, SHOW_MIN, SHOW_MIN)), [X]);
-  const { m, reveal } = clockAt(p), k = Math.min(END_MIN, Math.floor(m)), open = m >= OPEN_MIN;
+  const { m, reveal } = clockAt(p, hold), k = Math.min(END_MIN, Math.floor(m)), open = m >= OPEN_MIN;
   const lifting = hatch === 'lift' && reveal > 0, lift = hatch === 'lift' ? smooth(reveal / LIFT) : 0;
   const at60 = order(SHOW_MIN), live = reveal >= 1, closed = m >= END_MIN;
   /* where each row stands: the order they came in while hidden, the ranking once the counts have landed */
-  const shown = live ? order(m) : ALL;
+  /* settle: the rows move twice, into the order at the reveal and into the final order at the close; the counts
+     tick in place between */
+  const shown = !live ? ALL : settle ? order(closed ? END_MIN : SHOW_MIN) : order(m);
   /* a count has landed: lowest at 60 first, the leader last */
   const landed = (lane: number) => reveal >= 1 || (reveal > LIFT && (reveal - LIFT) / (LAND - LIFT) >= (N - 1 - at60.indexOf(lane)) / N);
   const state = closed ? 'Closed' : live || reveal > LIFT ? 'Live' : open ? 'Hidden' : 'Not open';
@@ -388,12 +395,12 @@ const VoteArt = memo(function VoteArt({ p, hatch, prize }: { p: number; hatch: '
 
 /* ---------- 3 Final ---------- */
 /* the count, drawn: one dot a finalist, a column of 3 for each city, yours first in the lanes' colours */
-function Count({ p, n, total }: { p: number; n: number; total: number }) {
+function Count({ p, n, total, one }: { p: number; n: number; total: number; one: boolean }) {
   return (
     <div className="how-count">
       <span className="how-dots2" aria-hidden="true">
         {Array.from({ length: n }, (_, j) => (
-          <span key={j} data-you={j === 0 ? '' : undefined} data-on={p >= j * 0.03 + 0.02 ? '' : undefined}>{[0, 1, 2].map((r) => <i key={r} data-lane={j === 0 ? r : undefined} />)}</span>
+          <span key={j} data-you={j === 0 ? '' : undefined} data-on={p >= (one ? 0 : j * 0.03) + 0.02 ? '' : undefined}>{[0, 1, 2].map((r) => <i key={r} data-lane={j === 0 ? r : undefined} />)}</span>
         ))}
       </span>
       <span className="big">{total}</span>
@@ -405,8 +412,8 @@ const Flag = memo(function Flag({ id }: { id: string }) {
   const paths = flagPaths(COUNTRY[id] ?? '');
   return <svg className="how-flag" viewBox={`0 0 ${FLAG_W} ${FLAG_H}`} aria-hidden="true" focusable="false">{paths.map((x) => <path key={x.ink} d={x.d} stroke={x.ink} />)}</svg>;
 });
-const FinalArt = memo(function FinalArt({ p, cities, top, you, total, colW, fade }: { p: number; cities: City[]; top: readonly string[]; you: City; total: number; colW: number; fade: number }) {
-  const g = PRIZE_SHEET.global;
+const FinalArt = memo(function FinalArt({ p, cities, top, you, total, colW, fade, one }: { p: number; cities: City[]; top: readonly string[]; you: City; total: number; colW: number; fade: number; one: boolean }) {
+  const g = PRIZE_SHEET.global, head = smooth((p - 0.5) / 0.1);
   const rest = cities.filter((c) => c !== you);
   /* the first column changes city when the wheel does: it rolls over, but never on the first paint */
   const [shownId, setShownId] = useState(you.id), [swap, setSwap] = useState(false);
@@ -415,7 +422,7 @@ const FinalArt = memo(function FinalArt({ p, cities, top, you, total, colW, fade
     setSwap(typeof navigator !== 'undefined' && !!(navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation?.hasBeenActive);
   }
   const col = (c: City, j: number) => {
-    const v = smooth((p - j * 0.03) / 0.1), mineCol = j === 0;
+    const v = smooth((p - (one ? 0 : j * 0.03)) / 0.1), mineCol = j === 0;
     const names = mineCol ? top : EXAMPLES[Math.max(0, cities.indexOf(c)) % EXAMPLES.length];
     return (
       <div key={mineCol ? 'you-' + c.id : c.id} className="how-col" data-you={mineCol ? '' : undefined} data-swap={mineCol && swap ? '' : undefined} aria-hidden={j > 2 ? true : undefined}
@@ -427,15 +434,16 @@ const FinalArt = memo(function FinalArt({ p, cities, top, you, total, colW, fade
   };
   return (
     <div className="how-final">
-      <Count p={p} n={cities.length} total={total} />
+      <Count p={p} n={cities.length} total={total} one={one} />
       <div className="how-cols" role="group" aria-label={`The finalists: ${you.name}'s top 3 first, then the other ${rest.length} cities'`} style={{ ['--how-col' as string]: colW + 'px', ['--how-fade' as string]: fade + 'px' }}>
         {[you, ...rest].map(col)}
       </div>
       <div className="how-pick">
-        {/* the heading arrives with the first pick, so a drawing waiting its turn shows no empty box */}
-        <div className="how-vh" style={{ opacity: Math.max(smooth((p - 0.5) / 0.1), 0.0001) }}><span>Picked by the Supabase team</span><span>From all {total}</span></div>
+        {/* the heading arrives with the first pick to land (3rd); the places still to come show faintly, so the list
+            never reads as a hole */}
+        <div className="how-vh" style={{ opacity: Math.max(head, 0.0001) }}><span>Picked by the Supabase team</span><span>From all {total}</span></div>
         {g.map((x, r) => {
-          const v = smooth((p - (0.5 + (2 - r) * 0.14)) / 0.14);
+          const v = Math.max(smooth((p - (0.5 + (2 - r) * 0.14)) / 0.14), head * 0.14);
           return (
             <p key={x.place} className="how-gl" data-place={x.place} style={{ opacity: Math.max(v, 0.0001), transform: `translateY(${(1 - v) * 4}px)` }}>
               <b>{['1st', '2nd', '3rd'][r]}</b><span>{x.thing}{x.spec ? <small>{x.spec.replace(/-/g, '\u2011')}</small> : null}</span><em>{credit(x.credits)}</em>

@@ -52,8 +52,10 @@ export function order(m: number): number[] {
 /* How the vote drawing's clock runs against its progress p (0 to 1): to the opening quickly, the hidden stretch, a
    hold at the reveal (the hatch lifts, then the counts land from the bottom up, then the rows settle), then the live
    stretch at an easier pace. m: the minute shown; reveal: 0 while hidden, then 0 to 1 through the hold. */
-const OPEN_END = 0.06, HIDE_END = 0.3, HOLD_END = 0.48;
-export function clockAt(p: number): { m: number; reveal: number } {
+const OPEN_END = 0.06, HIDE_END = 0.3;
+/* hold: the share of the drawing the reveal takes (the live stretch gives it up) */
+export function clockAt(p: number, hold = 0.18): { m: number; reveal: number } {
+  const HOLD_END = HIDE_END + hold;
   if (p >= 1) return { m: END_MIN, reveal: 1 };
   if (p <= 0) return { m: 0, reveal: 0 };
   if (p < OPEN_END) return { m: (p / OPEN_END) * OPEN_MIN, reveal: 0 };

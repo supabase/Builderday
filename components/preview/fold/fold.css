@@ -493,6 +493,8 @@ button.pf-go { padding: 0; border: 0; background: none; font: inherit; cursor: p
 @media (min-width: 1101px) {
   .how-grid { grid-template-rows: auto 1fr; }
   .how-fig { display: grid; grid-row: span 2; grid-template-rows: subgrid; }
+  /* the subgrid lines the captions up; no floor height needed */
+  .how-fig figcaption { min-height: 0; }
   .how-fig > * { min-width: 0; }
 }
 .how-play { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; margin: auto 0 0 -10px; padding: 0 10px; border: 0; background: none; color: var(--pf-muted); font: 500 11px/1 var(--wh-mono); letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; transition: color var(--dur-hover) var(--ease-out); }
@@ -505,7 +507,7 @@ button.pf-go { padding: 0; border: 0; background: none; font: inherit; cursor: p
 /* the tear between the words and the drawing: dots edge to edge, the print's perforation */
 .how-art { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: 0 22px 22px; transition: opacity var(--dur-panel) var(--ease-out); }
 /* a drawing waiting for the one before it to finish sits back, so the eye goes to the one playing */
-.how-art[data-wait] { opacity: 0.4; }
+.how-art[data-wait] { opacity: var(--how-dim, 0.4); }
 .how-art::before { content: ''; flex: none; display: block; height: 3px; margin: 0 -22px 20px; background: radial-gradient(circle, var(--pf-rule) 1px, transparent 1.5px) 0 50% / 8px 3px repeat-x; }
 
 /* the link from the top 3 to your city's 3: hairlines in the lanes' colours, drawn left to right once */

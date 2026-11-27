@@ -69,5 +69,15 @@
   "dialSweep": 3,
   "back": "quiet",
   "page": "full",
-  "howBuild": "ways"
+  "howBuild": "ways",
+  "howPlay": "relay",
+  "howRank": "settle",
+  "howFinalIn": "one",
+  "howDim": 55,
+  "howHand": 90,
+  "howGap": 0,
+  "howReveal": 30,
+  "howBuildMs": 3600,
+  "howVoteMs": 5200,
+  "howFinalMs": 2600
 }

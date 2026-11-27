@@ -67,6 +67,12 @@ export type FoldCfg = {
   unrollFrom: number; unrollSpread: number;
   /* how Builder Day works: each drawing's length (ms), and when it plays: once as it comes into view, or never (the finished picture) */
   howBuildMs: number; howVoteMs: number; howFinalMs: number; howAuto: 'view' | 'off';
+  /* how the three drawings take turns: together (each starts a tenth into the one before) or relay (one at a time,
+     a pause between). howReveal: the share of the votes drawing (percent) the reveal at minute 60 takes. howHand: in a relay, how far through a drawing (percent) the next one starts; 100 waits
+     for the end. howGap: the pause between two in a relay; howDim: how bright a drawing waiting its turn is (percent). The votes'
+     ranking moves every minute (live) or only at the reveal and the close (settle); the final's columns and dots come
+     in one by one (stagger) or as one (one) */
+  howPlay: 'together' | 'relay'; howHand: number; howReveal: number; howGap: number; howDim: number; howRank: 'live' | 'settle'; howFinalIn: 'stagger' | 'one';
   /* its modes: the clock above the panels (two slim lanes, today's two bars, or none); what Build draws (a receipt
      printing, or the chat in an editor); what joins the top 3 to your city's column (straight hairlines, one bus that
      merges and splits, the filled ribbons, or none); the city prizes on the top 3 at the close; the hatch at minute 60
@@ -95,7 +101,7 @@ export const FOLD_DEF: FoldCfg = {
   prizeMs: 600, prizeGlobeStep: 40, prizeCodeStep: 25,
   bloom: 0, bloomMs: 420, rollMs: 260, rollBar: 48, scrollMin: 420, scrollMax: 820, dryStep: 150, dryHold: 450, writeStep: 30, podiumStep: 140, typeMs: 560, typeStep: 70,
   unrollFrom: 0.15, unrollSpread: 0.35,
-  howBuildMs: 4200, howVoteMs: 6400, howFinalMs: 3600, howAuto: 'view',
+  howBuildMs: 4200, howVoteMs: 6400, howFinalMs: 3600, howAuto: 'view', howPlay: 'together', howHand: 100, howReveal: 18, howGap: 500, howDim: 40, howRank: 'live', howFinalIn: 'stagger',
   howBuild: 'term', howLink: 'lines', howPrize: 'tags', howHatch: 'lift', howColW: 148, howFade: 120, howStep: 70,
 };
 
@@ -115,17 +121,17 @@ export const FOLD_BOUNDS: Record<string, [number, number, number]> = {
   prizeMs: [0, 1200, 20], prizeGlobeStep: [0, 120, 5], prizeCodeStep: [0, 120, 5],
   bloom: [0, 0.02, 0.001], bloomMs: [0, 900, 10], rollMs: [0, 400, 10], rollBar: [0, 160, 2], scrollMin: [0, 1200, 10], scrollMax: [0, 1600, 10], dryStep: [0, 400, 10], dryHold: [0, 2000, 50], writeStep: [0, 120, 5], podiumStep: [0, 400, 10], typeMs: [0, 900, 10], typeStep: [0, 200, 5],
   unrollFrom: [0, 0.5, 0.01], unrollSpread: [0, 0.8, 0.01],
-  howBuildMs: [1500, 12000, 100], howVoteMs: [3000, 16000, 100], howFinalMs: [1500, 10000, 100], howColW: [120, 200, 2], howFade: [0, 240, 4], howStep: [0, 200, 5],
+  howBuildMs: [1500, 12000, 100], howVoteMs: [3000, 16000, 100], howFinalMs: [1500, 10000, 100], howColW: [120, 200, 2], howFade: [0, 240, 4], howStep: [0, 200, 5], howHand: [30, 100, 5], howReveal: [10, 40, 1], howGap: [0, 1500, 50], howDim: [15, 100, 5],
 };
 
 export const FOLD_CHOICES: Record<string, string[]> = {
   dir: ['base', 'plain', 'line', 'unroll'], page: ['full', 'hero'],
   glass: ['fixed', 'today'], globe: ['docks', 'leaves'], input: ['hand', 'globe'], jump: ['roll', 'smooth', 'cut'], scrollEase: ['brake', 'ease', 'in-out'],
-  cities: ['belt', 'board', 'clocks'], ready: ['dry', 'steps', 'list', 'short'], readyMore: ['closed', 'open'], prizes: ['block', 'podium', 'type'], order: ['prize-first', 'cities-first', 'how-first'], words: ['lede', 'none'], arrive: ['tube', 'none'], arrival: [...ARRIVALS, 'none'], back: ['quiet', 'same'], bar: ['none', 'cells'], topLink: ['none', 'how'], acct: ['merged', 'beside'], acctTop: ['link', 'both'], signin: ['on', 'off'], howAuto: ['view', 'off'],
+  cities: ['belt', 'board', 'clocks'], ready: ['dry', 'steps', 'list', 'short'], readyMore: ['closed', 'open'], prizes: ['block', 'podium', 'type'], order: ['prize-first', 'cities-first', 'how-first'], words: ['lede', 'none'], arrive: ['tube', 'none'], arrival: [...ARRIVALS, 'none'], back: ['quiet', 'same'], bar: ['none', 'cells'], topLink: ['none', 'how'], acct: ['merged', 'beside'], acctTop: ['link', 'both'], signin: ['on', 'off'], howAuto: ['view', 'off'], howPlay: ['together', 'relay'], howRank: ['live', 'settle'], howFinalIn: ['stagger', 'one'],
   howBuild: ['ways', 'blocks', 'term', 'receipt', 'chat'], howLink: ['lines', 'bus', 'ribbon', 'none'], howPrize: ['tags', 'none'], howHatch: ['lift', 'stay'],
 };
 
-export const FOLD_INT = new Set(['peek', 'firstTop', 'gapPhone', 'wordsPhone', 'dockSize', 'barPad', 'cellPad', 'hdrH', 'beltH', 'tickH', 'beltLead', 'beltSpan', 'beltMs', 'beltFade', 'rowH', 'citySize', 'width', 'gutter', 'gap', 'convMs', 'rowStep', 'flapMs', 'flapStagger', 'flaps', 'introMs', 'rowTotal', 'canvasIn', 'wordsMs', 'wordsStep', 'wordsRise', 'printMs', 'cellsAt', 'linkAt', 'linkMs', 'peekAt', 'peekMs', 'eraseStep', 'regMs', 'hoverIn', 'hoverOut', 'lineMs', 'prizeMs', 'prizeGlobeStep', 'prizeCodeStep', 'bloomMs', 'rollMs', 'rollBar', 'scrollMin', 'scrollMax', 'dryStep', 'dryHold', 'writeStep', 'podiumStep', 'typeMs', 'typeStep', 'howBuildMs', 'howVoteMs', 'howFinalMs', 'howColW', 'howFade', 'howStep']);
+export const FOLD_INT = new Set(['peek', 'firstTop', 'gapPhone', 'wordsPhone', 'dockSize', 'barPad', 'cellPad', 'hdrH', 'beltH', 'tickH', 'beltLead', 'beltSpan', 'beltMs', 'beltFade', 'rowH', 'citySize', 'width', 'gutter', 'gap', 'convMs', 'rowStep', 'flapMs', 'flapStagger', 'flaps', 'introMs', 'rowTotal', 'canvasIn', 'wordsMs', 'wordsStep', 'wordsRise', 'printMs', 'cellsAt', 'linkAt', 'linkMs', 'peekAt', 'peekMs', 'eraseStep', 'regMs', 'hoverIn', 'hoverOut', 'lineMs', 'prizeMs', 'prizeGlobeStep', 'prizeCodeStep', 'bloomMs', 'rollMs', 'rollBar', 'scrollMin', 'scrollMax', 'dryStep', 'dryHold', 'writeStep', 'podiumStep', 'typeMs', 'typeStep', 'howBuildMs', 'howVoteMs', 'howFinalMs', 'howColW', 'howFade', 'howStep', 'howHand', 'howReveal', 'howGap', 'howDim']);
 
 export function clampFold(c: Partial<FoldCfg> | Record<string, unknown>): FoldCfg {
   const o = { ...FOLD_DEF } as Record<string, unknown>, src = c as Record<string, unknown>;
