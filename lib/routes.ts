@@ -8,6 +8,8 @@ export const BASE = (process.env.NEXT_PUBLIC_BASE_PATH || '').replace(/\/+$/, ''
 export const at = (p: string): string => (!BASE || !p.startsWith('/') || p.startsWith('//') || p === BASE || p.startsWith(BASE + '/') || p.startsWith(BASE + '?') ? p : BASE + p);
 /* a link that leaves the site (Luma) opens in a new tab, so the page stays where the visitor was */
 export const away = (href?: string | null): { target?: '_blank'; rel?: string } => (href && /^https?:\/\//.test(href) ? { target: '_blank', rel: 'noopener noreferrer' } : {});
+/* the words a screen reader hears after such a link, so leaving the page is never a surprise */
+export const newTab = (href?: string | null): string => (away(href).target ? ' (opens in a new tab)' : '');
 /* the path without the base, for a <Link> or the router */
 export const unbase = (p: string): string => (BASE && (p === BASE || p.startsWith(BASE + '/') || p.startsWith(BASE + '?')) ? p.slice(BASE.length) || '/' : p);
 export const routes = {

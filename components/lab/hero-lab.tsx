@@ -13,7 +13,7 @@ import { LabPanel, togglePanel, useLabSave, type Group } from './lab-kit';
 
 const GROUPS: Group[] = [
   { name: 'Mode', knobs: [{ k: 'mode', kind: 'select', label: 'The row' }, { k: 'hand', kind: 'select', label: 'The name gets into the box' }, { k: 'width', kind: 'select', label: 'The box’s width' }, { k: 'reach', kind: 'select', label: 'The row meets the wheel' }, { k: 'state', kind: 'select', label: 'The state (row)' }, { k: 'zone', kind: 'select', label: 'The time' }] },
-  { name: 'Words', knobs: [{ k: 'words', kind: 'select', label: 'Groups' }, { k: 'screen', kind: 'select', label: 'Screen lines on' }, { k: 'weekday', kind: 'toggle', label: 'Weekday in the date' }, { k: 'rsvp', kind: 'toggle', label: 'RSVP line' }, { k: 'titleK', kind: 'range', label: 'Headline, × name size' }, { k: 'bodyK', kind: 'range', label: 'Body, × name size' }, { k: 'gapK', kind: 'range', label: 'Gap before the date, × name size' }, { k: 'liftK', kind: 'range', label: 'Words to the row, × name size' }] },
+  { name: 'Words', knobs: [{ k: 'words', kind: 'select', label: 'Groups' }, { k: 'screen', kind: 'select', label: 'Screen lines on' }, { k: 'sub', kind: 'select', label: 'Line under the headline' }, { k: 'weekday', kind: 'toggle', label: 'Weekday in the date' }, { k: 'rsvp', kind: 'toggle', label: 'RSVP line' }, { k: 'titleK', kind: 'range', label: 'Headline, × name size' }, { k: 'bodyK', kind: 'range', label: 'Body, × name size' }, { k: 'gapK', kind: 'range', label: 'Gap before the date, × name size' }, { k: 'liftK', kind: 'range', label: 'Words to the row, × name size' }] },
   { name: 'Row', knobs: [{ k: 'dock', kind: 'select', label: 'No room beside the wheel (phone)' }, { k: 'stubPhone', kind: 'range', label: 'Phone: stub width, px' }, { k: 'namePhone', kind: 'range', label: 'Phone: name size, px' }, { k: 'cellK', kind: 'range', label: 'Row height, × name size' }, { k: 'min', kind: 'range', label: 'Smallest name before docking, px' }, { k: 'grow', kind: 'range', label: 'Grow past the wheel’s name size, ×' }, { k: 'tall', kind: 'range', label: 'Largest name, × window height' }, { k: 'widthMs', kind: 'range', label: 'Width ease, ms (hug)' }] },
   { name: 'Ticket', knobs: [{ k: 'stubK', kind: 'range', label: 'Stub width, × name size' }, { k: 'perf', kind: 'range', label: 'Perforation dot gap, px' }, { k: 'notch', kind: 'range', label: 'Notch radius, px' }, { k: 'seed', kind: 'range', label: 'Seed (ticket numbers)' }] },
 ];
@@ -23,6 +23,7 @@ const LABELS: Record<string, string> = {
   fade: 'Fade in at rest', roll: 'Roll the turn’s way', none: 'Just change',
   line: 'On the wheel’s line, taking its name', foot: 'Docked at the foot of the screen', hug: 'Hug the name', fixed: 'Fixed: the longest name', block: 'Filled cell', ink: 'Ink on the ground',
   wheel: 'The wheel only', words: 'The wheel and the headline', all: 'Everything (the ticket too)', utc: 'With the zone (UTC−5)', local: '“local”', stack: 'Two groups', tight: 'One group, date under',
+  off: 'None', facts: '14 cities · one day · in person', reach: 'In person, in 14 cities, local time',
 };
 
 export function HeroLab({ saved, hero, wheel, ours, q, nowMs }: { saved: Partial<FoldCfg>; hero: HeroCfg; wheel: WheelCfg; ours: OurWheel; q: Record<string, string | undefined>; nowMs: number }) {

@@ -172,6 +172,8 @@ button.wh-cta { appearance: none; margin: 0; padding: 0; border: 0; background: 
 .wh-lead > p, .wh-lead > div > p { max-width: max(var(--wh-lead-max, 100vw), 12em); }
 .wh-lead :is(p, h1) { margin: 0; font: 400 max(16px, var(--f) * var(--hero-body-k, 0.5))/1.5 var(--wh-sans); letter-spacing: -0.01em; color: var(--wh-ink); text-wrap: balance; }
 .wh-lead .wh-lead-muted { color: var(--wh-muted); }
+/* the line under the headline: the body's size in ink, tucked up to the headline as its second line */
+.wh-lead h1 + .wh-lead-sub { margin-top: -0.2em; margin-bottom: 0.15em; }
 /* the headline is set like the city names on the wheel: medium weight, the same tracking */
 .wh-lead h1 { max-width: max(var(--wh-h1-max, 100vw), 5.5em); margin-bottom: 0.3em; font-weight: 500; font-size: min(max(32px, min(var(--f) * var(--hero-title-k, 1.55), 8svh)), var(--wh-title-cap, 999px)); line-height: 1.08; letter-spacing: -0.035em; }
 /* tight: the date is one more line under the host's, set apart by the gap */

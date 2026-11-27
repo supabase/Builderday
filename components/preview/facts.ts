@@ -21,7 +21,7 @@ export type OurWheel = { cities: OurFact[]; regOpen: boolean; date: string; date
 /* live: each city's people and state from the backend (lib/server/signups.ts); without it, seeded stand-ins (the labs) */
 /* onDay: on the day pages, the day's own finalists count (a city with fewer than three entries sends fewer) and the vote
    rules as they stand (the preview's words wait on the owner) */
-export function ourWheel(live?: Record<string, { people: number; status: WheelStatus }> | null, onDay?: { finalists: number }): OurWheel {
+export function ourWheel(live?: Record<string, { people: number; status: WheelStatus; left?: number | null }> | null, onDay?: { finalists: number }): OurWheel {
   const cfg = { ...SCHED, schedule: day.schedule, startHour: day.startHour, buildMin: day.buildMin, voteAfter: day.voteAfter, pickAfter: day.pickAfter };
   const S = sched(cfg), R = mulberry32(day.seed * 977 + 11);
   const cities: OurFact[] = S.cs.map((x, i) => {
@@ -33,6 +33,7 @@ export function ourWheel(live?: Record<string, { people: number; status: WheelSt
     return {
       id: c.id, name: c.name, code: CODE[c.id] ?? c.name.slice(0, 3).toUpperCase(), lat, lon, status, offset: o,
       session: `${hhmm(x.start + o)}–${hhmm(x.end + o)} ${zoneText(o / 60)}`, count: people === 1 ? '1 person' : `${people} people`, people,
+      left: real?.left ?? undefined,
       href: `/city/${c.id}`, action: status === 'full' ? `Join the waiting list in ${c.name}` : status === 'sold' ? `${c.name} is sold out` : `Join in ${c.name}`,
       opens: EPOCH + x.start * 60000, buildEnds: EPOCH + x.buildEnd * 60000, closes: EPOCH + x.end * 60000,
     };
@@ -76,7 +77,20 @@ const km = (a: Here, b: Here) => {
 };
 
 /* the nearest city: by distance from where the visitor is; with no position, by time zone */
-export function nearestCity(cities: { offset: number; lat?: number; lon?: number }[], visitorOffset: number, here?: Here | null) {
+/* the browser's own zone name breaks a tie between cities on the same offset (London and Nouakchott share UTC+0 in
+   December, so a visitor in Paris would otherwise get whichever comes first): the city of that zone, else the one of
+   its region */
+const ZONE_CITY: [RegExp, string][] = [
+  [/^America\/Toronto$/, 'toronto'], [/^America\/New_York$/, 'new-york'], [/^America\/Guayaquil$/, 'manta'],
+  [/^America\/El_Salvador$/, 'san-salvador'], [/^America\/Mexico_City$/, 'mexico-city'], [/^America\/Chicago$/, 'austin'],
+  [/^America\/Argentina\//, 'rosario'], [/^America\/Santiago$/, 'santiago'], [/^Europe\//, 'london'], [/^Africa\//, 'nouakchott'],
+];
+function zoneCity(): string | null {
+  let z = '';
+  try { z = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { return null; }
+  return ZONE_CITY.find(([re]) => re.test(z))?.[1] ?? null;
+}
+export function nearestCity(cities: { id?: string; offset: number; lat?: number; lon?: number }[], visitorOffset: number, here?: Here | null) {
   let best = 0;
   if (here) {
     let d = Infinity;
@@ -84,7 +98,9 @@ export function nearestCity(cities: { offset: number; lat?: number; lon?: number
     return best;
   }
   cities.forEach((c, i) => { if (Math.abs(c.offset - visitorOffset) < Math.abs(cities[best].offset - visitorOffset)) best = i; });
-  return best;
+  const gap = Math.abs(cities[best].offset - visitorOffset), want = zoneCity();
+  const tie = want === null ? -1 : cities.findIndex((c) => c.id === want && Math.abs(c.offset - visitorOffset) === gap);
+  return tie >= 0 ? tie : best;
 }
 
 /* "Opens in 23 days", counted to the city's own opening */

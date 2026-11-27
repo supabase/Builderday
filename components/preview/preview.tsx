@@ -58,7 +58,7 @@ export function SheetWheel({ cfg, noGl, mark, engineRef, ours, forced }: SheetPr
             <button type="button" className="wd-close" onClick={() => sheet.current?.close()}>Close</button>
           </div>
           <p className="wd-lede">{CITY_WORD_CAP} cities, one day: {ours.date}. Each city starts at its own local time, builds for {ours.buildMin} minutes, and votes from {EVENT.publicAt ? 'minute ' + EVENT.publicAt : 'the start'}.</p>
-          <p className="wd-reg"><a className="ex-reg" href={lumaHref()} {...away(lumaHref())}>Register on Luma<span aria-hidden="true">→</span></a></p>
+          <p className="wd-reg"><a className="ex-reg" href={lumaHref()} {...away(lumaHref())}>Register on Luma<span aria-hidden="true">→</span><span className="sr-only"> (opens in a new tab)</span></a></p>
           <GetReady compact id="wd-ready" level={3} register={false} />
           <HowItWorks f={f} compact id="wd-how" level={3} />
           <PrizeBlock compact id="wd-prize" level={3} />

@@ -67,12 +67,13 @@ export function clockAt(p: number, hold = 0.18): { m: number; reveal: number } {
    stretch and the reveal are always seen */
 export const VOTE_FROM = OPEN_END + 0.02;
 
-/* the example projects of the other cities in the final, three each, in a fixed order */
+/* the example projects of the other cities in the final, three each, one set per city (so no two cities share one) */
 export const EXAMPLES: string[][] = [
   ['Relay', 'Soft signal', 'Offcut'], ['Sidecar', 'Daylight', 'Paper trail'], ['Local loop', 'Paloma', 'Postmark'],
   ['Wayfinder', 'Night shift', 'Beacon'], ['Tidepool', 'Daybreak', 'Pocket map'], ['Kopi run', 'Crosswalk', 'Canopy'],
   ['Streetlight', 'Dispatch', 'Wavelength'], ['Overtone', 'Fieldwork', 'Switchback'], ['Headroom', 'Patchwork', 'First light'],
   ['Lantern', 'Quayside', 'Tinder'], ['Harbour', 'Almanac', 'Spindle'], ['Bellwether', 'Kiln', 'Margin'], ['Sundial', 'Tessera', 'Foxglove'],
+  ['Fog line', 'Cable car', 'Outpost'],
 ];
 
 /* The build receipt: what prints, at which minute, as the project goes from an empty folder to submitted. The last

@@ -20,7 +20,7 @@ const cut = (s: string): [string, string] => { const k = s.indexOf(' '); return 
 const GLOBAL: Line[] = G.map((g, i) => ({ rank: 'g' + g.place, place: 'Global ' + ORD[i], green: i === 0, thing: g.thing!, spec: specLine(g), plus: cut(credits(g)) }));
 const CITY: Line[] = [
   { rank: 'c1', place: '1st in the city', green: true, thing: C.winner.thing!, spec: specLine(C.winner), plus: cut(credits(C.winner) + ' and a swag box') },
-  { rank: 'c2', place: '2nd and 3rd in the city', thing: '$' + C.finalist.credits + ' in credits', spec: null, plus: ['', 'Supabase credits and a swag box, each'] },
+  { rank: 'c2', place: '2nd and 3rd in the city', thing: '$' + C.finalist.credits + ' in credits', spec: null, plus: ['', 'and a swag box, each'] },
 ];
 
 export function FoldPrizeType({ cities, finalists, auto, ms, step }: { cities: number; finalists: number; auto: boolean; ms: number; step: number }) {

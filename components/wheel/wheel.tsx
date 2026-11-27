@@ -12,10 +12,10 @@ import { EVENT } from '@/lib/day-data';
 import { SupabaseMark } from '@/components/shared/supabase-mark';
 import type { WheelStatus } from './click';
 import heroSaved from '@/saved/hero.config.json';
-import { clampHero, hatchOf, serialOf, type HeroCfg } from './hero-config';
+import { clampHero, hatchOf, type HeroCfg } from './hero-config';
 import '@/components/day/ending.css';
 import './wheel.css';
-import { at, away } from '@/lib/routes';
+import { at, away, newTab } from '@/lib/routes';
 
 /* The city wheel as a page: the canvas, the mark, the link with its small globe, and the facts of the active city as
    a row of cells before its name. The screen lines are drawn over all of it, with holes for the two globes.
@@ -24,6 +24,8 @@ import { at, away } from '@/lib/routes';
 export type WheelFact = WheelCity & { id: string; code?: string; session: string; count: string; href: string; action: string; soon?: string;
   /* people as a number: the count cell shows only from the family's threshold up (an empty room reads as a dead one) */
   people?: number;
+  /* Luma's places left: the ticket's stub prints it while the city is filling up */
+  left?: number;
   /* a page's own press in place of the link (the preview: the person's own city opens their account) */
   press?: () => void };
 /* hack: the mark alone; both: the Supabase mark beside it; name: the mark with the event's name written beside it;
@@ -138,7 +140,7 @@ function Pill({ ref, href, press, text, name, names, dot, hero, hatch, lands: la
   const cls = 'en-reg wh-reg', data = { 'data-lands': lands ? '' : undefined, 'data-hand': hero.hand };
   return press
     ? <button ref={ref} type="button" className={cls} {...data} aria-haspopup="dialog" aria-label={text} onClick={press}>{words}</button>
-    : <a ref={ref} className={cls} {...data} href={at(href)} aria-label={text} {...away(href)}>{words}</a>;
+    : <a ref={ref} className={cls} {...data} href={at(href)} aria-label={text + newTab(href)} {...away(href)}>{words}</a>;
 }
 
 /* the hero's knobs as the page's own variables and switches */
@@ -280,7 +282,7 @@ function OneWheel({ cities, cfg, start = 0, noGl = false, cells = true, mark = '
                   <dl className="wh-stub" data-placed="">
                     <div className="sr-only"><dt>City</dt><dd>{city.name}</dd></div>
                     <div className="wh-stub-top"><dt className="sr-only">City code</dt><dd className="wh-stub-code">{city.code || city.name.slice(0, 3).toUpperCase()}</dd>
-                      <dd className="wh-stub-no" aria-hidden="true">No.&nbsp;<Prism k={city.id} dir={dir}>{serialOf(hero.seed, city.id)}</Prism></dd></div>
+                      {city.status === 'nearing' && city.left ? <dd className="wh-stub-no"><Prism k={city.id} dir={dir}>{`${city.left} left`}</Prism></dd> : null}</div>
                     <div><dt className="sr-only">Session, local time</dt><dd className="wh-stub-t"><Prism k={city.id} dir={dir}>{timeOf(city)}</Prism></dd>
                       {/* the slim stub on a phone (wheel.css): the hours alone */}
                       <dd className="wh-stub-t-short" aria-hidden="true"><Prism k={city.id} dir={dir}>{city.session.replace(/ UTC.*$/, '')}</Prism></dd></div>
@@ -330,6 +332,7 @@ function OneWheel({ cities, cfg, start = 0, noGl = false, cells = true, mark = '
               <a ref={cta} className="wh-cta" href={at(city.href)} {...away(city.href)}>
                 <span ref={lens} className="wh-lens" aria-hidden="true" {...dot} />
                 <span className="wh-cta-text"><span className="wh-cta-action">{city.action}</span> <span>{date}</span></span>
+                {newTab(city.href) ? <span className="sr-only">{newTab(city.href)}</span> : null}
               </a>
             )}
             {foot}

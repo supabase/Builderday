@@ -311,7 +311,7 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
   const lede = `${count(n)} cities, one day: ${ours.date}. Each city starts at its own local time and builds for ${ours.buildMin} minutes. Votes are shown from minute ${EVENT.showAt ?? 60}.`;
   const late = ord === 'prize-first';
   /* each row shows its own start, so the lede only says what picking does */
-  const cityLede = 'Pick your city. Every Register button on the page follows it.';
+  const cityLede = 'Pick your city and every Register button switches to it.';
 
   /* the footer's links to the page's own parts (Prizes, How it works) take the header's jump, so going back
      up from the end moves the same way as the header's cells; a modified click keeps the browser's own way */
@@ -362,7 +362,9 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
   const WEEKDAY = new Date(EPOCH).toLocaleDateString('en-GB', { weekday: 'long', timeZone: 'UTC' });
   const rsvp = LUMA_LIVE && ours.regOpen ? 'RSVP now open' : 'RSVP opens soon';
   const dateLine = heroCfg.weekday ? `${WEEKDAY} ${ours.date}` : ours.date;
-  const head = <><h1><span className="sr-only">{EVENT.name}, {ours.date}: </span>{ours.buildMin}min Build Challenge<span className="sr-only">, in {n} cities</span></h1><p className="wh-lead-muted">Hosted by <SupabaseLockup className="wh-supabase" /></p></>;
+  /* the line under the headline (saved/hero.config.json `sub`): what the day is, for a visitor who knows nothing yet */
+  const sub = heroCfg.sub === 'facts' ? `${n} cities · one day · in person` : heroCfg.sub === 'reach' ? `In person, in ${n} cities, each at its own local time` : null;
+  const head = <><h1><span className="sr-only">{EVENT.name}, {ours.date}: </span>{ours.buildMin}min Build Challenge<span className="sr-only">{sub ? '' : `, in ${n} cities`}</span></h1>{sub ? <p className="wh-lead-sub">{sub}</p> : null}<p className="wh-lead-muted">Hosted by <SupabaseLockup className="wh-supabase" /></p></>;
   const lead = column ? (heroCfg.words === 'tight'
     ? <div>{head}<p className="wh-lead-date">{dateLine}</p>{heroCfg.rsvp ? <p>{rsvp}</p> : null}</div>
     : <><div>{head}</div><div><p>{dateLine}</p>{heroCfg.rsvp ? <p>{rsvp}</p> : null}</div></>

@@ -4,7 +4,7 @@ import { MarkFace, type MarkMode } from '@/components/wheel/wheel';
 import { Person, type CellState } from '@/components/account/account';
 import { flapInto, useFlapText, type FlapOpts } from './flap';
 import { EVENT } from '@/lib/day-data';
-import { at, away } from '@/lib/routes';
+import { at, away, newTab } from '@/lib/routes';
 
 /* The header: the wheel's own top row, stuck to the top of the window. At the top of the page it is today's row (the
    mark and the name left, one link right). Once the page leaves the top it gets the paper and one rule; once the
@@ -91,11 +91,11 @@ export function FoldHeader({ on, paper, parts, lit, reg, lens, jump, flap, plain
           ) : action ? (
             action.press
               ? <button type="button" className="pf-cell pf-reg" data-action="" style={{ ['--i' as string]: parts.length }} aria-haspopup="dialog" onClick={action.press}>{lensEl}<span className="sr-only">{action.words}</span><span aria-hidden="true" className="pf-reg-w">{action.words}</span><span aria-hidden="true" className="pf-reg-s">{action.short}</span></button>
-              : <a className="pf-cell pf-reg" data-action="" href={action.href ? at(action.href) : undefined} {...away(action.href)} style={{ ['--i' as string]: parts.length }}>{lensEl}<span className="sr-only">{action.words}</span><span aria-hidden="true" className="pf-reg-w">{action.words}</span><span aria-hidden="true" className="pf-reg-s">{action.short}</span></a>
+              : <a className="pf-cell pf-reg" data-action="" href={action.href ? at(action.href) : undefined} {...away(action.href)} style={{ ['--i' as string]: parts.length }}>{lensEl}<span className="sr-only">{action.words}{newTab(action.href)}</span><span aria-hidden="true" className="pf-reg-w">{action.words}</span><span aria-hidden="true" className="pf-reg-s">{action.short}</span></a>
           ) : (
             <a className="pf-cell pf-reg" href={at(reg.href)} {...away(reg.href)} style={{ ['--i' as string]: parts.length }}>
               {lensEl}
-              <span className="sr-only">{reg.waiting ? 'Join the waiting list in ' : 'Register for '}{reg.city}</span>
+              <span className="sr-only">{reg.waiting ? 'Join the waiting list in ' : 'Register for '}{reg.city}{newTab(reg.href)}</span>
               <span aria-hidden="true" className="pf-reg-w"><span ref={verbEl}>{verb0}</span><span ref={cityEl} className="pf-reg-c" style={{ width: reg.city.length + 'ch' }}>{reg.city}</span></span>
               <span aria-hidden="true" className="pf-reg-s">{reg.waiting ? 'Waitlist' : 'Register'}</span>
             </a>

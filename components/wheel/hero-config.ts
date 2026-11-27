@@ -18,6 +18,9 @@ export type HeroCfg = {
   words: 'stack' | 'tight';
   /* the date line says the weekday; the RSVP line (the state cell already says it) */
   weekday: boolean; rsvp: boolean;
+  /* a line under the headline that says what the day is: off, facts ("14 cities · one day · in person") or reach
+     ("In person, in 14 cities, each at its own local time") */
+  sub: 'off' | 'facts' | 'reach';
   /* how the city's name gets into the box: fade (the wheel's name fades in as it comes to rest), roll (the new name
      comes round the turn's way; a fast spin finishes its roll, then makes one quick roll to the latest), none */
   hand: 'fade' | 'roll' | 'none';
@@ -57,7 +60,7 @@ export type HeroCfg = {
 };
 
 export const HERO_DEF: HeroCfg = {
-  mode: 'ticket', words: 'tight', weekday: true, rsvp: false, hand: 'roll', width: 'fixed', reach: 'row', dock: 'foot', screen: 'wheel', state: 'ink', zone: 'local',
+  mode: 'ticket', words: 'tight', weekday: true, rsvp: false, sub: 'off', hand: 'roll', width: 'fixed', reach: 'row', dock: 'foot', screen: 'wheel', state: 'ink', zone: 'local',
   titleK: 1.55, bodyK: 0.5, cellK: 2.1, stubK: 5, gapK: 0.6, liftK: 1.2,
   min: 24, grow: 1.15, tall: 0.05,
   stubPhone: 100, namePhone: 20,
@@ -76,7 +79,7 @@ export const HERO_BOUNDS: Record<string, [number, number, number]> = {
 };
 
 export const HERO_CHOICES: Record<string, readonly string[]> = {
-  mode: HERO_MODES, words: ['stack', 'tight'], hand: ['fade', 'roll', 'none'], width: ['hug', 'fixed'], reach: ['row', 'wheel'], dock: ['line', 'foot'], screen: ['wheel', 'words', 'all'], state: ['block', 'ink'], zone: ['utc', 'local'],
+  mode: HERO_MODES, words: ['stack', 'tight'], sub: ['off', 'facts', 'reach'], hand: ['fade', 'roll', 'none'], width: ['hug', 'fixed'], reach: ['row', 'wheel'], dock: ['line', 'foot'], screen: ['wheel', 'words', 'all'], state: ['block', 'ink'], zone: ['utc', 'local'],
 };
 
 export function clampHero(v: Partial<HeroCfg> | null | undefined): HeroCfg {

@@ -3,6 +3,7 @@
   "words": "tight",
   "weekday": true,
   "rsvp": false,
+  "sub": "off",
   "hand": "roll",
   "width": "fixed",
   "reach": "row",

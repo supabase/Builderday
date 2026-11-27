@@ -6,7 +6,7 @@ import type { WaysLook } from './ways-config';
 /* 1 Build in How Builder Day works, drawn as the two ways to submit: one window on the day's clock, and the reader's
    toggle swaps what is in it. In the browser: a form with two fields (the GitHub repo, the preview link); from the
    editor: you ask, and the editor server's submit sends the same two. Both run the same three checks and end on the same
-   green Submitted (minute 46 as saved). Both ways are drawn in the same cell, the one not shown hidden, so the window is as tall
+   green Submitted (minute 44 as saved: in just before voting opens at 45, so every vote it gets comes after it is in). Both ways are drawn in the same cell, the one not shown hidden, so the window is as tall
    as the taller and swapping never moves the page. A pure function of its progress p (0 to 1), finished at p = 1, so the
    server's HTML is the finished picture. */
 

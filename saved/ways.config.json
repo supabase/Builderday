@@ -7,8 +7,8 @@
   "check": 0.64,
   "checkStep": 0.06,
   "send": 0.86,
-  "from": 40,
-  "at": 46,
+  "from": 38,
+  "at": 44,
   "swapMs": 180,
   "swapRise": 4
 }

@@ -23,7 +23,7 @@ export const WAYS_CHECKS: WaysChecks[] = ['three', 'none'];
 export const WAYS_DEF: WaysLook = {
   chrome: 'window', checks: 'three',
   lead: 0.16, type1: 0.42, type2: 0.6, check: 0.64, checkStep: 0.06, send: 0.86,
-  from: 40, at: 46, swapMs: 180, swapRise: 4,
+  from: 38, at: 44, swapMs: 180, swapRise: 4,
 };
 export const WAYS_BOUNDS: Record<string, [number, number, number]> = {
   lead: [0, 0.4, 0.01], type1: [0.2, 0.6, 0.01], type2: [0.3, 0.75, 0.01], check: [0.35, 0.8, 0.01], checkStep: [0.02, 0.1, 0.005], send: [0.6, 0.97, 0.01],

@@ -12,7 +12,7 @@ import { clampEnd, type EndCfg } from './ending-config';
 import { cellSize, drawMap, mapLines, nightLines, placeMarks, printedAt, type MapGrid } from './flat-map';
 import { atZone, yourTime } from './ending-time';
 import './ending.css';
-import { at, away } from '@/lib/routes';
+import { at, away, newTab } from '@/lib/routes';
 
 /* How the preview page ends: the world opened flat. One map across the full width in the
    text globe's characters and hatch, every city a + with its code; each mark is the link to register there, and
@@ -82,7 +82,7 @@ export function Ending({ cfg: given, wheel, cities, start, last, date, sound, li
   const telex = cfg.signoff === 'telex';
   const reg = c.press
     ? <button type="button" className="en-reg" data-sk-skip="" aria-haspopup="dialog" onClick={c.press}><span className="en-lens" data-dot="" data-lat={c.lat} data-lon={c.lon} aria-hidden="true" /><span className="en-reg-t">{c.action}</span></button>
-    : <a className="en-reg" data-sk-skip="" href={at(c.href)} {...away(c.href)}><span className="en-lens" data-dot="" data-lat={c.lat} data-lon={c.lon} aria-hidden="true" /><span className="en-reg-t">{c.action}</span></a>;
+    : <a className="en-reg" data-sk-skip="" href={at(c.href)} {...away(c.href)}><span className="en-lens" data-dot="" data-lat={c.lat} data-lon={c.lon} aria-hidden="true" /><span className="en-reg-t">{c.action}</span>{newTab(c.href) ? <span className="sr-only">{newTab(c.href)}</span> : null}</a>;
   const cells = (
     <div className="en-cells">
       {reg}

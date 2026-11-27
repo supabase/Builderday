@@ -32,7 +32,7 @@ export function FoldShort({ city, cityId, auto, step, more, signin = true }: { c
   return (
     <section ref={root} id="ready" className="pf-part rd rd-short" data-part="ready" aria-labelledby="ready-h">
       <h2 id="ready-h" className="pf-h">Get ready</h2>
-      <p className="rd-lede">One thing before the day. The rest can wait for the door.</p>
+      <p className="rd-lede">One thing before the day. Everything else can wait until you’re there.</p>
       <ol className="rd-steps" data-sk-skip="">
         <li data-s={placed ? 'done' : 'now'} data-pf-wait={wait}>
           <span className="rd-tick" aria-hidden="true" />
