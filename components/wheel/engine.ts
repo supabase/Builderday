@@ -123,7 +123,7 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
   const fl = { s: 0, t: 0, spin: 0, v: 0, cap: 2, slow: 0, drawnS: NaN, key: '', geomH: 1, gx: 0, gy: 0, gr: 0, hide: false, rim: 1, mirrored: null as HTMLCanvasElement | null };
   const cellsWidth = { row: 0, column: 0 };
   let target = first.start, position = first.start, clicked = Math.round(first.start), previous = -1;
-  let wheelSum = 0, drag: { x: number; y: number; from: number; moved: boolean; axis: 'x' | 'y' | null; touch: boolean; grip: boolean } | null = null;
+  let wheelSum = 0, drag: { x: number; y: number; from: number; moved: boolean; axis: 'x' | 'y' | null; touch: boolean; grip: boolean; t: number; at: number; v: number } | null = null;
   let hush = false; /* a city picked from the page (the board, the map) makes its own sound, so the wheel stays quiet on the way */
   let shown = -1, settledOn = idx(first.start), ems: number[] = [];
   let drawnAt = NaN, dirty = true, lastGl = '', lastCells = '', lastOpacity = '', lastLand = '';
@@ -766,11 +766,11 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
     if (ev.target instanceof Element && ev.target.closest('[data-wheel-skip]')) return;
     const line = ev.deltaMode === 1 ? 16 : 1;
     if (flow) {
-      /* in a page the vertical wheel scrolls the page; a sideways move turns the wheel (and, if asked, the vertical
-         wheel over the globe) */
-      if (Math.abs(ev.deltaX) > Math.abs(ev.deltaY)) wheelSum += ev.deltaX * line;
-      /* over a name (or over the globe, if asked) the vertical wheel turns the wheel. Elsewhere it scrolls the page */
-      else if (slotAt(ev.clientX, ev.clientY) !== null || (flow.wheelOverGlobe && overGlobe(ev.clientX, ev.clientY))) { ev.preventDefault(); wheelSum += ev.deltaY * line; }
+      /* in a page the vertical wheel always scrolls the page, over the names too: a visitor who scrolls must never be
+         held on the first screen. A sideways move (a trackpad, a tilt wheel) turns the wheel, and so does the vertical
+         wheel over the globe if asked */
+      if (Math.abs(ev.deltaX) > Math.abs(ev.deltaY)) { ev.preventDefault(); wheelSum += ev.deltaX * line; }
+      else if (flow.wheelOverGlobe && overGlobe(ev.clientX, ev.clientY)) { ev.preventDefault(); wheelSum += ev.deltaY * line; }
       else return;
       const steps = Math.trunc(wheelSum / cfg.wheelPx); wheelSum -= steps * cfg.wheelPx; target += steps;
       if (steps) start(true);
@@ -786,7 +786,7 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
     /* in a page a mouse drag turns the wheel only from a name or the globe; a touch anywhere on it may swipe sideways,
        and a touch on the globe turns it either way (the globe takes no scroll) */
     if (flow && !touch && !grip && slotAt(ev.clientX, ev.clientY) === null && !overGlobe(ev.clientX, ev.clientY)) return;
-    drag = { x: ev.clientX, y: ev.clientY, from: target, moved: false, axis: flow ? (touch && !grip ? 'x' : null) : 'y', touch, grip };
+    drag = { x: ev.clientX, y: ev.clientY, from: target, moved: false, axis: flow ? (touch && !grip ? 'x' : null) : 'y', touch, grip, t: ev.timeStamp, at: 0, v: 0 };
     /* a press on a city's mark: reverse video after 0.1 s, while it is held */
     const m = cfg.globePick === 'on' ? markUnder(ev.clientX, ev.clientY) : -1;
     window.clearTimeout(tg.press);
@@ -808,10 +808,18 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
     const moved = drag.axis === 'x' ? dx : dy;
     if (Math.abs(moved) > 8) drag.moved = true;
     /* a drag up (or to the left) brings the next cities up */
+    /* the speed of the hand (px per ms), smoothed, for the flick on release */
+    const dt = ev.timeStamp - drag.t;
+    if (dt > 0) { drag.v = 0.7 * ((moved - drag.at) / dt) + 0.3 * drag.v; drag.t = ev.timeStamp; drag.at = moved; }
     if (drag.moved) { target = drag.from - Math.round(moved / cfg.dragPx); if (tg.invert >= 0) tg.invert = -1; if (flow) start(true); }
   };
   const onUp = (ev: PointerEvent) => {
     if (!drag) return;
+    /* a flick keeps the wheel going: the hand's speed carried on for a quarter second, as a scroll glides on after the
+       finger lifts. A hand that stopped before letting go (no move in the last 80 ms) adds nothing */
+    if (drag.moved && !reduced && ev.timeStamp - drag.t < 80 && Math.abs(drag.v) > 0.3) {
+      target -= Math.max(-6, Math.min(6, Math.round((drag.v * 250) / cfg.dragPx)));
+    }
     const slot = drag.moved ? null : slotAt(ev.clientX, ev.clientY);
     const m = drag.moved || slot !== null || cfg.globePick !== 'on' ? -1 : markUnder(ev.clientX, ev.clientY);
     drag = null; window.clearTimeout(tg.press); tg.invert = -1;
@@ -825,9 +833,9 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
     const t = ev.target instanceof HTMLElement ? ev.target : null;
     if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable || t.closest('[data-wheel-skip]'))) return;
     if (flow) {
-      /* in a page the left and right arrows turn the wheel while it is on screen. Up and down also turn it while no other
-         element has focus. Page Up, Page Down, Space and the up and down arrows otherwise scroll the page */
-      const mine = !!t && pin.contains(t), page = !t || t === document.body;
+      /* in a page the left and right arrows turn the wheel while it is on screen. Up and down turn it only with focus on
+         the wheel; otherwise they, Page Up, Page Down and Space scroll the page */
+      const mine = !!t && pin.contains(t);
       if (!mine && (!onScreen || (t && t.closest('[role="slider"], [role="radiogroup"], [role="tablist"], [role="listbox"], [role="menu"]')))) return;
       /* with focus on the wheel it is a slider: Home and End go to the first and the last city (the short way round), and
          Page Up and Page Down turn three, so none of them scrolls the page from under it */
@@ -836,7 +844,7 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
         let d = (((to - idx(from)) % N) + N) % N; if (d > N / 2) d -= N;
         ev.preventDefault(); target = from + d; start(true); return;
       }
-      const k = ({ ArrowRight: 1, ArrowLeft: -1, ...(mine || page ? { ArrowDown: 1, ArrowUp: -1 } : {}), ...(mine ? { PageDown: 3, PageUp: -3 } : {}) } as Record<string, number>)[ev.key];
+      const k = ({ ArrowRight: 1, ArrowLeft: -1, ...(mine ? { ArrowDown: 1, ArrowUp: -1 } : {}), ...(mine ? { PageDown: 3, PageUp: -3 } : {}) } as Record<string, number>)[ev.key];
       if (!k) return;
       ev.preventDefault(); target += k; start(true); return;
     }
