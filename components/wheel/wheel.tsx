@@ -73,24 +73,12 @@ function Letters({ text, other }: { text: string; other: string }) {
 }
 
 /* The city's name in the box. fixed: every name is in the slot, unseen but the current one, so the box is as wide as
-   the longest and never changes width. roll: the new name comes round the turn's way, the old one goes the other way
-   (the stub's flat roll, on the same clock). A roll is never cut short: if the wheel moves on mid-roll, it finishes,
-   then makes one quicker roll to the latest city, so a fast spin reads as two clean rolls, never a stutter. */
-function NameSlot({ name, names, dir, hand, fixed }: { name: string; names: string[]; dir: number; hand: HeroCfg['hand']; fixed: boolean }) {
-  const [shown, setShown] = useState(name);
-  const [roll, setRoll] = useState<{ old: string; dir: number; quick: boolean; n: number } | null>(null);
-  const [n, setN] = useState(0);
-  if (shown !== name && hand !== 'roll') setShown(name);
-  else if (shown !== name && !roll) { setRoll({ old: shown, dir, quick: false, n: n + 1 }); setN(n + 1); setShown(name); }
-  const end = (e: React.AnimationEvent) => {
-    if (e.target !== e.currentTarget) return;
-    if (shown !== name) { setRoll({ old: shown, dir, quick: true, n: n + 1 }); setN(n + 1); setShown(name); } else setRoll(null);
-  };
+   the longest and never changes width. The name changes at once, with no transition. */
+function NameSlot({ name, names, fixed }: { name: string; names: string[]; fixed: boolean }) {
   return (
-    <span className={'wh-reg-city' + (roll?.quick ? ' is-quick' : '')} data-hug={fixed ? undefined : ''} data-dir={(roll?.dir ?? dir) > 0 ? 'up' : 'down'}>
+    <span className="wh-reg-city">
       {fixed ? names.map((x) => <span key={'g' + x} className="wh-reg-ghost" aria-hidden="true">{x}</span>) : null}
-      {roll ? <span key={'o' + roll.n} className="wh-reg-name is-out" aria-hidden="true">{roll.old}</span> : null}
-      <span key={'n' + (roll?.n ?? n)} className={'wh-reg-name' + (roll ? ' is-in' : '')} onAnimationEnd={roll ? end : undefined}>{shown}</span>
+      <span>{name}</span>
     </span>
   );
 }
@@ -113,7 +101,7 @@ function VerbSlot({ verb }: { verb: string }) {
    the wider of the two widths at once, and the paper's right edge glides from the old end to the new one by a clip
    (paint only), on the name's own clock; then the layout settles on the new width under the clip. A change mid-glide
    starts from where the edge is. Reduced motion, or a docked row (always full width): it simply changes. */
-function Pill({ ref, href, press, text, name, names, dot, dir, hero, hatch, lands: landsOn }: { ref: RefObject<(HTMLAnchorElement & HTMLButtonElement) | null>; href: string; press?: () => void; text: string; name: string; names: string[]; dot: { lat: number; lon: number }; dir: number; hero: HeroCfg; hatch?: string; lands?: boolean }) {
+function Pill({ ref, href, press, text, name, names, dot, hero, hatch, lands: landsOn }: { ref: RefObject<(HTMLAnchorElement & HTMLButtonElement) | null>; href: string; press?: () => void; text: string; name: string; names: string[]; dot: { lat: number; lon: number }; hero: HeroCfg; hatch?: string; lands?: boolean }) {
   const lands = !!landsOn && text.endsWith(name), fixed = hero.width === 'fixed';
   /* the paper's visible width as last settled, and the glide under way */
   const vis = useRef(0), glide = useRef<Animation | null>(null);
@@ -150,7 +138,7 @@ function Pill({ ref, href, press, text, name, names, dot, dir, hero, hatch, land
     <>
       {hatch ? <span className="wh-hatch" aria-hidden="true"><span>{hatch}</span></span> : null}
       <span className="en-lens" data-dot="" data-lat={dot.lat} data-lon={dot.lon} aria-hidden="true" />
-      <span className="en-reg-t">{lands ? <><VerbSlot verb={text.slice(0, -name.length).trimEnd()} /><NameSlot name={name} names={names} dir={dir} hand={hero.hand} fixed={fixed} /></> : text}</span>
+      <span className="en-reg-t">{lands ? <><VerbSlot verb={text.slice(0, -name.length).trimEnd()} /><NameSlot name={name} names={names} fixed={fixed} /></> : text}</span>
     </>
   );
   const cls = 'en-reg wh-reg', data = { 'data-lands': lands ? '' : undefined, 'data-hand': hero.hand };
@@ -286,7 +274,7 @@ function OneWheel({ cities, cfg, start = 0, noGl = false, cells = true, mark = '
             {foot ? <div className="wh-col-foot">{foot}</div> : null}
           </div>
           {(() => {
-            const pill = <Pill ref={cta} lands hatch={hero.mode === 'ticket' && hero.reach === 'wheel' ? hatchOf(hero.seed, 'hatch') : undefined} href={city.href} press={city.press} dot={city} name={city.name} names={names} dir={dir} hero={hero} text={city.press ? city.action : regWords(city.status, city.name)} />;
+            const pill = <Pill ref={cta} lands hatch={hero.mode === 'ticket' && hero.reach === 'wheel' ? hatchOf(hero.seed, 'hatch') : undefined} href={city.href} press={city.press} dot={city} name={city.name} names={names} hero={hero} text={city.press ? city.action : regWords(city.status, city.name)} />;
             const status = <><StatusIcon status={city.status} /><span>{STATUS_LABEL[city.status]}</span></>;
             /* the row is paper and ink, not the screen: it takes the screen's lines only when the hero says all */
             const skipRow = hero.screen === 'all' ? undefined : '';
@@ -297,7 +285,7 @@ function OneWheel({ cities, cfg, start = 0, noGl = false, cells = true, mark = '
                 {cells ? (
                   <dl className="wh-stub" data-placed="">
                     <div className="sr-only"><dt>City</dt><dd>{city.name}</dd></div>
-                    <div className="wh-stub-top"><dt className="sr-only">City code</dt><dd className="wh-stub-code"><Prism k={city.id} dir={dir}>{city.code || city.name.slice(0, 3).toUpperCase()}</Prism></dd>
+                    <div className="wh-stub-top"><dt className="sr-only">City code</dt><dd className="wh-stub-code">{city.code || city.name.slice(0, 3).toUpperCase()}</dd>
                       <dd className="wh-stub-no" aria-hidden="true">No.&nbsp;<Prism k={city.id} dir={dir}>{serialOf(hero.seed, city.id)}</Prism></dd></div>
                     <div><dt className="sr-only">Session, local time</dt><dd><Prism k={city.id} dir={dir}>{timeOf(city)}</Prism></dd></div>
                     <div className="wh-status"><dt className="sr-only">Status</dt><dd><span className="wh-face" data-status={city.status}>{status}</span></dd></div>

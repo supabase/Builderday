@@ -260,32 +260,15 @@ button.wh-cta { appearance: none; margin: 0; padding: 0; border: 0; background: 
 /* ---------- the hero's modes (saved/hero.config.json, /lab/hero) ---------- */
 
 /* the city's name in the box: every name stacked in one cell (fixed: the longest sets the width), the current one in
-   ink. The slot clips, so a name rolling in or out is cut at the box's words' line, never drawn over the box's edge. */
-.wh-reg-city { display: inline-grid; vertical-align: top; overflow: clip; overflow-clip-margin: 0.12em; }
+   ink */
+.wh-reg-city { display: inline-grid; vertical-align: top; }
 .wh-reg-city > * { grid-area: 1 / 1; white-space: nowrap; }
 .wh-reg-ghost { visibility: hidden; }
-/* hug: the slot is the new name's width; the old one leaves over the line (the paper's clip cuts it at the edge), and
-   only the rows above and below are cut */
-.wh-reg-city[data-hug] { position: relative; overflow: visible; overflow-y: clip; }
-.wh-reg-city[data-hug] > .is-out { position: absolute; left: 0; top: 0; }
 /* the verb before it: every verb stacked, set against the name, so a change of state never moves the name */
 .wh-reg-verb { display: inline-grid; justify-items: end; vertical-align: top; }
 .wh-reg-verb > * { grid-area: 1 / 1; white-space: pre; }
-/* roll: the new name comes round the turn's way (as the stub's type rolls), the old one leaves the other way, on the
-   same clock as the stub (--dur-slide) and the brand ease-out, by transform and opacity only; the opacity is done in
-   the first half, so the words are never half-seen for long. A roll that follows a fast spin is half as long. */
-.wh-reg-city { --wh-roll: var(--dur-slide, 220ms); }
-.wh-reg-city.is-quick { --wh-roll: calc(var(--dur-slide, 220ms) / 2); }
-.wh-reg-name.is-in { animation: wh-name-in var(--wh-roll) var(--ease-out, cubic-bezier(.23, 1, .32, 1)) both; }
-.wh-reg-name.is-out { animation: wh-name-out var(--wh-roll) var(--ease-out, cubic-bezier(.23, 1, .32, 1)) both; }
-.wh-reg-city[data-dir='up'] { --wh-from: 0.9em; }
-.wh-reg-city[data-dir='down'] { --wh-from: -0.9em; }
-@keyframes wh-name-in { from { transform: translateY(var(--wh-from, 0.9em)); opacity: 0; } 50% { opacity: 1; } }
-@keyframes wh-name-out { 50% { opacity: 0; } to { transform: translateY(calc(var(--wh-from, 0.9em) * -1)); opacity: 0; } }
-/* no motion: the name changes at once (the animation still ends, so the slot moves on) */
-@media (prefers-reduced-motion: reduce) { .wh-reg-name.is-in { animation-duration: 1ms; } .wh-reg-name.is-out { display: none; } }
 
-/* the small type in the stub and the spoke's facts rolls flat, like the name: at 13 px a turning drum shows both faces
+/* the small type in the stub and the spoke's facts rolls flat: at 13 px a turning drum shows both faces
    at once as a smudge. The drum itself only holds the time (its animation's end ends the turn); the faces slide, the new
    one the turn's way (up: from below, as the cells' drum), the old one out the other way, clipped by the line. */
 :is(.wh-stub, .wh-spoke) .wh-prism { perspective: none; overflow: clip; overflow-clip-margin: 0.1em; }
