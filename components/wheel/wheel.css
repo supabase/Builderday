@@ -259,14 +259,14 @@ button.wh-cta { appearance: none; margin: 0; padding: 0; border: 0; background: 
 
 /* ---------- the hero's modes (saved/hero.config.json, /lab/hero) ---------- */
 
-/* the city's name in the box: every name stacked in one cell (fixed: the longest sets the width), the current one in
-   ink */
-.wh-reg-city { display: inline-grid; vertical-align: top; }
-.wh-reg-city > * { grid-area: 1 / 1; white-space: nowrap; }
-.wh-reg-ghost { visibility: hidden; }
-/* the verb before it: every verb stacked, set against the name, so a change of state never moves the name */
-.wh-reg-verb { display: inline-grid; justify-items: end; vertical-align: top; }
-.wh-reg-verb > * { grid-area: 1 / 1; white-space: pre; }
+/* the box's words lie over an unseen sizer: every verb stacked in one cell (the mark that the engine measures,
+   engine.ts), then every name stacked in one cell. The longest of each sets the width */
+.wh-reg-words { display: inline-grid; justify-items: start; }
+.wh-reg-words > * { grid-area: 1 / 1; }
+.wh-reg-city { white-space: nowrap; }
+.wh-reg-sizer { visibility: hidden; }
+:is(.wh-reg-mark, .wh-reg-names) { display: inline-grid; vertical-align: top; }
+:is(.wh-reg-mark, .wh-reg-names) > * { grid-area: 1 / 1; white-space: pre; }
 
 /* the small type in the stub and the spoke's facts rolls flat: at 13 px a turning drum shows both faces
    at once as a smudge. The drum itself only holds the time (its animation's end ends the turn); the faces slide, the new
@@ -387,8 +387,7 @@ button.wh-cta { appearance: none; margin: 0; padding: 0; border: 0; background: 
 .wh-pin[data-dock] .wh-stub { padding: 10px 12px 10px 14px; font-size: 11.5px; }
 .wh-pin[data-dock] .wh-stub-no { display: none; }
 .wh-pin[data-dock] .wh-stub-code { font-size: 18px; }
-.wh-pin[data-dock] .wh-reg-ghost { display: none; }
-.wh-pin[data-dock] .wh-reg-verb { justify-items: start; }
+.wh-pin[data-dock] .wh-reg-sizer { display: none; }
 /* a narrow phone (360): the stub gives up width and the words step down, so the longest city still fits its line */
 @media (max-width: 380px) { .wh-pin[data-dock] .wh-ticket { --stub: 128px; } .wh-pin[data-dock] .wh-reg { font-size: 18px; } .wh-pin[data-dock] .wh-stub { padding-right: 10px; } }
 /* the wheel's names run behind the words up here: the ground fades in behind them, down to a little under the date */

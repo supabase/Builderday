@@ -171,8 +171,10 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
     rowReach = rs ? rs.getPropertyValue('--wh-reach').trim() : '';
     rowHalf = rowEl instanceof HTMLElement ? rowEl.offsetHeight / 2 : 0;
     /* where the name starts in the row the box ends (the cells, the globe and the words before it) */
-    const nm = els.cta?.querySelector('.wh-reg-city'), row = els.cta?.closest('.wh-reg-at');
-    ctaLead = nm && row ? nm.getBoundingClientRect().left - row.getBoundingClientRect().left : 0;
+    /* the verb is set left. The name line is the end of the unseen longest verb, so a change of state does not move it */
+    const mark = els.cta?.querySelector('.wh-reg-mark'), nm = els.cta?.querySelector('.wh-reg-city'), row = els.cta?.closest('.wh-reg-at');
+    const lineAt = mark ? mark.getBoundingClientRect().right : nm?.getBoundingClientRect().left;
+    ctaLead = lineAt != null && row ? lineAt - row.getBoundingClientRect().left : 0;
     /* the row starts on the left margin, under the page's words (the column's own left, wheel.css) */
     ctaGutter = els.cells ? parseFloat(getComputedStyle(els.cells).left) || 0 : 0;
   };

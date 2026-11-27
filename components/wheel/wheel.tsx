@@ -72,25 +72,19 @@ function Letters({ text, other }: { text: string; other: string }) {
   return <span className="wh-letters">{[...text].map((ch, i) => <span key={`${i}-${ch}`} className="wh-ch" data-still={still[i] ? '' : undefined} style={still[i] ? undefined : { '--i': next++ } as CSSProperties}>{ch}</span>)}</span>;
 }
 
-/* The city's name in the box. fixed: every name is in the slot, unseen but the current one, so the box is as wide as
-   the longest and never changes width. The name changes at once, with no transition. */
-function NameSlot({ name, names, fixed }: { name: string; names: string[]; fixed: boolean }) {
+/* The box's words: the verb, set left against the globe, then the city's name. An unseen sizer under them keeps the
+   box's width: the longest verb (the mark that the engine measures, engine.ts) and, with fixed width, the longest name.
+   So a change of city or of state does not change the box's width or move the name line */
+function Words({ verb, name, names, fixed }: { verb: string; name: string; names: string[]; fixed: boolean }) {
+  const verbs = VERBS.includes(verb) ? VERBS : [...VERBS, verb];
   return (
-    <span className="wh-reg-city">
-      {fixed ? names.map((x) => <span key={'g' + x} className="wh-reg-ghost" aria-hidden="true">{x}</span>) : null}
-      <span>{name}</span>
-    </span>
-  );
-}
-
-/* the verb before the name: a slot as wide as the longest verb, set against the name, so the name starts in one place
-   (in either width: where the name starts sets the hero's size, so a change of state must never move it) */
-function VerbSlot({ verb }: { verb: string }) {
-  const all = VERBS.includes(verb) ? VERBS : [...VERBS, verb];
-  return (
-    <span className="wh-reg-verb">
-      {all.map((v) => <span key={v} className={v === verb ? undefined : 'wh-reg-ghost'} aria-hidden={v === verb ? undefined : true}>{v + ' '}</span>)}
-    </span>
+    <>
+      <span>{verb + ' '}<span className="wh-reg-city">{name}</span></span>
+      <span className="wh-reg-sizer" aria-hidden="true">
+        <span className="wh-reg-mark">{verbs.map((v) => <span key={v}>{v + ' '}</span>)}</span>
+        {fixed ? <span className="wh-reg-names">{names.map((x) => <span key={x}>{x}</span>)}</span> : null}
+      </span>
+    </>
   );
 }
 
@@ -138,7 +132,7 @@ function Pill({ ref, href, press, text, name, names, dot, hero, hatch, lands: la
     <>
       {hatch ? <span className="wh-hatch" aria-hidden="true"><span>{hatch}</span></span> : null}
       <span className="en-lens" data-dot="" data-lat={dot.lat} data-lon={dot.lon} aria-hidden="true" />
-      <span className="en-reg-t">{lands ? <><VerbSlot verb={text.slice(0, -name.length).trimEnd()} /><NameSlot name={name} names={names} fixed={fixed} /></> : text}</span>
+      <span className={lands ? 'en-reg-t wh-reg-words' : 'en-reg-t'}>{lands ? <Words verb={text.slice(0, -name.length).trimEnd()} name={name} names={names} fixed={fixed} /> : text}</span>
     </>
   );
   const cls = 'en-reg wh-reg', data = { 'data-lands': lands ? '' : undefined, 'data-hand': hero.hand };
