@@ -759,7 +759,8 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
       /* in a page the vertical wheel scrolls the page; a sideways move turns the wheel (and, if asked, the vertical
          wheel over the globe) */
       if (Math.abs(ev.deltaX) > Math.abs(ev.deltaY)) wheelSum += ev.deltaX * line;
-      else if (flow.wheelOverGlobe && overGlobe(ev.clientX, ev.clientY)) { ev.preventDefault(); wheelSum += ev.deltaY * line; }
+      /* over a name (or over the globe, if asked) the vertical wheel turns the wheel. Elsewhere it scrolls the page */
+      else if (slotAt(ev.clientX, ev.clientY) !== null || (flow.wheelOverGlobe && overGlobe(ev.clientX, ev.clientY))) { ev.preventDefault(); wheelSum += ev.deltaY * line; }
       else return;
       const steps = Math.trunc(wheelSum / cfg.wheelPx); wheelSum -= steps * cfg.wheelPx; target += steps;
       if (steps) start(true);
@@ -839,7 +840,7 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
   /* in a page, audio is set up only while the wheel may be heard (setting it up costs a long frame on the first press) */
   const unlockSound = () => { if (!flow || cfg.sound) unlock(); };
 
-  pin.addEventListener('wheel', onWheel, { passive: !flow?.wheelOverGlobe });
+  pin.addEventListener('wheel', onWheel, { passive: !flow });
   /* fixed glass with a docked globe that turns with the scroll: a scroll wakes the loop while the wheel is off screen
      (it reads nothing here; the loop reads the scroll in its own frame) */
   const onScroll = () => { if (!running) start(true); };
