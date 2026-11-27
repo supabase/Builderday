@@ -10,6 +10,9 @@ export function setVolume(v: number) { level = Math.max(0, v); }
 
 export function unlock() {
   if (!context) {
+    /* an iPhone set to silent mutes a page's audio unless its session is for playback (Safari 16.4 and later; other
+       browsers have no such session and skip this) */
+    try { const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession; if (session) session.type = 'playback'; } catch {}
     try { context = new AudioContext(); } catch { return; }
     noise = context.createBuffer(1, Math.round(context.sampleRate * 0.05), context.sampleRate);
     const data = noise.getChannelData(0);
