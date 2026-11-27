@@ -1,6 +1,6 @@
 /* The hero ticket's launch: pressing Register folds the ticket into a paper rocket that flies to its city on the text
    globe, lands on the city's mark, and then Luma opens. launch.ts plays it, use-launch.ts wires it to the ticket's
-   link. Tuned at /lab/launch, saved in saved/launch.config.json. */
+   link. Saved in saved/launch.config.json. */
 
 import saved from '@/saved/launch.config.json';
 

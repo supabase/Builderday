@@ -17,7 +17,6 @@ import { CODE } from '@/lib/places';
 import type { CityLive } from './types';
 
 export type Content = 'seeded' | 'none' | 'many' | 'long' | 'tie';
-export const CONTENTS: [Content, string][] = [['seeded', 'Seeded'], ['none', 'No entries'], ['many', '182 entries'], ['long', 'A long name'], ['tie', 'A tie at 3rd']];
 
 export type Phase = 'before' | 'build' | 'vote' | 'done';
 export type Ranked = { p: Project; v: number; j: number; place: number; was: number | null; tie: boolean; r: Entry };

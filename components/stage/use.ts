@@ -24,8 +24,7 @@ export function useSecond(d: StageDriver, first: number): number {
   return t;
 }
 
-const subReduce = (fn: () => void) => { const m = window.matchMedia('(prefers-reduced-motion: reduce)'); m.addEventListener('change', fn); return () => m.removeEventListener('change', fn); };
-export const useReduced = () => useSyncExternalStore(subReduce, () => window.matchMedia('(prefers-reduced-motion: reduce)').matches, () => false);
+export { useReduced } from '@/components/shared/motion';
 
 /* The step the scene on the wall arrived at. A scene change is a cut: whatever the wall shows when it arrives is
    simply there; a step that a press adds after that is fresh, so it lands and its line draws (fresh(i) is i > base).

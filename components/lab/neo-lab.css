@@ -1,9 +1,0 @@
-/* the city prize lab: the picture large on the site's ground, then at two real widths */
-.nl { min-height: 100vh; padding: 32px 20px 64px; background: #0d0e0e; color: #e8e8e6; font-family: var(--font-geist), sans-serif; max-width: 1180px; }
-.nl-h { margin: 0; font-size: 20px; font-weight: 500; }
-.nl-p { margin: 6px 0 20px; color: #8a8b8a; font-size: 14px; }
-.nl-big { width: min(100%, 1100px); cursor: pointer; border: 1px solid #222424; }
-.nl-sizes { display: flex; flex-wrap: wrap; gap: 32px; margin-top: 32px; }
-.nl-sizes figure { margin: 0; }
-.nl-sizes figcaption { margin-bottom: 8px; color: #8a8b8a; font: 400 12px/1 var(--font-geist-mono), monospace; }
-.nl-sizes figure > div { border: 1px solid #222424; max-width: calc(100vw - 40px); }

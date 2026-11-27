@@ -62,7 +62,7 @@ const short = (name: string) => name.replace(/[^A-Za-z0-9]/g, '').slice(0, 3).to
 
 type Act = { words: string; short: string; href?: string; press?: () => void };
 type Ctx = {
-  W: CityWorld; W10: CityWorld; H: HomeWorld; day: Day; clock: DayClock; first: number; bm: number; real: boolean;
+  W: CityWorld; W10: CityWorld; H: HomeWorld; day: Day; clock: DayClock; first: number; bm: number;
   vote: (id: number) => void; show: (r: Row) => void; open: Row | null; close: () => void;
   remind: () => void; reminded: boolean; submit?: () => void;
   pick: { id: number; name: string; place: number } | null; elsewhere: { name: string; city: string } | null;

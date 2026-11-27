@@ -2,6 +2,7 @@
 import { useState, type ReactNode } from 'react';
 import { EVENT } from '@/lib/day-data';
 import { CODE } from '@/lib/places';
+import { ordinal } from '@/lib/forms';
 import { TO_VOTE } from '@/lib/stage/deck';
 import { placeTime } from '@/lib/stage/rows';
 import { BOARD_VIEWS, type BoardView, type CityLive } from '@/lib/stage/types';
@@ -23,7 +24,7 @@ import { useWall } from './use';
 const LABEL = Object.fromEntries(BOARD_VIEWS) as Record<BoardView, string>;
 const mod = (a: number, n: number) => ((a % n) + n) % n;
 /* the hatch, n characters of it, on row r of a fixed grid */
-export const hatch = (n: number, r = 0, from = 0) => Array.from({ length: Math.max(0, n) }, (_, i) => ((from + i + r) % 3 === 0 ? '|' : ':')).join('');
+const hatch = (n: number, r = 0, from = 0) => Array.from({ length: Math.max(0, n) }, (_, i) => ((from + i + r) % 3 === 0 ? '|' : ':')).join('');
 const pace = (every: number) => (every < 1.5 ? 'About one a minute' : 'One every ' + Math.round(every) + ' minutes');
 const minsWord = (m: number) => (m < 1 ? 'under a minute' : Math.round(m) === 1 ? 'a minute' : Math.round(m) + ' minutes');
 
@@ -254,7 +255,6 @@ function Moments({ w, all, city }: { w: World; all: World; city: CityLive }) {
     </ol>
   );
 }
-const ordinal = (n: number) => n + (n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th');
 
 /* the cities: this one first, lit; the others by what they are doing; a city that has its top 3 shows its first */
 const STATE: Record<string, string> = { build: 'Building', vote: 'Voting', done: 'Top 3 set' };

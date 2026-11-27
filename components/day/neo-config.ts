@@ -1,5 +1,5 @@
-/* The city prize drawing's config (neo.tsx): its modes, defaults, bounds and clamp. Saved in saved/neo.config.json,
-   tuned at /lab/neo. Kept out of the client file so a server page can read and clamp it. */
+/* The city prize drawing's config (neo.tsx): its modes, defaults, bounds and clamp. Saved in saved/neo.config.json.
+   Kept out of the client file so a server page can read and clamp it. */
 
 export type NeoMode = 'stack' | 'ajar' | 'screen' | 'row';
 export type NeoLook = {

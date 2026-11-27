@@ -33,7 +33,7 @@ export default async function Page({ params }: P) {
   const host = h.get('x-forwarded-host') || h.get('host') || 'localhost:4320', proto = h.get('x-forwarded-proto') || (host.startsWith('localhost') ? 'http' : 'https');
   const cfg = clampStage(saved as Partial<StageCfg>), first = serverNow();
   const who = await stageRights(city);
-  const [stage, event] = await Promise.all([loadStage(city, { hidden: false, code: who.drive }), wallEventFor(city)]);
+  const [stage, event] = await Promise.all([loadStage(city, { hidden: false }), wallEventFor(city)]);
   /* the address on the wall's QR: the city page, which only Builder Day has. Another event's places have no page to
      sign in and submit on yet, so their wall shows no QR (builders submit from their editor once a host checks them in). */
   /* the site's own address when it is set (behind supabase.com the request's host is the Vercel one), else this request's */

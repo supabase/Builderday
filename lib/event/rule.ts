@@ -5,16 +5,12 @@
 
 export const HOW_TO_SUBMIT = 'To submit, sign in with your Supabase account, be on your city’s list from Luma, and get checked in by a host at the door.';
 
-/* the same steps, for one city */
-export const howIn = (city: string) => 'To submit, sign in with your Supabase account, be on the list for ' + city + ' from Luma, and get checked in by a host at the door.';
-
 /* refusals */
 export const notListed = (city: string) => 'You are not on the list for ' + city + ', so you can vote but not submit. Registered on Luma with another email? Add it in your account. Otherwise ask a host at the door.';
 export const notListedAnywhere = 'You are not on a city’s list, so you can vote but not submit. Registered on Luma with another email? Add it in your account. Otherwise ask a host at the door.';
 export const notInRoom = (city: string) => 'You are on the list for ' + city + '. To submit, ask a host at the door to check you in.';
 
 /* for someone already on a list (the line under their city's header, the account sheet) */
-export const ON_LIST_NEXT = 'On the day, a host checks you in at the door. Then you can submit.';
 export const IN_ROOM_NEXT = 'Checked in: you can submit.';
 /* the submit sheet when the person is not checked in yet */
 export const checkInStep = (city: string) => 'You are on the list for ' + city + '. A host at the door checks you in, then Submit opens here.';

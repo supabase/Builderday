@@ -1,5 +1,5 @@
 // still.mjs <url> <out.png> <waitMs> [js-after-wait] [extraWaitMs] [clip x,y,w,h]
-import { spawn } from 'node:child_process'; import { writeFileSync, mkdirSync } from 'node:fs';
+import { spawn } from 'node:child_process'; import { writeFileSync } from 'node:fs';
 const [url, out, wait = '8000', js = '', extra = '900', clip = ''] = process.argv.slice(2);
 const port = +(process.env.PORT_BASE||9800) + Math.floor(Math.random() * 60), prof = out + '.profile';
 const chrome = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', ['--headless=new', `--remote-debugging-port=${port}`, `--window-size=${process.env.W||1440},${process.env.H||900}`, '--hide-scrollbars', '--no-first-run', `--user-data-dir=${prof}`, 'about:blank'], { stdio: 'ignore' });

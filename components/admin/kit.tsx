@@ -39,26 +39,6 @@ export function useLabSave(name: string, storeKey: string) {
   return { save, msg, rail };
 }
 
-/* the share of the viewport painted green ([data-g] marks every green thing); the budget is 5% */
-export function greenShare(page: Element | null, weigh: (e: Element, r: DOMRect) => number): number {
-  if (!page) return 0;
-  const vw = window.innerWidth, vh = window.innerHeight; let sum = 0;
-  page.querySelectorAll('[data-g]').forEach((e) => {
-    const r = e.getBoundingClientRect(), w = Math.max(0, Math.min(vw, r.right) - Math.max(0, r.left)), h = Math.max(0, Math.min(vh, r.bottom) - Math.max(0, r.top));
-    sum += w * h * weigh(e, r);
-  });
-  return sum / (vw * vh) * 100;
-}
-export function meterText(g: number): string { return 'Green: ' + g.toFixed(1) + '% of the viewport' + (g >= 5 ? ' (over budget)' : ''); }
-
-/* the arrival again: forget that this session has seen it and play it once more (it runs on <html>, as on load) */
-export function replayArrival(key: string, speed: number, reduced: boolean) {
-  try { sessionStorage.removeItem(key); } catch { /* storage blocked */ }
-  if (reduced || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const h = document.documentElement; h.classList.remove('arrive'); void h.offsetWidth; h.classList.add('arrive');
-  try { sessionStorage.setItem(key, '1'); } catch { /* storage blocked */ }
-  window.setTimeout(() => h.classList.remove('arrive'), 1400 / speed);
-}
 export function togglePanel() {
   const open = !document.documentElement.classList.toggle('lab-closed');
   document.querySelector('.lab-toggle')?.setAttribute('aria-expanded', String(open));

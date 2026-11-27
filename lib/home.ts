@@ -1,6 +1,6 @@
 /* home.ts: the home's model. world(cfg) is a pure function of the config and one UTC minute: the seed decides every
    city's entries, votes and winner (day-data.ts, shared with the city page), the minute decides the moment, and the
-   config decides the look. The config is saved/day.config.json; the tuning page (/lab/day) writes it.
+   config decides the look. The config is saved/day.config.json; the tuning page writes it.
 
    Rules: cities east to west, always; one green now line; every city is one fixed row and text never reflows;
    unchanged cells do not move; heavier weight means live; green only for now, the leader or winner, you, the main
@@ -82,8 +82,7 @@ export function world(c: HomeCfg): HomeWorld {
 
 /* ---------------- links (they carry the preview parameters) ---------------- */
 /* what a link to the other pages carries: the moment (as that page's t), the seed and the ground, if this page was given them */
-/* lab: the tuning page links to the city's tuning page, with its own clock (ht) */
-export type Carry = { preview: boolean; still: boolean; seed?: string | null; ground?: string | null; lab?: { panel: boolean } };
+export type Carry = { preview: boolean; still: boolean; seed?: string | null; ground?: string | null };
 export function carryQuery(carry: Carry, t: number | null): string {
   let u = '';
   if ((carry.preview || carry.still) && t != null) u += '&t=' + t.toFixed(5);
@@ -93,13 +92,6 @@ export function carryQuery(carry: Carry, t: number | null): string {
   return u ? '?' + u.slice(1) : '';
 }
 export function cityHref(x: { id: string; start: number }, c: HomeCfg, W: HomeWorld, carry: Carry): string {
-  if (carry.lab) {
-    let u = '/lab/city?city=' + x.id + '&ht=' + (c.now != null ? tOf(c.now, W.S) : +c.t).toFixed(4);
-    if (c.seed !== DEF.seed) u += '&seed=' + c.seed;
-    if (carry.ground && carry.ground !== 'night') u += '&ground=' + carry.ground;
-    if (!carry.lab.panel) u += '&panel=0';
-    return u;
-  }
   const w0 = x.start - 60, w1 = W.S.pickAt + 30;
   return '/city/' + x.id + carryQuery(carry, (W.now - w0) / (w1 - w0));
 }

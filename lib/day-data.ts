@@ -10,7 +10,7 @@
    gets its full list of entries on top, with arrival times and a vote history. Projects 1-20 come from data.ts; the
    rest of each city's entries are generated here from the seed. Judge votes and the pick's place come from their own
    generators, after everything else, so adding them changed no count and no winner. Pure: no window, no DOM. */
-import { PAST, SAMPLE_PROJECTS, type PastEvent, type Project } from './data';
+import { SAMPLE_PROJECTS, type Project } from './data';
 
 export type City = { i: number; id: string; name: string; offset: number; rise: number; set: number; start: number };
 
@@ -43,13 +43,6 @@ const byCount = [...tally.entries()].sort((a, b) => b[1].length - a[1].length ||
 /* local minutes of the start most cities share */
 export const USUAL_START = byCount[0][0];
 export const cityStartLocal = (c: { start: number }) => hm2(c.start);
-const and = (a: string[]) => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
-/* "Most cities start at 18:00 local time; Peshawar and Nouakchott at 11:30, Manta at 10:00 and San Salvador at 16:00." */
-export function startsSentence(): string {
-  if (byCount.length === 1) return 'Every city starts at ' + hm2(USUAL_START) + ' local time.';
-  const rest = byCount.slice(1).map(([m, cs]) => and(cs.map((c) => c.name)) + ' at ' + hm2(m));
-  return 'Most cities start at ' + hm2(USUAL_START) + ' local time; ' + and(rest) + '.';
-}
 /* how many cities, as words for the copy ("Fourteen cities") */
 const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'];
 export const CITY_COUNT = CITIES.length;
@@ -87,9 +80,6 @@ export const EVENT = {
 export const FINALIST_COUNT = EVENT.finalists * CITIES.length;
 /* minute 0 of the model: Dec 10, 00:00 UTC */
 export const EPOCH = Date.UTC(EVENT.year, EVENT.month - 1, EVENT.day);
-
-/* Past rows come from PAST only. Winners of past hackathons are not in the repo, so none are shown. */
-export function pastEvents(): PastEvent[] { return PAST; }
 
 /* ---------------- the schedule ---------------- */
 /* luma: each city at its own Luma start, local; sun: every city at startHour local; same: every city at startHour UTC.
@@ -354,6 +344,8 @@ export type CityState = {
   /* the top 3 now: the contenders while live, the finalists once voting has closed; empty before the city starts */
   top: Top[];
 };
+/* the day as a short date ("Thu 10 Dec"), for the sheets' pictures */
+export const DAY_SHORT = new Date(Date.UTC(EVENT.year, EVENT.month - 1, EVENT.day)).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
 /* one city's state at UTC minute now: the same fields the home row reads. 'build': entries arriving and voting open;
    'vote': building closed, the last minutes of voting. f is the fraction through the current phase (for the bars). */
 export function cityState(x: CitySched, sd: SeedCity, now: number): CityState {

@@ -25,5 +25,6 @@
   "widthMs": 220,
   "perf": 6,
   "notch": 10,
+  "paper": 0.35,
   "seed": 4217
 }

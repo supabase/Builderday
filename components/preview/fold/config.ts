@@ -1,5 +1,5 @@
 /* The preview page without its sheet: the wheel as the first screen, the day under the fold. Every taste value of
-   the page is here, tuned at /lab/fold and saved in saved/fold.config.json, which /preview reads. The motion values
+   the page is here and saved in saved/fold.config.json, which /preview reads. The motion values
    (the *Ms knobs and the curves) are kept here until the motion config can take them. Pure. */
 
 export const ARRIVALS = ['tune', 'scan', 'flap', 'print', 'mask', 'register', 'dial', 'east', 'quiet', 'sweep'] as const;
@@ -17,7 +17,7 @@ export type FoldCfg = {
   /* the prizes: the amount block with its globes (block), the podium of photos (podium), or the names in big type (type) */
   prizes: 'block' | 'podium' | 'type';
   order: 'prize-first' | 'cities-first' | 'how-first'; words: 'lede' | 'none'; arrive: 'tube' | 'none';
-  /* the first screen's arrival, one of ten (numbered in /lab/arrive, where the owner picks), or none. Every one paints
+  /* the first screen's arrival, one of ten, or none. Every one paints
      the final ground first and never holds the words; see ARRIVALS. `back`: reached with the browser's Back or Forward, it plays quiet. */
   arrival: Arrival; back: 'quiet' | 'same';
   /* the black bar of facts under the wheel (date, cities, build), or none */
@@ -77,7 +77,7 @@ export type FoldCfg = {
      printing, or the chat in an editor); what joins the top 3 to your city's column (straight hairlines, one bus that
      merges and splits, the filled ribbons, or none); the city prizes on the top 3 at the close; the hatch at minute 60
      (lifts so the whole chart shows, or stays over the hidden stretch); Build as the two ways to submit (ways,
-     ways.tsx, tuned at /lab/ways), blocks going up (blocks, /lab/build), a terminal session on the clock (term), a receipt or a chat */
+     ways.tsx), blocks going up (blocks), a terminal session on the clock (term), a receipt or a chat */
   howBuild: 'ways' | 'blocks' | 'term' | 'receipt' | 'chat'; howLink: 'lines' | 'bus' | 'ribbon' | 'none'; howPrize: 'tags' | 'none'; howHatch: 'lift' | 'stay';
   /* the final's city columns: how wide each is, and how long the fade at the right edge is */
   howColW: number; howFade: number; howStep: number;

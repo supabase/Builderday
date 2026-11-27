@@ -37,10 +37,6 @@ export type DaySnap = { at: number; stale?: boolean; cities: CitySnap[]; pick: {
 /* the ranking rule: most votes, then the host's order in a tie, then who reached that count first, then who arrived
    first */
 export function rankOrder(a: SnapEntry, b: SnapEntry): number { return b.votes - a.votes || tieOrder(a.tie, b.tie) || a.reached - b.reached || a.created - b.created; }
-/* when voting opens in the city (ms), for everyone; null before the clock starts */
-export function publicFrom(c: SnapCity): number | null { return c.buildStart == null ? null : c.buildStart + (c.publicAt ?? 0) * 60000; }
-/* when judges may vote (ms); null before the clock starts */
-export function judgeFrom(c: SnapCity): number | null { return c.buildStart == null ? null : c.buildStart + (c.judgeAt ?? c.publicAt ?? 0) * 60000; }
 
 /* the phase at a moment, from the live times (planned times before the clock starts are never a phase) */
 export function phaseAt(c: SnapCity, ms: number): 'next' | 'build' | 'vote' | 'done' {

@@ -1,5 +1,5 @@
 /* Build in How Builder Day works, drawn as the two ways to submit (ways.tsx): its modes, defaults, bounds and clamp.
-   Saved in saved/ways.config.json, tuned at /lab/ways. Kept out of the client file so a server page can read it.
+   Saved in saved/ways.config.json. Kept out of the client file so a server page can read it.
 
    Rules (never knobs): one window, the toggle swaps what is in it and nothing around it moves; both ways send the same
    two things (the GitHub repo and the preview link) and run the same three checks (a public repo, a real project verified

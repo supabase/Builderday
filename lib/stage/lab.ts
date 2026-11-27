@@ -1,10 +1,9 @@
-/* The lab's moments: each sets the city's live times around a given instant and puts one scene on the wall, so every
-   scene can be tried at the moment it is meant for, and a still can be taken there (`?m=` on /lab/stage). Times are
+/* The stage's moments: each sets the city's live times around a given instant and puts one scene on the wall, so every
+   scene can be tried at the moment it is meant for, and a still can be taken there (`?m=` on the stage page). Times are
    laid around `now`, so a held clock gives the same picture every time. Pure. */
 
 import { CITIES, CITY_IDS } from '@/lib/day-data';
-import { deadlineAt } from './act';
-import type { CityLive, SceneKind, SceneRow, StageRow } from './types';
+import type { CityLive, SceneKind, StageRow } from './types';
 
 export type Moment = { id: string; label: string; kind: SceneKind; step: number; set: (now: number, c: CityLive) => Partial<CityLive>; deadline?: boolean };
 const M = 60000;
@@ -37,12 +36,5 @@ export function labCity(id: string, now: number): CityLive {
 }
 export const labRow = (city: string, scene: string, step = 0): StageRow => ({ city, scene, step, timer: {}, chart_on: false, blank: false, updated_at: 0, updated_by: null });
 
-/* a moment's row and city: the scene of its kind (shown even if hidden, as the tombola is), the times around now */
-export function atMoment(m: Moment, deck: SceneRow[], city: CityLive, now: number): { deck: SceneRow[]; row: StageRow; city: CityLive } {
-  const d = deck.map((s) => (s.kind === m.kind ? { ...s, hidden: false } : s)), s = d.find((x) => x.kind === m.kind) ?? d[0];
-  const c = { ...city, ...m.set(now, city) }, row = labRow(city.id, s.id, m.step);
-  if (m.deadline) row.timer = { deadline: deadlineAt(now - 4 * M, c.build_min) };
-  return { deck: d, row, city: c };
-}
 /* the server's time when a page is asked for (the wall's first second, so the server and the browser agree) */
 export const serverNow = () => Date.now();

@@ -1,6 +1,6 @@
 /* mail.ts: the four emails, as words. Plain sentences, one link each, the city and its local time in the subject.
-   Pure, so the desk's outbox and the lab can show exactly what was (or would have been) sent. The words become a
-   letter here; lib/email/layout.ts sets the letter in the saved look (saved/email.config.json, tuned at /lab/email).
+   Pure, so the desk's outbox can show exactly what was (or would have been) sent. The words become a
+   letter here; lib/email/layout.ts sets the letter in the saved look (saved/email.config.json).
 
    code      your six-digit code, with a link that does the same (only while the email sign-in switch is on)
    role      you are a host or a judge, with the desk link
@@ -14,7 +14,7 @@ import { clampEmail, type EmailLook } from '@/lib/email/look';
 import saved from '@/saved/email.config.json';
 
 export type Template = 'code' | 'role' | 'reminder' | 'claim';
-export const TEMPLATES: Template[] = ['claim', 'role', 'reminder', 'code'];
+
 export type MailData = {
   city?: string;          /* the city's name */
   when?: string;          /* the start in the city's own time, "09:00 on 10 December" */

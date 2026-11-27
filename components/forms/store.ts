@@ -109,7 +109,6 @@ const standIn = {
   reset() { const drop: string[] = []; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.indexOf(PREFIX) === 0) drop.push(k); } drop.forEach((k) => localStorage.removeItem(k)); } catch { /* storage blocked */ } },
 };
 
-
 /* ---------------- live: the site's routes ---------------- */
 let me: Me | null = null, loaded = false, loading: Promise<void> | null = null;
 async function call<T>(path: string, method: string, data?: unknown): Promise<Result<T>> {
@@ -199,7 +198,7 @@ const live = {
       call('/api/vote', 'POST', { city, entry: n, on }).then((r) => {
         if (r.ok || !me) return;
         const now = new Set(me.votes[city] || []); if (on) now.delete(n); else now.add(n);
-        me = { ...me, votes: { ...me.votes, [city]: Array.from(now) } }; lastError = r.error; emit();
+        me = { ...me, votes: { ...me.votes, [city]: Array.from(now) } }; emit();
       });
     });
   },
@@ -210,7 +209,7 @@ const live = {
     const before = j.per, keys = new Set(Object.keys(before).concat(Object.keys(v)));
     keys.forEach((k) => {
       const d = (v[k] || 0) - (before[k] || 0); if (!d) return;
-      call<{ used: number }>('/api/judge', 'POST', { city, entry: Number(k), delta: d }).then((r) => { if (!r.ok) lastError = r.error; loadMe(); });
+      call<{ used: number }>('/api/judge', 'POST', { city, entry: Number(k), delta: d }).then(() => loadMe());
     });
     me = { ...me, judging: { ...me.judging, [city]: { ...j, per: { ...v }, used: j.used + Object.values(v).reduce((a, n) => a + n, 0) - Object.values(before).reduce((a, n) => a + n, 0) } } }; emit();
   },
@@ -221,9 +220,6 @@ const live = {
   reset() { live.signOut(); },
 };
 const RESEND = 30;
-/* the last refusal from a vote or a judge's press, for the page to say */
-let lastError = '';
-export function takeError(): string { const e = lastError; lastError = ''; return e; }
 
 type Driver = typeof standIn & Partial<Pick<typeof live, 'deleteEntry' | 'claim' | 'claimVerify'>>;
 let driver: Driver = standIn;
@@ -318,6 +314,4 @@ function votesSnapshot(key: string) { let v = voteCache.get(key); if (!v) { v = 
 export function useVotes(key: string): Readonly<Record<string, 1>> { return useSyncExternalStore(subscribe, () => votesSnapshot(key), () => NO_VOTES); }
 /* a judge's votes for one city and seed; none on the server and in the first render */
 const judgedCache = new Map<string, Readonly<Record<string, number>>>();
-const NO_JUDGED: Readonly<Record<string, number>> = Object.freeze({});
-function judgedSnapshot(key: string) { let v = judgedCache.get(key); if (!v) { v = Object.freeze(store.judged(key)); judgedCache.set(key, v); } return v; }
-export function useJudged(key: string, on: boolean): Readonly<Record<string, number>> { return useSyncExternalStore(subscribe, () => (on ? judgedSnapshot(key) : NO_JUDGED), () => NO_JUDGED); }
+

@@ -8,7 +8,7 @@ import { EVENT as EV, all, hiddenAt, inAt, leader, top3, votesAtMin, type CitySc
 import { fmtN } from '@/lib/format';
 import type { WireEvent, WireKind } from '@/lib/wire';
 import { hhmm } from '@/lib/format';
-import { CODE, PLACE, cityPage } from '@/lib/places';
+import { CODE, PLACE } from '@/lib/places';
 import type { StateWord } from '@/components/screen/chip';
 import type { Item } from './announce';
 import type { GlobeLight } from './day-globe';
@@ -22,9 +22,6 @@ export function homeAt(d: Day, minute: number): HomeWorld {
 export function cityAt(d: Day, id: string, minute: number, voted: Votes = {}, extra?: Partial<CityCfg>): CityWorld {
   return cityWorld({ ...CITY_DEF, ...extra, ...d, city: id, now: minute } as CityCfg, voted);
 }
-
-/* the last minutes of voting: the wheel's "last" rule, a tenth of the vote time and at least three minutes */
-export function lastMinutes(d: Day): number { return Math.max(3, Math.round(d.voteAfter * 0.1)); }
 
 /* a city's state as one of the six words. Entries close, votes run on: the six words have no other word for the time
    between, so "Last votes" is that whole stretch (the plan's words, read so there is no gap) */
@@ -115,4 +112,4 @@ export function focusCity(W: HomeWorld): HomeCity {
     || W.cs[W.final.city.i];
 }
 
-export { CODE, PLACE, cityPage, EVENT };
+export { CODE, PLACE, EVENT };

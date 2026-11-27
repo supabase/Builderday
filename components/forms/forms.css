@@ -138,7 +138,7 @@
 .ev-you-out:focus-visible, .ev-you-a:focus-visible { outline: 2px solid var(--bd-ink, #f4f4f2); outline-offset: 2px; }
 @media (hover: hover) and (pointer: fine) { .ev-you-out:hover, .ev-you-a:hover { text-decoration-thickness: 2px; } }
 
-/* ---------------- the sheet's picture (sheet-art.tsx, art.ts; tuned at /lab/sheet) ----------------
+/* ---------------- the sheet's picture (sheet-art.tsx, art.ts) ----------------
    masthead: a band across the top with the word in characters and the globe; pass: the same band as a ticket's stub,
    with a notch in each side and a perforation under it; split: a column beside the form (a band on a phone). With a
    picture the small label gives way and the close key sits over the band's corner. */

@@ -4,7 +4,7 @@ import { applyScreen, type ScreenHandle } from './apply';
 import { mountGlobes } from './globe';
 import type { ScreenCfg } from './config';
 
-/* The screen kit as parts a page can use. No real page uses them yet: the owner picks a depth in /lab/screen first.
+/* The screen kit as parts a page can use.
    - <Screen cfg> turns the kit on for its page (the lines, the grain, the corners, big type under the lines).
    - <Globe size lat lon> is a glass globe with a city's light: hub, lens (64px) or dot (24px). <Globes /> once per
      page draws all of them with one canvas.

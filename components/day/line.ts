@@ -16,7 +16,7 @@
      most once a beat (700 ms or more);
    - green is you: your city, your row, your cell, and at the end the pick, which is the same project. Blue is only the
      newest arrival and fades to white. Everything else is white.
-   Drawn in the 320 x 180 space; every number with a taste in it is a knob in /lab/explain. */
+   Drawn in the 320 x 180 space; every number with a taste in it is a knob in saved/explain.config.json. */
 
 import { LAND_DOTS } from './land-dots';
 import motionSaved from '@/saved/motion.config.json';
@@ -723,7 +723,5 @@ export function fit(s: string, n: number) {
   return c.replace(/[\s·,:;&-]+$/, '') + '…';
 }
 
-/* the moments a still of each act shows (its rest), and the share of the loop each act starts at, for the clock */
-export function lineStills(S: Score) { return S.stills.map((s) => s / S.loop); }
 /* what the line direction sets on top of a saved config when it is tried from the command line */
 export const lineDefaults: Partial<ScopeCfg> = { dir: 'line' };

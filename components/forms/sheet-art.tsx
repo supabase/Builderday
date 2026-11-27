@@ -12,8 +12,7 @@ import { paintArt, planArt, type ArtAssets, type ArtPlan } from './art';
 const SAVED = clampArt(saved as Partial<ArtLook>);
 /* the subjects already printed in this visit */
 const PRINTED = new Set<string>();
-/* the lab's Print again: every picture prints anew */
-export function forgetPrints() { PRINTED.clear(); }
+
 const ArtLookContext = createContext<ArtLook>(SAVED);
 export const ArtLookProvider = ArtLookContext.Provider;
 export function useArtLook(): ArtLook { return useContext(ArtLookContext); }

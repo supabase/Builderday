@@ -49,7 +49,7 @@ const NO_FOOT: SceneKind[] = ['welcome', 'doors', 'needs', 'submit', 'building',
 /* the scene for a kind, in the cover's look when the direction has it */
 function SceneOf({ kind, cover, ...p }: SceneProps & LiveProps & { kind: SceneKind; cover: boolean }) {
   const C = (cover && COVER[kind]) || SCENES[kind];
-  return C(p);
+  return <C {...p} />;
 }
 
 export type WallProps = {

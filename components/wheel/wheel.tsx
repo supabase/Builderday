@@ -50,7 +50,7 @@ export function StatusIcon({ status }: { status: WheelStatus }) {
   );
 }
 
-/* the hero as saved (tuned at /lab/hero) */
+/* the hero as saved */
 export const HERO = clampHero(heroSaved as Partial<HeroCfg>);
 
 /* the box's words: the verb follows the state, and they always end with the city's name, so the name can be the wheel's.
@@ -148,7 +148,7 @@ export function heroVars(h: HeroCfg): CSSProperties {
   /* the sizes are shares of the name size (--wh-f, which the engine sets from the wheel and the room); min and pull are
      read by the engine */
   return { '--hero-title-k': h.titleK, '--hero-body-k': h.bodyK, '--hero-cell-k': h.cellK, '--hero-stub-k': h.stubK, '--hero-gap-k': h.gapK, '--hero-lift-k': h.liftK,
-    '--hero-min': h.min, '--hero-grow': h.grow, '--hero-tall': h.tall, '--hero-perf': h.perf + 'px', '--hero-stub-phone': h.stubPhone + 'px', '--hero-name-phone': h.namePhone + 'px', '--hero-notch': h.notch + 'px' } as CSSProperties;
+    '--hero-min': h.min, '--hero-grow': h.grow, '--hero-tall': h.tall, '--hero-perf': h.perf + 'px', '--hero-stub-phone': h.stubPhone + 'px', '--hero-name-phone': h.namePhone + 'px', '--hero-notch': h.notch + 'px', '--hero-paper': h.paper } as CSSProperties;
 }
 
 /* A cell as a block that turns on its long axis when `k` changes, like a drum of cards: the face that was there rolls

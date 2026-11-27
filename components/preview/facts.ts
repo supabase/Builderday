@@ -16,6 +16,8 @@ const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 export { PLACE };
 
 export type OurFact = WheelFact & { offset: number; opens: number; buildEnds: number; closes: number };
+/* what the preview page reads of it, so the server sends no more than that to the browser */
+export type OurFacts = Pick<OurWheel, 'cities' | 'date' | 'buildMin' | 'regOpen'>;
 export type OurWheel = { cities: OurFact[]; regOpen: boolean; date: string; dateShort: string; nearest: number; buildMin: number; voteAfter: number; startHour: number; pickAt: string; how: [string, string][]; format: [string, string][] };
 
 /* live: each city's people and state from the backend (lib/server/signups.ts); without it, seeded stand-ins (the labs) */
@@ -85,10 +87,13 @@ const ZONE_CITY: [RegExp, string][] = [
   [/^America\/El_Salvador$/, 'san-salvador'], [/^America\/Mexico_City$/, 'mexico-city'], [/^America\/Chicago$/, 'austin'],
   [/^America\/Argentina\//, 'rosario'], [/^America\/Santiago$/, 'santiago'], [/^Europe\//, 'london'], [/^Africa\//, 'nouakchott'],
 ];
+/* the browser's zone does not change during a visit, so it is read once */
+let zoneHit: string | null | undefined;
 function zoneCity(): string | null {
+  if (zoneHit !== undefined) return zoneHit;
   let z = '';
-  try { z = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { return null; }
-  return ZONE_CITY.find(([re]) => re.test(z))?.[1] ?? null;
+  try { z = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { return (zoneHit = null); }
+  return (zoneHit = ZONE_CITY.find(([re]) => re.test(z))?.[1] ?? null);
 }
 export function nearestCity(cities: { id?: string; offset: number; lat?: number; lon?: number }[], visitorOffset: number, here?: Here | null) {
   let best = 0;

@@ -27,9 +27,8 @@ export type DriveOut = { ok: true; row: StageRow; city: CityLive } | { ok: false
 
 /* the door's two counts: on the list, and checked in by a host (not readable by everyone). There is no room code any
    more (owner, 2026-11-25), so the wall shows the address and the QR alone. */
-async function facts(id: string, withCode: boolean): Promise<{ room_code: string | null; listed: number | null; here: number | null }> {
+async function facts(id: string): Promise<{ room_code: string | null; listed: number | null; here: number | null }> {
   const sb = admin();
-  void withCode;
   const [listed, here] = await Promise.all([
     sb.from('passes').select('id', { count: 'exact', head: true }).eq('city', id),
     sb.from('passes').select('id', { count: 'exact', head: true }).eq('city', id).not('checked_in_at', 'is', null),
@@ -61,14 +60,14 @@ export async function wallEventFor(id: string): Promise<WallEvent> {
 
 /* the place's deck, row and times, or null when the backend is off, unreachable, or has no stage for the place yet.
    Any place in the table has a stage (Builder Day's cities and the desk's own places alike). */
-export async function loadStage(id: string, o: { hidden: boolean; code: boolean }): Promise<StageStart | null> {
+export async function loadStage(id: string, o: { hidden: boolean }): Promise<StageStart | null> {
   if (!backendOn() || !/^[a-z0-9-]{1,80}$/.test(id)) return null;
   try {
     const sb = admin();
     let q = sb.from('scenes').select('id, city, position, kind, title, data, notes, hidden').eq('city', id).order('position');
     if (!o.hidden) q = q.eq('hidden', false);
     const [scenes, stage, city, f] = await Promise.all([
-      q, sb.from('stage').select('*').eq('city', id).maybeSingle(), sb.from('cities').select(CITY_COLS).eq('id', id).maybeSingle(), facts(id, o.code),
+      q, sb.from('stage').select('*').eq('city', id).maybeSingle(), sb.from('cities').select(CITY_COLS).eq('id', id).maybeSingle(), facts(id),
     ]);
     if (scenes.error || stage.error || city.error || !stage.data || !city.data) return null;
     return { deck: deckFrom(scenes.data), row: stageFrom(stage.data), city: cityFrom(city.data, f) };
@@ -92,7 +91,7 @@ export async function drive(id: string, a: StageAction, talkMin: number): Promis
   const who = await stageRights(id);
   if (!who.drive) return { ok: false, why: who.why };
   if (a.t === 'close' && !who.super) return { ok: false, why: 'Only a super admin can close voting early.' };
-  const s = await loadStage(id, { hidden: true, code: true });
+  const s = await loadStage(id, { hidden: true });
   if (!s) return { ok: false, why: 'The stage cannot be read right now. Try again.' };
   const now = Date.now(), r = act(s.deck, s.row, s.city, a, now, who.person, talkMin);
   if (!r) return { ok: false, why: 'Nothing to do here.' };

@@ -3,7 +3,7 @@ import { mulberry32 } from '@/lib/day-data';
 /* Build in How Builder Day works, drawn as blocks: the project goes up block by block on an empty dotted ground, the way
    the merch's stickers stack isometric cubes into the Builder Day mark, and it is drawn in the text globe's characters.
    Pure: rows of characters from (config, minute), the same on the server and in the browser, so the server's HTML is the
-   finished picture (minute 90) and a replay draws the same one. Tuned at /lab/build, saved in saved/build.config.json.
+   finished picture (minute 90) and a replay draws the same one. Saved in saved/build.config.json.
 
    Rules (never knobs):
    - one project, Gig map, from an empty folder at minute 0 to submitted; the steps are the receipt's (how-data.ts);

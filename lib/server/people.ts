@@ -2,7 +2,7 @@
    All through the service role; callers have already checked who may do what. */
 import { admin } from './supabase';
 import { makeKey, readKey } from './keys';
-import { siteUrl, superAdmins } from './env';
+import { superAdmins } from './env';
 import { EVENT } from '@/lib/day-data';
 import { eventOfCity } from './events';
 
@@ -108,7 +108,6 @@ export async function bootstrapSuper(p: Person): Promise<void> {
   await admin().from('log').insert({ who: p.id, what: 'super admin from SUPER_ADMINS' });
 }
 
-export const linkFor = (pass: Pick<Pass, 'id' | 'key_version'>, req?: Request) => siteUrl(req) + '/in/' + makeKey('in', pass.id, pass.key_version);
 /* the editor key has its own version, so replacing it (a key found in a repository, a host ending it) leaves the link */
 export const editorKeyFor = (pass: Pick<Pass, 'id' | 'editor_version'>) => makeKey('mcp', pass.id, pass.editor_version);
 

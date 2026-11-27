@@ -60,12 +60,10 @@ export function DotWord({ text, maxLines = 3, maxCell = 20, ms = 900, fresh = tr
       /* every cell in reading order: on (hatch) or grid */
       const cells: { x: number; y: number; ch: string; on: boolean }[] = [];
       ls.forEach((l, li) => {
-        /* every line starts at the left edge, as every scene's words do */
-        const off = 0;
         for (let r = 0; r < ROWS; r++) for (let k = 0; k < l.length; k++) {
           const g = glyph(l[k])[r];
           for (let d = 0; d < 5; d++) for (let h = 0; h < 2; h++) {
-            const col = off + k * COLS + d * 2 + h, row = li * (ROWS + GAP_ROWS) + r, on = g[d] === '1';
+            const col = k * COLS + d * 2 + h, row = li * (ROWS + GAP_ROWS) + r, on = g[d] === '1';
             cells.push({ x: col * cw, y: row * lh, ch: on ? ((col + row) % 3 === 0 ? ':' : '|') : (col % 2 === 0 && row % 2 === 0 ? '.' : ''), on });
           }
         }

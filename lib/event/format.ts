@@ -43,11 +43,6 @@ export const PRESETS: Preset[] = [
   { id: 'people', name: 'Votes only', line: 'Only the votes decide. Judges have no part.', f: { decide: 'votes', judging: 'budget', finalOn: false } },
   { id: 'apart', name: 'Judges, and a people’s choice', line: 'Judges score and pick the winner; the votes give a people’s choice on the side.', f: { decide: 'apart', judging: 'scores', finalOn: false } },
 ];
-export function presetOf(f: Format): string | null {
-  const p = PRESETS.find((x) => x.f.decide === f.decide && x.f.judging === f.judging);
-  return p ? p.id : null;
-}
-
 /* the row on `events`, mapped */
 type Row = Record<string, unknown>;
 export function formatOf(r: Row): Format {
@@ -107,7 +102,6 @@ export function formatProblem(f: Format): string | null {
 
 /* who has a say, for the desk's columns */
 export const hasVotes = (f: Format) => f.decide !== 'judges';
-export const hasJudges = (f: Format) => f.decide !== 'votes';
 
 /* one entry's numbers, as the tally keeps them */
 export type Tallied = { votes: number; judge: number; scoreSum?: number; scoreN?: number; reached?: number; created?: number; tie?: number | null };
@@ -122,8 +116,6 @@ export function rankValue(e: Tallied, f: Format): number {
   if (f.decide === 'both') return e.votes;
   return f.judging === 'scores' ? meanScore(e) : e.judge;
 }
-/* the people's choice, where it is apart */
-export const choiceValue = (e: Tallied) => publicVotes(e);
 
 /* the order of a place's entries: the format's number, then who got there first */
 export function ranked<T extends Tallied>(list: T[], f: Format, by: (e: T) => number = (e) => rankValue(e, f)): T[] {

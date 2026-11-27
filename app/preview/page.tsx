@@ -27,8 +27,7 @@ const P = clampWheel(wheel).paper;
 export const viewport: Viewport = { themeColor: '#' + hex(P) + hex(P + 1) + hex(P + 1) };
 const LD = previewLd({ url: SITE_URL, description: DESCRIPTION });
 
-/* The preview home, until the day: the wheel, then the day under the fold (saved/fold.config.json, tuned at
-   /lab/fold). ?city= opens on a city by its place in the list (from 0), ?gl=0 draws without WebGL, ?mark= and ?globe= try the wheel's others, ?admin shows the page's knobs. */
+/* The preview home, until the day: the wheel, then the day under the fold (saved/fold.config.json). ?city= opens on a city by its place in the list (from 0), ?gl=0 draws without WebGL, ?mark= and ?globe= try the wheel's others, ?admin shows the page's knobs. */
 /* the time of the request: the end board is drawn at it */
 function requestTime() { return Date.now(); }
 
@@ -43,7 +42,7 @@ function whereFrom(h: Headers, at?: string) {
 }
 
 export default async function PreviewPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  const q = await searchParams, here = whereFrom(await headers(), q.at), ours = ourWheel(backendOn() ? await signups() : undefined);
+  const q = await searchParams, here = whereFrom(await headers(), q.at), { cities, date, buildMin, regOpen } = ourWheel(backendOn() ? await signups() : undefined), ours = { cities, date, buildMin, regOpen };
   /* the line before the first paint that marks a return in the same tab, so the first screen plays its quiet arrival */
   return <FormsProvider live={backendOn()}><script dangerouslySetInnerHTML={{ __html: BACK_SCRIPT }} /><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: LD }} /><FoldPreview saved={saved as Partial<FoldCfg>} wheel={clampWheel({ ...wheel, ...pick(q) })} ours={ours} here={here} q={q} nowMs={requestTime()} /></FormsProvider>;
 }

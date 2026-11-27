@@ -17,7 +17,6 @@ export function unlock() {
   }
   if (context.state === 'suspended') context.resume().catch(() => {});
 }
-export function soundReady() { return context?.state === 'running'; }
 
 /* clicks closer than gap seconds are one run: each click of a run is higher, up to top, and a pause brings it down */
 const RUN = { gap: 0.22, step: 0.07, top: 2 };

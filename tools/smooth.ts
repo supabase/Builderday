@@ -34,7 +34,7 @@ const num = (v: string) => (Number.isFinite(Number(v)) ? Number(v) : v);
 const motion: MotionCfg = clampMotion({ ...(motionSaved as Partial<MotionCfg>), ...Object.fromEntries(Object.entries(sets).filter(([k]) => k in motionSaved || ['tourTurn', 'tourHold', 'pickHold', 'durFlight', 'durCross'].includes(k)).map(([k, v]) => [k, num(v)])) });
 const cfg: ScopeCfg = clampScope({ ...(saved as Partial<ScopeCfg>), ...(dir === 'line' ? lineDefaults : {}), ...Object.fromEntries(Object.entries(sets).map(([k, v]) => [k, num(v)])), dir });
 const df = dayFacts();
-const F: Facts = { buildMin: 90, voteAfter: 30, startHour: 9, codes: CITIES.map((c) => CODE[c.id]), top: EVENT.finalists, cities: df.cities, seedPick: df.seedPick, pickAt: df.pickAt, pickers: EVENT.pickers, prize: PRIZES.global.what ?? undefined, cityPrize: PRIZES.city.what ?? undefined };
+const F: Facts = { buildMin: 90, voteAfter: 30, startHour: 9, codes: CITIES.map((c) => CODE[c.id]), top: EVENT.finalists, cities: df.cities, seedPick: df.seedPick, pickAt: df.pickAt, pickers: EVENT.pickers, cityPrize: PRIZES.city.what ?? undefined };
 const off = { ...cfg, after: 0 };
 
 /* the loop's length in seconds: today's directions play three steps of max(tourStep, loop) each; line has its score */

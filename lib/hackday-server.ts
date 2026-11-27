@@ -16,8 +16,6 @@ export const SERVER: { live: boolean; url: string | null; name: string } = { liv
 /* Supabase's own hosted server, added first so the editor can make the project's database; it asks the builder to
    sign in to Supabase in the browser the first time (supabase.com/docs/guides/ai-tools/mcp, checked 2026-11-18) */
 export const SUPABASE_MCP = { url: 'https://mcp.supabase.com/mcp', name: 'supabase', docs: 'https://supabase.com/docs/guides/ai-tools/mcp' };
-/* the lab's stand-in address, so the live state can be seen; never used by a real page */
-export const PLACEHOLDER_URL = 'https://hackday.example/mcp';
 
 /* what to say to the editor on the day */
 /* the sentence that runs the practice call before the day */

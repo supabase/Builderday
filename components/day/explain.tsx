@@ -15,7 +15,7 @@ import { DayTour, type LineClock } from './step-through';
 
 /* How the day works and what it gives away, drawn on tubes (scope.ts): the build clock running down while the beam
    draws an app, votes arriving, thirty finalists becoming one pick; then the prizes, $10,000 rolling in on flaps and a
-   laptop drawing itself. The look and every timing come from saved/explain.config.json, tuned at /lab/explain.
+   laptop drawing itself. The look and every timing come from saved/explain.config.json.
    Used in the wheel's sheet (the preview home), on the day home and on a city page. The register link goes to the
    city's Luma event (lib/luma.ts). */
 
@@ -24,14 +24,14 @@ export { LUMA, lumaHref } from '@/lib/luma';
 
 export type ExplainFacts = { buildMin: number; voteAfter: number; startHour: number };
 const SAVED = clampScope(savedScope as Partial<ScopeCfg>);
-/* the city prize's drawing (neo: drawn), tuned at /lab/neo */
+/* the city prize's drawing (neo: drawn), from saved/neo.config.json */
 const NEO = clampNeo(savedNeo as Partial<NeoLook>);
 const cap = (s: string) => s.replace(/^an? /, '').replace(/^./, (c) => c.toUpperCase());
 /* finalists and pick: the day's own count and pick once they are known, so this agrees with the rest of the page */
 export type DayFinal = { finalists?: number; pick?: number; empty?: number[]; city?: string };
 export const facts = (f?: ExplainFacts, d?: DayFinal): Facts => {
   const df = dayFacts();
-  return { buildMin: f?.buildMin ?? 90, voteAfter: f?.voteAfter ?? SCHED.voteAfter, publicAt: EVENT.publicAt ?? 0, startHour: f?.startHour ?? SCHED.startHour, codes: CITIES.map((c) => CODE[c.id]), top: EVENT.finalists, cities: df.cities, seedPick: df.seedPick, pickAt: df.pickAt, prize: PRIZES.global.what ?? undefined, pickers: EVENT.pickers, cityPrize: PRIZES.city.what ?? undefined, ...d };
+  return { buildMin: f?.buildMin ?? 90, voteAfter: f?.voteAfter ?? SCHED.voteAfter, publicAt: EVENT.publicAt ?? 0, startHour: f?.startHour ?? SCHED.startHour, codes: CITIES.map((c) => CODE[c.id]), top: EVENT.finalists, cities: df.cities, seedPick: df.seedPick, pickAt: df.pickAt, pickers: EVENT.pickers, cityPrize: PRIZES.city.what ?? undefined, ...d };
 };
 
 const H = ({ level, id, children }: { level: 2 | 3; id: string; children: string }) => (level === 3 ? <h3 id={id} className="ex-h">{children}</h3> : <h2 id={id} className="ex-h">{children}</h2>);

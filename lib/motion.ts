@@ -1,4 +1,4 @@
-/* motion.ts: every motion value the pages use, as one config. The motion tuning page (/lab/motion) moves them and
+/* motion.ts: every motion value the pages use, as one config. The motion tuning page moves them and
    saves saved/motion.config.json; the root layout turns the saved file into the motion tokens on :root, so the pages
    read var(--dur-panel) and the rest and never hold a number of their own. Under reduced motion globals.css sets the
    durations to 0 and the scales to 1, and the saved values do not apply. Pure. */

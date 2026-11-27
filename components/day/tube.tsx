@@ -17,7 +17,6 @@ import { VW, viewH, isStack, beamFrame, renderCanvas, spanOf, stepOf, type Facts
 /* what each tube's frame costs on the main thread (an average), its beam length and its renderer, for the lab */
 export type TubeCost = { ms: number; len: number; renderer: 'beam' | 'canvas'; frames: number; scene: string };
 const costs = new Map<string, TubeCost>();
-export const tubeCosts = () => [...costs.values()];
 
 /* Anything that moves by itself for over 5 seconds can be stopped (WCAG 2.2.2), with no key for it on the page:
    Screen off stills every drawing (the visitor's switch, remembered per browser), and pressing a drawing holds it where
@@ -26,7 +25,7 @@ export const useTubesStill = () => !usePref('screen')[0];
 const subReduce = (fn: () => void) => { const m = window.matchMedia('(prefers-reduced-motion: reduce)'); m.addEventListener('change', fn); return () => m.removeEventListener('change', fn); };
 export const useReduced = () => useSyncExternalStore(subReduce, () => window.matchMedia('(prefers-reduced-motion: reduce)').matches, () => false);
 
-/* the page's scan lines, as the screen kit draws them on the ground (tuned in /lab/screen) */
+/* the page's scan lines, as the screen kit draws them on the ground */
 const PAGE_LINES = clampScreen(screenSaved);
 
 const families = () => {

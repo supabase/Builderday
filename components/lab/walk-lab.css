@@ -1,5 +1,0 @@
-/* the walk lab: the walkthrough on the preview's ground, with room above and below to scroll it in and out */
-.wl { min-height: 100vh; padding: 40px 32px 50vh; background: #0c0d0d; max-width: 1440px; box-sizing: border-box; }
-.wl-p { margin: 0 0 48px; max-width: 70ch; color: #b4b4af; font: 400 13px/1.5 var(--font-mono, ui-monospace, monospace); }
-.wl-end { margin: 48px 0 0; color: #6b6c6b; font: 400 12px/1 var(--font-mono, ui-monospace, monospace); }
-@media (max-width: 760px) { .wl { padding: 24px 16px 50vh; } }

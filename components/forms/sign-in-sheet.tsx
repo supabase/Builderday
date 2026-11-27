@@ -5,7 +5,7 @@ import { emit, followAgain, store, type Session } from './store';
 import { FM_ACT, FM_F, FM_FORM, FM_H, FM_L, FM_NOTE, FM_P, FM_T, ErrBox, Sheet, useSheet } from './sheet';
 import * as supa from './supabase';
 import { EMAIL_FALLBACK, SIGNIN_ELSEWHERE, SIGNIN_WHY, SIGNIN_WITH } from '@/lib/signin';
-import { EVENT } from '@/lib/day-data';
+import { DAY_SHORT, EVENT } from '@/lib/day-data';
 import type { ArtSubject } from './art-config';
 
 /* Sign-in: with a supabase.com account (owner, 2026-11-25). Used on its own and as the step before a first vote or a
@@ -14,14 +14,13 @@ import type { ArtSubject } from './art-config';
    supabase.com's sign-in or sign-up in a new tab and carries on by itself the moment the login appears.
    Elsewhere: a stand-in account on a dev server, the email and six-digit code only while its emergency switch is on,
    and otherwise a line saying where signing in works. Labs and sites without a backend sign in a stand-in at once. */
-export type SignInOpts = { label?: string; title?: string; reason?: string; verb?: string; city?: string; cityName?: string; room?: boolean };
+export type SignInOpts = { label?: string; title?: string; reason?: string; verb?: string; city?: string; cityName?: string };
 export type Who = { handle: string; email: string };
 
 /* the sheet's picture: what the sheet is for, in characters (SIGN IN, VOTE, SUBMIT), the globe on the city when there is one */
 export function signInArt(o: SignInOpts): ArtSubject {
   return { word: o.label || 'Sign in', city: o.city || null, lines: [EVENT.short, DAY_SHORT, o.cityName || 'Fourteen cities'] };
 }
-const DAY_SHORT = new Date(Date.UTC(EVENT.year, EVENT.month - 1, EVENT.day)).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
 
 /* the email fallback applies only on a live site where the shared login cannot reach */
 const useEmail = () => store.isLive() && EMAIL_FALLBACK && supa.mode() === 'away';

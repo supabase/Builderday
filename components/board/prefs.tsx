@@ -41,11 +41,6 @@ export function SoundKey() {
   );
 }
 
-/* the Screen switch's change can be dressed (the footer's white dot): the dresser calls commit when the screen is dark */
-type ScreenFx = (next: boolean, commit: () => void) => void;
-let screenFx: ScreenFx | null = null;
-export function setScreenFx(fx: ScreenFx | null) { screenFx = fx; }
-
 export function Switches({ sound }: { sound: boolean }) {
   const [snd, setSnd] = usePref('sound'), [scr] = usePref('screen');
   if (!sound) return null;

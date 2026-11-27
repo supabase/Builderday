@@ -19,7 +19,7 @@ export type Facts = {
   buildMin: number; voteAfter: number; startHour: number; codes: string[]; top: number; finalists?: number; pick?: number; empty?: number[];
   cities?: CityFact[]; pickAt?: number; seedPick?: number;
   /* city: the page's own city (a city page), so the drawing follows a project there; prize: the pick's prize as words */
-  city?: string; prize?: string;
+  city?: string;
   /* who picks the global 1st, 2nd and 3rd from the finalists, in the event's own words */
   pickers?: string;
   /* the minute voting opens, for everyone */

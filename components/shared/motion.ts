@@ -1,6 +1,13 @@
 /* motion.ts (client): the few motions that need script (the wire's new line, finalists landing, the pick) read
    their timing from the tokens on <html>, so the saved config and reduced motion reach them the same way they
    reach the CSS. Everything else moves in CSS. */
+import { useSyncExternalStore } from 'react';
+
+/* whether the visitor asks for reduced motion, kept in step with the setting; false on the server's first paint. One
+   subscribe for every caller, so a component that renders each frame does not resubscribe each frame. */
+const REDUCE = '(prefers-reduced-motion: reduce)';
+const subReduce = (fn: () => void) => { const m = window.matchMedia(REDUCE); m.addEventListener('change', fn); return () => m.removeEventListener('change', fn); };
+export const useReduced = () => useSyncExternalStore(subReduce, () => window.matchMedia(REDUCE).matches, () => false);
 
 /* a token's value in ms ("280ms" or "0.28s"); 0 when it is missing, or when reduced motion is asked for */
 export function tokMs(name: string): number {

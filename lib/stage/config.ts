@@ -1,5 +1,5 @@
-/* The stage's look: the direction, the wall's screen, its sizes and every stage-only timing. Tuned at /lab/stage and
-   saved to saved/stage.config.json; the wall and the remote read the same file. Durations that the whole site shares
+/* The stage's look: the direction, the wall's screen, its sizes and every stage-only timing. Saved to
+   saved/stage.config.json; the wall and the remote read the same file. Durations that the whole site shares
    (a press, a slide, a flash) stay in saved/motion.config.json; these are the ones only a wall needs, because a wall is
    read from the back of a room and its moves travel further than a page's. Pure. */
 

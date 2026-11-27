@@ -1,4 +1,4 @@
-/* footer-config.ts: the footer's look as one config (footer.tsx draws it), tuned at /lab/footer and saved in
+/* footer-config.ts: the footer's look as one config (footer.tsx draws it), saved in
    saved/footer.config.json. Directions, switches and knobs, with the bounds each knob was tried at. Pure. */
 
 export type FootDir = 'horizon' | 'index' | 'closedown' | 'endboard';

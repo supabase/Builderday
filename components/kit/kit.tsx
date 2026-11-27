@@ -55,16 +55,6 @@ export function Cells({ cells, className, label }: { cells: Cell[]; className?: 
   );
 }
 
-/* ---------- the Section head ---------- */
-export function SectionHead({ id, children, lede, className }: { id: string; children: ReactNode; lede?: ReactNode; className?: string }) {
-  return (
-    <>
-      <h2 id={id} className={'k-h2 pf-h' + (className ? ' ' + className : '')}>{children}</h2>
-      {lede ? <p className="k-lede pf-lede">{lede}</p> : null}
-    </>
-  );
-}
-
 /* ---------- the Notice: a rule or a state, said once ---------- */
 export function Notice({ children, live, className }: { children: ReactNode; live?: boolean; className?: string }) {
   return <p className={'k-notice' + (className ? ' ' + className : '')} role={live ? 'status' : undefined}>{children}</p>;

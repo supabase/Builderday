@@ -126,7 +126,7 @@
   --c-day: color-mix(in oklch, var(--ground) 88%, white);
 
   /* ---- motion: every duration on the page comes from here (the curves are in the theme above). These are the
-     fallbacks: the root layout writes the saved values from saved/motion.config.json over them (/lab/motion). ---- */
+     fallbacks: the root layout writes the saved values from saved/motion.config.json over them. ---- */
   --dur-press: 90ms; --press: 0.97;              /* a pressed button scales to --press */
   --dur-hover: 140ms; --dur-wash: 120ms;         /* colours; a row's hover wash (0 is a snap) */
   --preview-scale: 0.98;                         /* the home's hover preview grows from this */

@@ -7,7 +7,7 @@ import type { HeroCfg } from '@/components/wheel/hero-config';
 import { PrizeBlock } from '@/components/day/explain';
 import { GetReady } from '@/components/day/get-ready';
 import { DayScreen } from '@/components/day/shared';
-import { DayFooter, useWhiteDot } from '@/components/day/footer';
+import { DayFooter } from '@/components/day/footer';
 import { Ending, type EndCity } from '@/components/day/ending';
 import { clampEnd, type EndCfg } from '@/components/day/ending-config';
 import { clampFoot, type FootCfg } from '@/components/day/footer-config';
@@ -22,7 +22,7 @@ import footSaved from '@/saved/footer.config.json';
 import endSaved from '@/saved/ending.config.json';
 import partsSaved from '@/saved/parts.config.json';
 import { CAPTION, useOurCities } from '../preview';
-import { nearestCity, type Here, type OurWheel } from '../facts';
+import { nearestCity, type Here, type OurFacts } from '../facts';
 import { foldVars, type FoldCfg } from './config';
 import { FoldHeader, type Part } from './header';
 import { FoldBar } from './bar';
@@ -35,14 +35,14 @@ import { FoldPrizeType } from './prize-type';
 import { FoldHow } from './how';
 import { Unroll } from './unroll';
 import { jumpTo, jumpTop, once, useConverge, useWrite } from './motion';
-import { flapInto, reducedMotion } from './flap';
+import { flapInto } from './flap';
 import { BACK_ATTR, arrivePlan } from './arrive';
 import { mountGlobes } from '@/components/screen/globe';
 import { useLaunch } from '@/components/wheel/use-launch';
 import { LAUNCH, type LaunchCfg } from '@/components/wheel/launch-config';
 import { mountDotGlobes } from '@/components/wheel/dot-globes';
 import { usePref } from '@/components/board/prefs';
-import { tokEase } from '@/components/shared/motion';
+import { tokEase, useReduced } from '@/components/shared/motion';
 import { SupabaseLockup } from '@/components/shared/supabase-mark';
 import { useForms } from '@/components/forms/forms-provider';
 import { meNow, useFormsState } from '@/components/forms/store';
@@ -64,13 +64,12 @@ import './fold.css';
 
 const never = () => () => {};
 const useOffset = () => useSyncExternalStore(never, () => -new Date().getTimezoneOffset(), () => null);
-const useReduced = () => useSyncExternalStore((f) => { const m = window.matchMedia('(prefers-reduced-motion: reduce)'); m.addEventListener('change', f); return () => m.removeEventListener('change', f); }, reducedMotion, () => false);
 const WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve'];
 const count = (n: number) => WORDS[n] ?? String(n);
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 type Props = {
-  cfg: FoldCfg; wheel: WheelCfg; ours: OurWheel; forced: number | null; here?: Here | null; noGl: boolean; nowMs: number;
+  cfg: FoldCfg; wheel: WheelCfg; ours: OurFacts; forced: number | null; here?: Here | null; noGl: boolean; nowMs: number;
   /* how the page ends (saved/ending.config.json unless a lab passes its own) */
   ending?: EndCfg;
   /* the first screen's left side (saved/hero.config.json unless a lab passes its own) */
@@ -79,13 +78,9 @@ type Props = {
   launch?: LaunchCfg; dry?: boolean;
   /* the lab's own things over the page (its panel) */
   children?: ReactNode;
-  /* proto:under-hero (remove with /proto/under-hero): a prototype's sections in place of the saved ones */
-  under?: (u: Under) => ReactNode;
 };
-/* proto:under-hero: what a prototype under the hero reads from the page */
-export type Under = { city: { id: string; name: string; opens: number; offset: number }; cur: number; nearest: number; section: (id: string) => ReactNode };
 
-export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, ending, hero: heroCfg = HERO, launch = LAUNCH, dry = false, children, under }: Props) {
+export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, ending, hero: heroCfg = HERO, launch = LAUNCH, dry = false, children }: Props) {
   const { cities, start } = useOurCities(ours, forced, here), off = useOffset();
   const nearest = off === null ? 0 : nearestCity(ours.cities, off, here);
   const [pick, setPick] = useState<number | null>(null), cur = pick ?? start, city = cities[cur] ?? cities[0];
@@ -329,7 +324,6 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
   const howCities = useMemo(() => reg.map((c) => ({ id: c.id, code: c.code ?? CODE[c.id] ?? c.name.slice(0, 3).toUpperCase(), name: c.name })), [reg]);
   const endCities: EndCity[] = useMemo(() => reg.map((c) => ({ id: c.id, name: c.name, code: c.code ?? CODE[c.id] ?? c.name.slice(0, 3).toUpperCase(), lat: c.lat, lon: c.lon, opens: c.opens, href: c.href, action: c.action, press: 'press' in c ? c.press : undefined })), [reg]);
   /* the white dot belongs to the footer; with the new ending in its place the page keeps it */
-  useWhiteDot(!hero && !!foot.dot && end.end !== 'board');
 
   const section = (id: string): ReactNode => {
     switch (id) {
@@ -394,12 +388,9 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
       </Wheel>
       {hero ? null : <>
       <main ref={main} className="pf-main" id="day">
-        {/* proto:under-hero */}
-        {under ? under({ city, cur, nearest, section }) : <>
         {line && cfg.bar === 'cells' ? <FoldBar cells={barCells} flap={flap} dot={cfg.dotSize} live={cfg.arrive === 'tube'} /> : null}
         {line ? null : <p className="pf-lede pf-plain-lede">{lede}</p>}
         {order.map(section)}
-        </>}
       </main>
       <div className="pf-foot" data-part="" onClick={footJump}>
         {end.end === 'board'

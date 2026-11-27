@@ -40,7 +40,7 @@ function paint(cv: HTMLCanvasElement, k: Keyed, look: PhotoLook, p: Photo, mode:
   const dpr = Math.min(2, window.devicePixelRatio || 1), W = Math.round(cv.clientWidth * dpr), H = Math.round(cv.clientHeight * dpr);
   if (!W || !H) return;
   if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
-  const ctx = cv.getContext('2d', { willReadFrequently: true })!; ctx.clearRect(0, 0, W, H);
+  const ctx = cv.getContext('2d')!; ctx.clearRect(0, 0, W, H);
   const at0 = place(k, W, H, look.pad, SIZE[p]), tmp = document.createElement('canvas');
   const sample = (cols: number, rows: number, cw: number, ch: number, ox: number, oy: number) => {
     tmp.width = cols; tmp.height = rows;
@@ -81,9 +81,9 @@ export function PrizePhoto({ p, look, alt, className, ratio, quiet }: Props) {
   const reveal = look.reveal && look.mode !== 'photo';
   return (
     /* the photo under the print is painted on the first hover, not on load */
-    <div ref={box} className={'pp' + (className ? ' ' + className : '')} role={quiet ? undefined : 'img'} aria-label={quiet ? undefined : alt} aria-hidden={quiet || undefined} data-reveal={look.reveal && look.mode !== 'photo' ? '' : undefined}
+    <div ref={box} className={'pp' + (className ? ' ' + className : '')} role={quiet ? undefined : 'img'} aria-label={quiet ? undefined : alt} aria-hidden={quiet || undefined} data-reveal={reveal ? '' : undefined}
       style={ratio ? { aspectRatio: ratio } : undefined} onPointerEnter={reveal && !armed ? () => setArmed(true) : undefined}>
-      {look.reveal && look.mode !== 'photo' ? <canvas ref={real} className="pp-real" aria-hidden="true" /> : null}
+      {reveal ? <canvas ref={real} className="pp-real" aria-hidden="true" /> : null}
       <canvas ref={print} className="pp-print" aria-hidden="true" />
     </div>
   );

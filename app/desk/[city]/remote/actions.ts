@@ -4,7 +4,7 @@
    written; see lib/stage/server.ts. */
 import saved from '@/saved/stage.config.json';
 import { clampStage, type StageCfg } from '@/lib/stage/config';
-import { drive, loadStage, stageRights, type DriveOut } from '@/lib/stage/server';
+import { drive, loadStage, type DriveOut } from '@/lib/stage/server';
 import { BOARD_VIEWS, type CityLive, type StageAction } from '@/lib/stage/types';
 
 const KINDS = new Set(['next', 'back', 'jump', 'blank', 'qr', 'chart', 'start', 'add', 'close', 'talk', 'spin', 'view', 'show']);
@@ -20,9 +20,8 @@ export async function stageDrive(city: string, a: StageAction): Promise<DriveOut
   return drive(String(city), a, talkMin);
 }
 
-/* the city's times and door counts again (the clock is not carried by Realtime); the room code only for a host */
+/* the city's times and door counts again (the clock is not carried by Realtime) */
 export async function stageCity(city: string): Promise<{ city: CityLive; at: number } | null> {
-  const who = await stageRights(String(city));
-  const s = await loadStage(String(city), { hidden: false, code: who.drive });
+  const s = await loadStage(String(city), { hidden: false });
   return s ? { city: s.city, at: Date.now() } : null;
 }

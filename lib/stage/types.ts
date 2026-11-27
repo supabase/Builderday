@@ -9,10 +9,6 @@ export type SceneKind =
      card), and a product (a Supabase product's name, one line, a picture, and its link as a QR) */
   | 'words' | 'link' | 'product';
 
-/* the event's scenes: these can be hidden, never deleted */
-export const EVENT_KINDS: SceneKind[] = ['doors', 'welcome', 'question', 'needs', 'tour', 'say', 'line', 'deadline', 'rules', 'prizes', 'submit', 'questions', 'building', 'voting', 'showcase', 'top3', 'tombola', 'final'];
-/* the scenes drawn from the city's live numbers */
-export const LIVE_KINDS: SceneKind[] = ['doors', 'building', 'voting', 'showcase', 'top3', 'tombola', 'final'];
 
 export type SceneData = {
   /* welcome: the hosts' names */ hosts?: string[];

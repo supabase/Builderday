@@ -1,4 +1,0 @@
-/* forms-lab.css: the forms tuning page (/lab/forms). Not part of the site. The page is utilities; this is the ground
-   switch, which borrows the sheets' button (forms.css) and draws it as a segmented control. */
-.lab-seg .fm-b { box-shadow: inset 0 0 0 var(--line-thin) var(--c-line); }
-.lab-seg .fm-b[aria-pressed="true"] { background: var(--c-ink); color: var(--c-ground); box-shadow: none; }

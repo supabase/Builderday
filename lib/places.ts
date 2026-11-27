@@ -24,6 +24,3 @@ export const CODE: Record<string, string> = {
   manta: 'MEC', 'new-york': 'NYC', toronto: 'YTO', 'san-salvador': 'SAL', austin: 'AUS', 'mexico-city': 'MEX', 'san-francisco': 'SFO',
 };
 
-/* page numbers: home 100, the cities from 101 east to west, the final 200, prizes 300, questions 400 */
-export const PAGE = { home: 100, final: 200, prizes: 300, questions: 400 } as const;
-export function cityPage(i: number): number { return 101 + i; }

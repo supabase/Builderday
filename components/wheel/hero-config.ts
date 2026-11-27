@@ -1,6 +1,6 @@
 /* The first screen's left side in the column layout: the page's words, then the city's row on the active name's line
-   (its time, its state and the Luma box whose name is the wheel's own). Every taste value is here, tuned at
-   /lab/hero and saved in saved/hero.config.json, which the preview reads. Pure.
+   (its time, its state and the Luma box whose name is the wheel's own). Every taste value is here, saved in
+   saved/hero.config.json, which the preview reads. Pure.
 
    Modes (what the row is):
    - row: three boxes side by side, time, state, then "Register for <city>" (the first cut of this layout).
@@ -55,6 +55,8 @@ export type HeroCfg = {
   widthMs: number;
   /* ticket: the perforation's dot gap, the notches' radius, px */
   perf: number; notch: number;
+  /* ticket: the paper's grain, 0 (flat) to 1 (a fine speckle over a soft mottle, drawn as noise, no image) */
+  paper: number;
   /* the stub's serial */
   seed: number;
 };
@@ -65,7 +67,7 @@ export const HERO_DEF: HeroCfg = {
   min: 24, grow: 1.15, tall: 0.05,
   stubPhone: 100, namePhone: 20,
   widthMs: 220,
-  perf: 6, notch: 10,
+  perf: 6, notch: 10, paper: 0,
   seed: 4217,
 };
 
@@ -74,7 +76,7 @@ export const HERO_BOUNDS: Record<string, [number, number, number]> = {
   min: [18, 34, 1], grow: [1, 1.4, 0.01], tall: [0.04, 0.08, 0.002],
   stubPhone: [80, 140, 1], namePhone: [15, 26, 0.5],
   widthMs: [0, 400, 10],
-  perf: [4, 12, 1], notch: [0, 16, 1],
+  perf: [4, 12, 1], notch: [0, 16, 1], paper: [0, 1, 0.05],
   seed: [1, 99999, 1],
 };
 

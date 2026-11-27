@@ -36,7 +36,6 @@ const FAKE_KEY = 'hackday:v1:fake-supabase';
 const FAKE_EVENT = 'hackday-fake-supabase';
 function fakeRead(): string | null { try { const v = localStorage.getItem(FAKE_KEY); return v ? String(JSON.parse(v)) : null; } catch { return null; } }
 export function fakeSignIn(email: string) { try { localStorage.setItem(FAKE_KEY, JSON.stringify(email.trim().toLowerCase())); } catch { /* storage blocked */ } window.dispatchEvent(new Event(FAKE_EVENT)); }
-export function fakeSignOut() { try { localStorage.removeItem(FAKE_KEY); } catch { /* storage blocked */ } window.dispatchEvent(new Event(FAKE_EVENT)); }
 
 /* the account signed in on supabase.com right now, or null */
 export async function current(): Promise<Account | null> {

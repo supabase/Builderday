@@ -112,11 +112,10 @@ export async function launch(t: HTMLElement, to: P, c: LaunchCfg, landed?: () =>
 
     /* the flight: along the arc, turning to its course in its first part, swaying a little, smaller as it goes */
     const k = ctrl(from, to, c.arc), N = 48, pts: P[] = [], at: number[] = [], frames: Keyframe[] = [];
-    const start = 0;
     for (let i = 0; i <= N; i++) {
       const f = i / N, u = launchEase(f), p = quad(from, k, to, u);
       const head = (tangent(from, k, to, Math.max(u, 0.002)) * 180) / Math.PI;
-      const turn = lerp(start, head, Math.min(1, f / c.turn)) + Math.sin(f * Math.PI * 2) * c.sway * (1 - f);
+      const turn = lerp(0, head, Math.min(1, f / c.turn)) + Math.sin(f * Math.PI * 2) * c.sway * (1 - f);
       const s = lerp(1, c.shrink, u * u);
       pts.push(p); at.push(f * c.flightMs);
       frames.push({ clipPath: SHIP, transform: B + `translate(${p.x - from.x}px, ${p.y - from.y}px) rotate(${turn}deg) scale(${sx * s}, ${sy * s})`, opacity: f > 0.94 ? (1 - f) / 0.06 : 1 });

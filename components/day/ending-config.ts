@@ -1,6 +1,5 @@
-/* The ending's config: tuned at /lab/ending, saved in saved/ending.config.json, read by the
-   preview page. The modes' first values in END_CHOICES are listed plain-first only where the plan names a plain one;
-   END_DEF holds the plan's picks and END_PLAIN today's ending, one press apart in the lab. */
+/* The ending's config, saved in saved/ending.config.json and read by the preview page. The modes' first values in END_CHOICES are listed plain-first only where the plan names a plain one;
+   END_DEF holds the plan's picks and END_PLAIN today's ending. */
 
 export type EndEnd = 'flat' | 'ident' | 'cities' | 'board';
 export type EndOpen = 'none' | 'print' | 'unroll';
@@ -36,7 +35,6 @@ export const END_DEF: EndCfg = {
 };
 /* today's ending: the end board, nothing printed, the big mark */
 export const END_PLAIN: Pick<EndCfg, 'end' | 'open' | 'mark' | 'signoff' | 'light'> = { end: 'board', open: 'none', mark: 'big', signoff: 'line', light: 'none' };
-export const END_MODES = Object.keys(END_PLAIN) as (keyof typeof END_PLAIN)[];
 
 export const END_CHOICES: Record<string, string[]> = {
   end: ['flat', 'ident', 'cities', 'board'], open: ['none', 'print', 'unroll'], mark: ['none', 'small', 'big'], signoff: ['line', 'telex'], light: ['none', 'morning'],
@@ -44,13 +42,6 @@ export const END_CHOICES: Record<string, string[]> = {
 /* [min, max, step]; every value in between was looked at in the lab */
 export const END_BOUNDS: Record<string, [number, number, number]> = {
   rows: [11, 24, 1], north: [50, 80, 1], south: [-66, -30, 1], cell: [48, 96, 2], reg: [1, 3, 0.25], tag: [0.8, 1.6, 0.05], rate: [200, 700, 20], seed: [1, 9999, 1], imprint: [0, 1, 1],
-};
-export const END_LABELS: Record<string, string> = {
-  'end:flat': 'The world opened flat', 'end:ident': 'Test card', 'end:cities': 'City names', 'end:board': 'End board (today)',
-  'open:none': 'Simply there', 'open:print': 'Prints once', 'open:unroll': 'The globe unrolls',
-  'mark:none': 'None', 'mark:small': 'Small, in the imprint', 'mark:big': 'Big (today)',
-  'signoff:line': 'Last line and imprint', 'signoff:telex': 'Telex (ZCZC … NNNN)',
-  'light:none': 'None', 'light:morning': 'Night side thinner',
 };
 
 export function clampEnd(v: Partial<EndCfg> | Record<string, unknown> | null | undefined): EndCfg {

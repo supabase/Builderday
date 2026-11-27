@@ -7,7 +7,6 @@ import { env, rest } from './env.mjs';
 
 const e = env(), SITE = process.env.SITE || 'http://localhost:4320';
 let bad = 0, n = 0;
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 function jar() {
   const c = new Map();
   return {

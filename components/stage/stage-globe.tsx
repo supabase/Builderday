@@ -74,19 +74,21 @@ export function StageGlobe({ cfg, kind, city, reduced }: { cfg: StageCfg; kind: 
   const [lat, lon] = PLACE[city] ?? [0, 0];
   /* the turn starts with the city facing the room and goes on from there in whole frames, across moves */
   const facingRef = useRef<{ city: string; f: number } | null>(null);
+  /* what the canvas holds (size and facing), kept across runs so a move's start and end repaint nothing */
+  const drawnRef = useRef('');
   useEffect(() => {
     const el = cv.current; if (!el || !art) return;
     const ctx = el.getContext('2d'); if (!ctx) return;
     const look = { ...LOOK_DEF, ink: cfg.globeInk, dim: 0.62, grid: 0.6, markInk: 0.7, green: '#3ecf8e', ground: '#151515', font: monoFont(), marks: 'one' as const, study: true, wake: 0, night: 0 };
     if (!facingRef.current || facingRef.current.city !== city) facingRef.current = { city, f: lon };
     const turn = facingRef.current;
-    let drawn = '', raf = 0, last = 0, visible = true;
+    let raf = 0, last = 0, visible = true;
     const draw = () => {
       /* the backing store: the canvas's own size on screen times the screen's ratio, at most 1.5 (a wall is far away) */
       const ratio = Math.min(devicePixelRatio || 1, 1.5), w = Math.round(el.clientWidth * ratio), h = Math.round(el.clientHeight * ratio);
       if (!w || !h) return;
       const key = w + ':' + Math.round(turn.f * 10);
-      if (key === drawn) return; drawn = key;
+      if (key === drawnRef.current) return; drawnRef.current = key;
       if (el.width !== w || el.height !== h) { el.width = w; el.height = h; }
       ctx.clearRect(0, 0, w, h);
       const d: TextGlobeDraw = { x: w / 2, y: h / 2, r: (R / BOX) * w, ratio, facing: turn.f, cities: [{ lat, lon }], active: 0, bracket: true, frames: art.frames, land: art.land, look, size: 'large', sun: null };

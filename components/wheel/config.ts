@@ -1,5 +1,5 @@
 /* The wheel's numbers. Every value here was a constant in the study (the wheel, the tube screen pass and the screen
-   lines); here each one is a knob in /lab/wheel, saved to saved/wheel.config.json. The defaults are the study's own
+   lines); here each one is a knob, saved to saved/wheel.config.json. The defaults are the study's own
    values, so the defaults draw the study. The land map is baked (tools/bake-land.mjs) and is not a knob. */
 
 export type WheelFont = 'study' | 'geist';
@@ -55,7 +55,7 @@ export type WheelCfg = {
   /* the globe: which one, the text globe's frames a second, how far left of the hub it sits and how much of the turn's
      smear it takes (in radii), and with none, how far right the hub moves (in radii) */
   globe: WheelGlobe; globeFps: number; globeShift: number; globeEdge: number; bareShift: number;
-  /* the text globe (text-globe.ts, globe-clock.ts, tuned at /lab/globe). Modes: how it arrives, turns, comes to rest,
+  /* the text globe (text-globe.ts, globe-clock.ts). Modes: how it arrives, turns, comes to rest,
      shows the morning, marks the cities, answers a press, labels its rim, blinks and hands over to the header. */
   globeArrive: GlobeArrive; globeTurn: GlobeTurn; globeLand: GlobeLand; globeLight: GlobeLight; globeMarks: GlobeMarks;
   globePick: GlobePick; globeRim: GlobeRim; globeBlink: GlobeBlink; globeHandover: GlobeHandover;
@@ -139,11 +139,6 @@ export const WHEEL_CHOICES: Record<string, string[]> = {
   globeMarks: ['one', 'all', 'tags'], globePick: ['off', 'on'], globeRim: ['plain', 'ticks'], globeBlink: ['forever', 'few'], globeHandover: ['leave', 'thin'],
   prize: ['beside', 'lens', 'protected', 'none'], prizeOverlap: ['edge', 'whole'], prizeCell: ['gap', 'block', 'char'], prizeBand: ['off', 'hatch', 'stars'], prizeTurn: ['still', 'once', 'loop'], prizePhone: ['raise', 'clear', 'lens', 'none'],
 };
-/* the text globe's modes at their plain values: the globe as the page drew it before the modes */
-export const GLOBE_PLAIN: Partial<WheelCfg> = {
-  globeArrive: 'none', globeTurn: 'step', globeLand: 'plain', globeLight: 'none', globeMarks: 'one', globePick: 'off', globeRim: 'plain', globeBlink: 'forever', globeHandover: 'leave', prize: 'beside',
-};
-export const GLOBE_MODES = Object.keys(GLOBE_PLAIN) as (keyof WheelCfg)[];
 
 /* the values the shader is built from: when one of these changes, the program is compiled again */
 export const SHADER_KEYS = ['globe', 'globeEdge', 'fadeFrom', 'fadeTo', 'edgeFrom', 'edgeTo', 'edgeReach', 'edgeTaps', 'fringe', 'grain', 'glassSplit', 'core', 'vignette', 'paper',

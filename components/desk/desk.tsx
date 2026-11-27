@@ -1,6 +1,5 @@
 'use client';
-/* The desk: one screen for every role, drawn from a DeskState and acting through one act(). /lab/desk feeds it sample
-   data and a local act; /desk feeds it /api/desk/state and POST /api/desk.
+/* The desk: one screen for every role, drawn from a DeskState and acting through one act(). /desk feeds it /api/desk/state and POST /api/desk.
 
    Three levels, named in the header as a path (Events / the event / the place), each part a switcher:
    - Events: every event this person sees; a super admin makes new ones here.
@@ -43,7 +42,7 @@ export function tabsFor(s: DeskState): { place: Tab[]; event: Tab[] } {
 }
 
 export function Desk({ s, act, now, onGo, onSignOut, tab: tab0 }: {
-  s: DeskState; act: DeskAct; now: number; onGo: (event: string | null, city: string | null) => void | Promise<boolean>; onSignOut?: () => void; site: string; tab?: string;
+  s: DeskState; act: DeskAct; now: number; onGo: (event: string | null, city: string | null) => void | Promise<boolean>; onSignOut?: () => void; tab?: string;
 }) {
   const { place, event } = useMemo(() => tabsFor(s), [s]);
   const all = useMemo(() => place.concat(event), [place, event]);

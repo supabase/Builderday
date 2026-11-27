@@ -1,5 +1,6 @@
 'use client';
-import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useReduced } from '@/components/shared/motion';
 import { PRIZE_SHEET } from '@/lib/prizes';
 import { EXAMPLES, END_MIN, HISTORY, OPEN_MIN, PEAK, PROJECTS, RECEIPT, SHOW_MIN, SUBMIT_AT, VOTE_FROM, YOURS, clockAt, hatchRows, order, smooth } from './how-data';
 import { COUNTRY, FLAG_H, FLAG_W, flagPaths } from './flags';
@@ -31,9 +32,7 @@ const WAYS_LOOK = clampWays(savedWays as Partial<WaysLook>);
    it plays from a frame that is already drawn; Replay plays it from the start. The numbers are an illustration
    (how-data.ts); the page never says who casts the votes. */
 
-const useReduced = () => useSyncExternalStore((f) => { const m = window.matchMedia('(prefers-reduced-motion: reduce)'); m.addEventListener('change', f); return () => m.removeEventListener('change', f); }, () => window.matchMedia('(prefers-reduced-motion: reduce)').matches, () => false);
-
-export const VOTE_ROW = 32, CUT_GAP = 40;
+const VOTE_ROW = 32, CUT_GAP = 40;
 type City = { id: string; code: string; name: string };
 type Done = [number, number, number];
 type Way = 'browser' | 'editor';
@@ -47,11 +46,15 @@ const HANDOFF = 0.1;
 const pad = (n: number) => String(n).padStart(2, '0');
 const TOP = PROJECTS.slice(0, 3);
 const credit = (n: number) => '$' + n.toLocaleString('en-US') + ' credits';
+/* the city prizes under the top 3 in the votes: in full, and short for a narrow panel */
+const CITY_P = PRIZE_SHEET.city;
+const TAG = [`${CITY_P.winner.thing} + $${CITY_P.winner.credits}`, credit(CITY_P.finalist.credits), credit(CITY_P.finalist.credits)];
+const SHORT = [`${(CITY_P.winner.thing ?? '').replace('Meta ', '')} + $${CITY_P.winner.credits}`, `$${CITY_P.finalist.credits}`, `$${CITY_P.finalist.credits}`];
 const HATCH_SVG = hatchRows(15, 140, 311);
 
 export function FoldHow({ cfg, cities, mine, finalists, buildMin, date }: { cfg: FoldCfg; cities: City[]; mine: number; finalists: number; buildMin: number; date: string }) {
   const reduced = useReduced(), auto = cfg.howAuto === 'view' && !reduced;
-  const durs = [cfg.howBuildMs, cfg.howVoteMs, cfg.howFinalMs];
+  const { howBuildMs: bMs, howVoteMs: vMs, howFinalMs: fMs } = cfg;
   /* relay: the next drawing starts howHand through this one (100: once it has finished), after a pause; together: a tenth in */
   const relay = cfg.howPlay === 'relay', handoff = relay ? cfg.howHand / 100 : HANDOFF, gap = relay ? cfg.howGap : 0;
   const gapT = useRef(0);
@@ -64,18 +67,16 @@ export function FoldHow({ cfg, cities, mine, finalists, buildMin, date }: { cfg:
   const raf = useRef<number[]>([0, 0, 0]), figs = useRef<(HTMLElement | null)[]>([null, null, null]), grid = useRef<HTMLDivElement>(null);
   const set = useCallback((i: number, v: number) => setP((a) => { const n = [...a] as Done; n[i] = v; return n; }), []);
   const stop = useCallback((i: number) => cancelAnimationFrame(raf.current[i]), []);
-  /* The play order, shared by the queue and Replay: each drawing's state, the ones playing now (in the order they
-     started; the clock above follows the newest that has a clock), the ones waiting their turn, and the one the queue
-     is waiting on. The next drawing starts once the current one is HANDOFF through, so one leads and the eye follows
+  /* The play order, shared by the queue and Replay: each drawing's state, the ones waiting their turn, and the one the
+     queue is waiting on. The next drawing starts once the current one is HANDOFF through, so one leads and the eye follows
      it, but a reader of three panels side by side is not left waiting. */
-  const [, setOn] = useState<number[]>([]), [waiting, setWaiting] = useState<number[]>([]);
+  const [waiting, setWaiting] = useState<number[]>([]);
   const state = useRef<('new' | 'armed' | 'queued' | 'done')[]>(['new', 'new', 'new']);
-  const playing = useRef<number[]>([]), queue = useRef<number[]>([]), busy = useRef(-1), nextRef = useRef<() => void>(() => {});
+  const queue = useRef<number[]>([]), busy = useRef(-1), nextRef = useRef<() => void>(() => {});
   /* from: where the drawing starts (0 for Replay); the time it takes is the share of its length that is left */
   const run = useCallback((i: number, from = 0) => {
     stop(i); set(i, from); setPlayed(true);
-    playing.current = [...playing.current.filter((x) => x !== i), i]; setOn([...playing.current]);
-    const t0 = performance.now(), len = Math.max(1, durs[i] * (1 - from));
+    const t0 = performance.now(), len = Math.max(1, [bMs, vMs, fMs][i] * (1 - from));
     const tick = (now: number) => {
       const t = Math.min(1, Math.max(0, (now - t0) / len)); set(i, from + (1 - from) * t);
       /* the final never starts before the votes close: the close is what sends the top 3 to it */
@@ -83,11 +84,10 @@ export function FoldHow({ cfg, cities, mine, finalists, buildMin, date }: { cfg:
         if (gap > 0) { busy.current = -2 - i; clearTimeout(gapT.current); gapT.current = window.setTimeout(() => { if (busy.current === -2 - i) { busy.current = -1; nextRef.current(); } }, gap); }
         else { busy.current = -1; nextRef.current(); }
       }
-      if (t < 1) { raf.current[i] = requestAnimationFrame(tick); return; }
-      playing.current = playing.current.filter((x) => x !== i); setOn([...playing.current]);
+      if (t < 1) raf.current[i] = requestAnimationFrame(tick);
     };
     raf.current[i] = requestAnimationFrame(tick);
-  }, [durs[0], durs[1], durs[2], relay, handoff, gap, set, stop]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [bMs, vMs, fMs, relay, handoff, gap, set, stop]);
   /* the queue: a drawing waiting its turn sits at its start frame, dimmed */
   const next = useCallback(() => {
     /* how much of a drawing's panel is in the window, against most of it (or most of the window for a tall one) */
@@ -103,6 +103,8 @@ export function FoldHow({ cfg, cities, mine, finalists, buildMin, date }: { cfg:
     setWaiting([...queue.current]);
   }, [run, set, fromOf]);
   useEffect(() => { nextRef.current = next; }, [next]);
+  /* a Replay still playing when the section goes (the watcher below is off without autoplay) stops with it */
+  useEffect(() => () => { [0, 1, 2].forEach(stop); clearTimeout(gapT.current); }, [stop]);
   const dequeue = useCallback((i: number) => { queue.current = queue.current.filter((x) => x !== i); setWaiting([...queue.current]); }, []);
   /* Replay: plays now from the start and is never played again by the queue */
   const replay = useCallback((i: number) => {
@@ -132,8 +134,8 @@ export function FoldHow({ cfg, cities, mine, finalists, buildMin, date }: { cfg:
     figs.current.forEach((f) => { if (f) io.observe(f); });
     return () => {
       io.disconnect(); [0, 1, 2].forEach(stop); clearTimeout(gapT.current);
-      state.current = ['new', 'new', 'new']; queue.current = []; busy.current = -1; playing.current = [];
-      setWaiting([]); setOn([]); setP([1, 1, 1]);
+      state.current = ['new', 'new', 'new']; queue.current = []; busy.current = -1;
+      setWaiting([]); setP([1, 1, 1]);
     };
   }, [auto, dequeue, next, set, stop, fromOf]);
 
@@ -344,8 +346,6 @@ const VoteArt = memo(function VoteArt({ p, hatch, prize, settle, hold }: { p: nu
      leaving a faint ground over the hidden stretch so the finished chart still says those minutes were not shown */
   const x0 = X(OPEN_MIN), x60 = X(SHOW_MIN), R = w - 8;
   const hx = Math.max(0, X(Math.min(m, SHOW_MIN)) - x0), hh = (B - T) - ((B - T) - STRIP) * lift;
-  const city = PRIZE_SHEET.city, tag = [`${city.winner.thing} + $${city.winner.credits}`, credit(city.finalist.credits), credit(city.finalist.credits)];
-  const short = [`${(city.winner.thing ?? '').replace('Meta ', '')} + $${city.winner.credits}`, `$${city.finalist.credits}`, `$${city.finalist.credits}`];
   return (
     <div className="how-vote" data-rest={p >= 1 ? '' : undefined}>
       <div className="how-vh"><span>Project votes</span><span className="how-st" data-s={state.toLowerCase().replace(' ', '-')}>Min {pad(Math.round(m))} · {state}</span></div>
@@ -382,7 +382,7 @@ const VoteArt = memo(function VoteArt({ p, hatch, prize, settle, hold }: { p: nu
           return (
             <li key={name} className="how-row" data-lane={lane} data-top={top3 ? '' : undefined} data-you={lane === 0 ? '' : undefined} data-rank={live ? rank : undefined} style={{ transform: `translateY(${rank * VOTE_ROW + (rank >= 3 ? CUT_GAP : 0)}px)` }}>
               <span className="rk">{live ? pad(rank + 1) : '··'}</span><i style={{ background: LANE[lane] }} /><span className="nm">{name}{lane === 0 ? <em> yours</em> : null}</span>
-              {prize ? <span className="pz" data-on={closed && rank < 3 ? '' : undefined} style={{ ['--k' as string]: 2 - Math.min(2, rank) }}>{rank < 3 ? <><span className="lg">{tag[rank]}</span><span className="sh">{short[rank]}</span></> : null}</span> : <span />}
+              {prize ? <span className="pz" data-on={closed && rank < 3 ? '' : undefined} style={{ ['--k' as string]: 2 - Math.min(2, rank) }}>{rank < 3 ? <><span className="lg">{TAG[rank]}</span><span className="sh">{SHORT[rank]}</span></> : null}</span> : <span />}
               <span className="ct">{up ? <span key="n" className="how-n2">{HISTORY[lane][k]}<span className="sr-only"> votes</span></span> : <span key="q" className="how-q2">?<span className="sr-only"> votes, hidden</span></span>}</span>
             </li>
           );

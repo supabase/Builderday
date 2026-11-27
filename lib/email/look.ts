@@ -1,4 +1,4 @@
-/* look.ts: how the emails look. Saved in saved/email.config.json, tuned at /lab/email. Pure, so the server (which sends)
+/* look.ts: how the emails look. Saved in saved/email.config.json. Pure, so the server (which sends)
    and the lab (which shows) clamp the same way.
 
    The rules (never knobs):

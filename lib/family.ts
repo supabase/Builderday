@@ -1,6 +1,6 @@
 /* family.ts: the one config the preview, the home on the day and the city pages share for their small parts (the
    Key, the Cells, the Chip, the labels, the section heads, the rows), so the three read as one family. The specimen
-   lab (/lab/family) moves it and saves saved/family.config.json; the root layout writes the sizes as tokens on
+   lab moves it and saves saved/family.config.json; the root layout writes the sizes as tokens on
    :root, and the parts read the modes from the saved file. Pure. */
 
 export type FamilyCfg = {
@@ -76,7 +76,5 @@ export function familyCss(c: FamilyCfg): string {
 }
 
 /* rule 5: one date at two lengths */
-export const DATE_LONG = (d: Date) => d.getUTCDate() + ' ' + d.toLocaleString('en-GB', { month: 'long', timeZone: 'UTC' }) + ' ' + d.getUTCFullYear();
-export const DATE_SHORT = (d: Date) => d.getUTCDate() + ' ' + d.toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' });
 /* "People" shows only from the threshold up */
 export const showPeople = (c: FamilyCfg, n: number) => c.people === 0 || n >= c.people;

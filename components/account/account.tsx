@@ -2,7 +2,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode, type RefObject } from 'react';
 import { emailOK } from '@/lib/forms';
 import { CODE } from '@/lib/places';
-import { EVENT } from '@/lib/day-data';
+import { DAY_SHORT, EVENT } from '@/lib/day-data';
 import { LUMA_LIVE, lumaHref } from '@/lib/luma';
 import { SERVER, checkIt } from '@/lib/hackday-server';
 import { Picker, Say } from '@/components/day/get-ready';
@@ -101,7 +101,6 @@ export function accountArt(me: Me | null): ArtSubject {
   const start = localStart(p);
   return { word: CODE[p.city] || p.city.slice(0, 3), city: p.city, lines: [p.cityName, DAY_SHORT].concat(start ? [start + ' local'] : []) };
 }
-const DAY_SHORT = new Date(Date.UTC(EVENT.year, EVENT.month - 1, EVENT.day)).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
 
 /* the account sheet, opened by the cell */
 export function AccountSheet({ here, done }: { here?: string; done: () => void }) {

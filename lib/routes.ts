@@ -17,8 +17,6 @@ export const routes = {
   city: (id: string) => BASE + '/city/' + id,
   stage: (id: string) => BASE + '/city/' + id + '/stage',
   project: (id: string, slug: string) => BASE + '/city/' + id + '/p/' + slug,
-  labHome: () => BASE + '/lab/day-home',
-  labCity: (id: string) => BASE + '/lab/day-city?city=' + id,
 };
 /* a project's address from its city's link as a page builds it (/city/<id>?m=…&demo): the same query, so the
    project opens at the same moment, with the same switches; a lab's link has no project page and gets the plain one */

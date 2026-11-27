@@ -116,7 +116,7 @@ export function CoverQuestions({ city, url }: SceneProps) {
 
 /* the deadline, as the frame "90 minutes to build": the minutes in green, the day's line under them (build, then
    vote, a tick each half hour in the city's time); the second press lights the deadline on the line and in its cell */
-export function CoverDeadline({ step, city }: SceneProps & { deadline?: number | null }) {
+export function CoverDeadline({ step, city }: SceneProps) {
   const { fresh } = useWall();
   const start = city.build_start ?? city.planned_start, end = city.build_end ?? start + city.build_min * 60000, close = end + city.vote_after * 60000;
   const span = close - start, ticks: number[] = [];

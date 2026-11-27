@@ -60,7 +60,6 @@ export const COUNTRY: Record<string, string> = {
   seoul: 'KR', singapore: 'SG', peshawar: 'PK', nouakchott: 'MR', london: 'GB', rosario: 'AR', santiago: 'CL', manta: 'EC',
   'new-york': 'US', toronto: 'CA', 'san-salvador': 'SV', austin: 'US', 'mexico-city': 'MX', 'san-francisco': 'US',
 };
-export const COUNTRY_NAME: Record<string, string> = { KR: 'South Korea', SG: 'Singapore', PK: 'Pakistan', MR: 'Mauritania', GB: 'United Kingdom', AR: 'Argentina', CL: 'Chile', EC: 'Ecuador', US: 'United States', CA: 'Canada', SV: 'El Salvador', MX: 'Mexico' };
 
 /* one SVG path per ink: each dot is a zero-length round-capped stroke, so the whole flag is a handful of nodes */
 const CACHE = new Map<string, { ink: string; d: string }[]>();
