@@ -37,12 +37,13 @@ export function MarkFace({ mark, id }: { mark: MarkMode; id?: string }) {
 }
 export const STATUS_LABEL: Record<WheelStatus, string> = { open: 'Open', nearing: 'Filling up', full: 'Waiting list', sold: 'Sold out', soon: 'Opens soon' };
 
-/* each state has its words and its own shape, a ring that fills up, so it does not read by colour alone */
+/* each state has its words and its own shape, a ring that fills up, so it does not read by colour alone. The fill is a
+   pie (a stroke as wide as the circle), so one state's shape morphs into the next (wheel.css) */
 export function StatusIcon({ status }: { status: WheelStatus }) {
   return (
-    <svg viewBox="0 0 12 12" aria-hidden="true">
-      {status === 'full' || status === 'sold' ? <circle cx="6" cy="6" r="5" fill="currentColor" /> : <circle cx="6" cy="6" r="4.25" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray={status === 'soon' ? '2 2' : undefined} />}
-      {status === 'nearing' ? <path d="M6 1.75a4.25 4.25 0 0 1 0 8.5z" fill="currentColor" /> : null}
+    <svg viewBox="0 0 12 12" className="wh-state-icon" data-status={status} aria-hidden="true">
+      <circle className="wh-state-ring" cx="6" cy="6" r="4.25" fill="none" stroke="currentColor" strokeWidth="1.5" pathLength="24" />
+      <circle className="wh-state-fill" cx="6" cy="6" r="2.5" fill="none" stroke="currentColor" strokeWidth="5" pathLength="100" transform="rotate(-90 6 6)" />
     </svg>
   );
 }
@@ -299,7 +300,7 @@ function OneWheel({ cities, cfg, start = 0, noGl = false, cells = true, mark = '
                     <div className="wh-stub-top"><dt className="sr-only">City code</dt><dd className="wh-stub-code"><Prism k={city.id} dir={dir}>{city.code || city.name.slice(0, 3).toUpperCase()}</Prism></dd>
                       <dd className="wh-stub-no" aria-hidden="true">No.&nbsp;<Prism k={city.id} dir={dir}>{serialOf(hero.seed, city.id)}</Prism></dd></div>
                     <div><dt className="sr-only">Session, local time</dt><dd><Prism k={city.id} dir={dir}>{timeOf(city)}</Prism></dd></div>
-                    <div className="wh-status"><dt className="sr-only">Status</dt><dd><Prism k={city.id} dir={dir} status={city.status}>{status}</Prism></dd></div>
+                    <div className="wh-status"><dt className="sr-only">Status</dt><dd><span className="wh-face" data-status={city.status}>{status}</span></dd></div>
                   </dl>
                 ) : null}
                 {pill}

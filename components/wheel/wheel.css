@@ -294,6 +294,15 @@ button.wh-cta { appearance: none; margin: 0; padding: 0; border: 0; background: 
 :is(.wh-stub, .wh-spoke) .wh-drum.is-turning .is-new { transform: none; animation-name: wh-flat-in; }
 :is(.wh-stub, .wh-spoke) .wh-prism[data-dir='up'] { --wh-flat: 100%; }
 :is(.wh-stub, .wh-spoke) .wh-prism[data-dir='down'] { --wh-flat: -100%; }
+.wh-state-ring { stroke-dasharray: 2 0; }
+.wh-state-icon[data-status='soon'] .wh-state-ring { stroke-dasharray: 2 2; }
+.wh-state-fill { stroke-dasharray: 0 100; }
+.wh-state-icon[data-status='nearing'] .wh-state-fill { stroke-dasharray: 50 100; }
+.wh-state-icon:is([data-status='full'], [data-status='sold']) .wh-state-fill { stroke-dasharray: 100 100; }
+.wh-stub .wh-state-icon { transition: color var(--dur-slide, 220ms) var(--ease-out, ease-out); }
+.wh-stub .wh-state-icon circle { transition: stroke-dasharray var(--dur-slide, 220ms) var(--ease-out, cubic-bezier(.23, 1, .32, 1)); }
+@media (prefers-reduced-motion: reduce) { .wh-stub .wh-state-icon, .wh-stub .wh-state-icon circle { transition: none; } }
+
 /* the turn lasts until its last letter lands: --n letters, each one stagger later */
 .wh-letters { white-space: pre; }
 .wh-ch { display: inline-block; }
