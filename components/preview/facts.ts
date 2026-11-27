@@ -1,10 +1,9 @@
-import { BUILDER_DAY } from '@/lib/event/format';
 import day from '@/saved/day.config.json';
 import { CODE, PLACE } from '@/lib/places';
-import { RULES, SERVER, sayIt } from '@/lib/hackday-server';
-import { CITIES, EPOCH, EVENT, SCHED, USUAL_START, mulberry32, sched, startsSentence } from '@/lib/day-data';
+import { RULES, SERVER } from '@/lib/hackday-server';
+import { CITIES, EPOCH, EVENT, SCHED, USUAL_START, mulberry32, sched } from '@/lib/day-data';
 import { hhmm } from '@/lib/format';
-import { PRIZES } from '@/lib/prizes';
+import { PRIZES, PRIZE_SHEET, credits, prizeLine } from '@/lib/prizes';
 import type { WheelStatus } from '@/components/wheel/click';
 import type { WheelFact } from '@/components/wheel/wheel';
 
@@ -13,15 +12,18 @@ import type { WheelFact } from '@/components/wheel/wheel';
    in lib/places.ts, since the model has no coordinates. PLACEHOLDERS: the people counts and the states are seeded, not real; the
    model has no sign-ups yet. */
 
+const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 export { PLACE };
 
 export type OurFact = WheelFact & { offset: number; opens: number; buildEnds: number; closes: number };
+/* what the preview page reads of it, so the server sends no more than that to the browser */
+export type OurFacts = Pick<OurWheel, 'cities' | 'date' | 'buildMin' | 'regOpen'>;
 export type OurWheel = { cities: OurFact[]; regOpen: boolean; date: string; dateShort: string; nearest: number; buildMin: number; voteAfter: number; startHour: number; pickAt: string; how: [string, string][]; format: [string, string][] };
 
 /* live: each city's people and state from the backend (lib/server/signups.ts); without it, seeded stand-ins (the labs) */
 /* onDay: on the day pages, the day's own finalists count (a city with fewer than three entries sends fewer) and the vote
    rules as they stand (the preview's words wait on the owner) */
-export function ourWheel(live?: Record<string, { people: number; status: WheelStatus }> | null, onDay?: { finalists: number }): OurWheel {
+export function ourWheel(live?: Record<string, { people: number; status: WheelStatus; left?: number | null }> | null, onDay?: { finalists: number }): OurWheel {
   const cfg = { ...SCHED, schedule: day.schedule, startHour: day.startHour, buildMin: day.buildMin, voteAfter: day.voteAfter, pickAfter: day.pickAfter };
   const S = sched(cfg), R = mulberry32(day.seed * 977 + 11);
   const cities: OurFact[] = S.cs.map((x, i) => {
@@ -33,6 +35,7 @@ export function ourWheel(live?: Record<string, { people: number; status: WheelSt
     return {
       id: c.id, name: c.name, code: CODE[c.id] ?? c.name.slice(0, 3).toUpperCase(), lat, lon, status, offset: o,
       session: `${hhmm(x.start + o)}–${hhmm(x.end + o)} ${zoneText(o / 60)}`, count: people === 1 ? '1 person' : `${people} people`, people,
+      left: real?.left ?? undefined,
       href: `/city/${c.id}`, action: status === 'full' ? `Join the waiting list in ${c.name}` : status === 'sold' ? `${c.name} is sold out` : `Join in ${c.name}`,
       opens: EPOCH + x.start * 60000, buildEnds: EPOCH + x.buildEnd * 60000, closes: EPOCH + x.end * 60000,
     };
@@ -44,19 +47,18 @@ export function ourWheel(live?: Record<string, { people: number; status: WheelSt
     /* the rail's four cells, and the sheet's format */
     format: [
       ['Build', `${cfg.buildMin} minutes, most from ${hhmm(USUAL_START)} local`],
-      ['Final', `Top ${top} in each city, ${fin} in all`],
+      ['Vote', `From ${EVENT.publicAt ? 'minute ' + EVENT.publicAt : 'the start'}, counts shown from minute ${EVENT.showAt ?? 0}`],
       ['City prize', `1st in each city wins ${cityPrize}`],
-      ['The winner', `${EVENT.pickers} pick one of the ${fin}`],
+      ['Global final', `${PRIZE_SHEET.picker} picks 1st, 2nd and 3rd from the ${fin}`],
     ],
     how: [
-      ['How do I enter?', `Register for your city on Luma, then come on ${EVENT.day} December. Building runs ${cfg.buildMin} minutes from your city’s start. ${startsSentence()} Submit your project on your city’s page or from your editor, then share it. Anyone with the link can vote.`],
-      ['How do I submit?', `Two ways. In the browser, on your city’s page, you type the code on the screen in the room, then your project’s name, a one-line pitch and its GitHub repository. There’s nothing to set up. From your editor, you add the Builder Day server before the day and say “${sayIt()}” It fills in the name, the pitch and the repository and sends them. Both ask for the code on the screen and run the same checks.${SERVER.live ? '' : ' The server is not open yet. The line to add it will be in Get ready.'}`],
-      ['Can I build with a team?', `Yes, up to ${BUILDER_DAY.teamMax} people on the same city’s list. One of you starts a team in your account and shares its code; the others join with it. The team has one entry, any of you can submit or edit it, and none of you can vote for it.`],
-      ['What is checked?', `${RULES.join(' ')} A repository made before the day is refused.`],
-      ['Who can vote?', onDay && EVENT.publicAt != null ? `The builders on a city’s list vote from its start. Everyone else, after confirming an email once, and the judges vote from minute ${EVENT.publicAt}. Voting closes ${cfg.voteAfter} minutes after building ends.` : `Anyone with the link, after confirming an email once. Voting opens when building starts and closes ${cfg.voteAfter} minutes after it ends.`],
-      ['Who goes to the final?', `The top ${top} by votes in each city, so ${fin} finalists. First place in each city wins ${cityPrize}.`],
-      ['What do the judges do?', onDay ? `Each judge has ${EVENT.judgeVotes} votes, each worth ${EVENT.judgeWeight}, and can put several on one project. They count in the same tally as everyone’s.` : `Each judge has ${EVENT.judgeVotes} votes and can put several on one project. Their votes count in the same tally as everyone’s.`],
-      ['How is the winner picked?', `${EVENT.pickers} pick one of the ${fin} finalists at ${pickAt}. The winner gets ${PRIZES.global.what ?? "the global prize"}.`],
+      ['How do I enter?', `Register for your city on Luma and come on ${EVENT.day} December. You get ${cfg.buildMin} minutes to build something new with Supabase.`],
+      ['How do I submit?', `In your browser on your city’s page, or from your editor with the Builder Day server. Your host checks you in at the door first: only people on the list who are checked in can submit.${SERVER.live ? '' : ' The editor server opens soon.'}`],
+      ['What is checked?', RULES.join(' ')],
+      ['Who can vote?', `Anyone signed in with a Supabase account. Voting is open for everyone ${EVENT.publicAt ? 'from minute ' + EVENT.publicAt : 'from the start'}. The counts stay hidden until minute ${EVENT.showAt ?? 0}, then show live until everything closes at minute ${cfg.buildMin}.`],
+      ['Who goes to the final?', `The top ${top} by votes in each city, ${fin} in all. First place wins the city: ${prizeLine(PRIZE_SHEET.city.winner)}. The other two get ${prizeLine(PRIZE_SHEET.city.finalist)} each.`],
+      ['What do the judges do?', `They vote from minute ${EVENT.judgeAt ?? EVENT.publicAt ?? 0}, in the same count as everyone. Each judge has ${EVENT.judgeVotes} votes, and each one counts ${EVENT.judgeWeight}.`],
+      ['How are the global winners picked?', `${cap(PRIZE_SHEET.picker)} picks 1st, 2nd and 3rd from the ${fin} finalists, announced ${PRIZE_SHEET.announce}. ${PRIZE_SHEET.global.map((g) => ['1st', '2nd', '3rd'][g.place - 1] + ' wins a ' + g.thing + ' and ' + credits(g)).join('; ')}.`],
     ],
   };
 }
@@ -77,7 +79,23 @@ const km = (a: Here, b: Here) => {
 };
 
 /* the nearest city: by distance from where the visitor is; with no position, by time zone */
-export function nearestCity(cities: { offset: number; lat?: number; lon?: number }[], visitorOffset: number, here?: Here | null) {
+/* the browser's own zone name breaks a tie between cities on the same offset (London and Nouakchott share UTC+0 in
+   December, so a visitor in Paris would otherwise get whichever comes first): the city of that zone, else the one of
+   its region */
+const ZONE_CITY: [RegExp, string][] = [
+  [/^America\/Toronto$/, 'toronto'], [/^America\/New_York$/, 'new-york'], [/^America\/Guayaquil$/, 'manta'],
+  [/^America\/El_Salvador$/, 'san-salvador'], [/^America\/Mexico_City$/, 'mexico-city'], [/^America\/Chicago$/, 'austin'],
+  [/^America\/Argentina\//, 'rosario'], [/^America\/Santiago$/, 'santiago'], [/^Europe\//, 'london'], [/^Africa\//, 'nouakchott'],
+];
+/* the browser's zone does not change during a visit, so it is read once */
+let zoneHit: string | null | undefined;
+function zoneCity(): string | null {
+  if (zoneHit !== undefined) return zoneHit;
+  let z = '';
+  try { z = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { return (zoneHit = null); }
+  return (zoneHit = ZONE_CITY.find(([re]) => re.test(z))?.[1] ?? null);
+}
+export function nearestCity(cities: { id?: string; offset: number; lat?: number; lon?: number }[], visitorOffset: number, here?: Here | null) {
   let best = 0;
   if (here) {
     let d = Infinity;
@@ -85,7 +103,9 @@ export function nearestCity(cities: { offset: number; lat?: number; lon?: number
     return best;
   }
   cities.forEach((c, i) => { if (Math.abs(c.offset - visitorOffset) < Math.abs(cities[best].offset - visitorOffset)) best = i; });
-  return best;
+  const gap = Math.abs(cities[best].offset - visitorOffset), want = zoneCity();
+  const tie = want === null ? -1 : cities.findIndex((c) => c.id === want && Math.abs(c.offset - visitorOffset) === gap);
+  return tie >= 0 ? tie : best;
 }
 
 /* "Opens in 23 days", counted to the city's own opening */

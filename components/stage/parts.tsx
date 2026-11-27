@@ -9,6 +9,7 @@ import partsSaved from '@/saved/parts.config.json';
 import type { Project } from '@/lib/data';
 import type { Other } from '@/lib/stage/world';
 import { useWall } from './use';
+import { isCover } from '@/lib/stage/config';
 
 /* The wall's small parts: a step that lands, numbers on the board's flaps, the countdown, the QR with the address and
    the room code, the other nine cities, and a project picture. Every size is in the wall's own pixels (1920 by 1080),
@@ -26,7 +27,7 @@ export function In({ i, className, children, as: As = 'div' }: { i: number; clas
 /* a number the room reads: on the flaps in Tube and Board (a change turns them), plain in Plain */
 export function Num({ v, width, className }: { v: string; width?: number; className?: string }) {
   const { cfg } = useWall();
-  if (cfg.dir === 'plain') return <span className={'st-num' + (className ? ' ' + className : '')}>{v}</span>;
+  if (cfg.dir === 'plain' || isCover(cfg.dir)) return <span className={'st-num' + (className ? ' ' + className : '')}>{v}</span>;
   /* a count: on the board it keeps its width with blank cells in front (never a gap after the digit); in the tube,
      where blank cells do not show, it takes its own width */
   const count = /^[0-9]+$/.test(v), t = count && width && cfg.dir === 'board' ? v.padStart(width) : v;

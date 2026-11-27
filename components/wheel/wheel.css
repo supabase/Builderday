@@ -22,7 +22,11 @@
     radial-gradient(circle var(--globe-radius, 0px) at 100% var(--globe-y, 50%), transparent calc(100% - 1px), #000 100%),
     radial-gradient(circle var(--small-radius, 0px) at var(--small-x, 0px) var(--small-y, 0px), transparent calc(100% - 1px), #000 100%);
   mask-composite: intersect;
+  animation: wh-lines-up 7.2s steps(60) infinite;
 }
+/* 60 px holds a whole number of lines at every pitch the knob allows (2 to 6 px), so the loop has no seam */
+@keyframes wh-lines-up { to { background-position: 0 -60px; } }
+@media (prefers-reduced-motion: reduce) { .wh-pin::after { animation: none; } }
 
 .wh-wordmark { position: absolute; left: var(--wh-gutter); margin: 0; }
 /* the link, and anything a page sets under it, from the bottom left corner up */
@@ -108,6 +112,7 @@ button.wh-cta { appearance: none; margin: 0; padding: 0; border: 0; background: 
 .wh-flow .wh-cells:not([data-placed]) { visibility: hidden; }
 .wh-grip { position: absolute; top: 0; left: 0; width: 0; height: 0; border-radius: 50%; touch-action: none; cursor: grab; }
 .wh-grip:focus-visible { outline: 2px solid var(--wh-ink); outline-offset: 6px; }
+.wh-grip[data-quiet]:focus-visible { outline: none; }
 .wh-grip[data-docked] { pointer-events: none; }
 .wh-fixed .wh-canvas { position: fixed; inset: 0 0 auto 0; width: 100%; height: 100lvh; z-index: 0; }
 .wh-fixed .wh-foot { position: fixed; top: calc(100svh - var(--wh-peek, 0px) - 30px); bottom: auto; transform: translateY(-100%); z-index: 1; }
@@ -168,6 +173,8 @@ button.wh-cta { appearance: none; margin: 0; padding: 0; border: 0; background: 
 .wh-lead > p, .wh-lead > div > p { max-width: max(var(--wh-lead-max, 100vw), 12em); }
 .wh-lead :is(p, h1) { margin: 0; font: 400 max(16px, var(--f) * var(--hero-body-k, 0.5))/1.5 var(--wh-sans); letter-spacing: -0.01em; color: var(--wh-ink); text-wrap: balance; }
 .wh-lead .wh-lead-muted { color: var(--wh-muted); }
+/* the line under the headline: the body's size in ink, tucked up to the headline as its second line */
+.wh-lead h1 + .wh-lead-sub { margin-top: -0.2em; margin-bottom: 0.15em; }
 /* the headline is set like the city names on the wheel: medium weight, the same tracking */
 .wh-lead h1 { max-width: max(var(--wh-h1-max, 100vw), 5.5em); margin-bottom: 0.3em; font-weight: 500; font-size: min(max(32px, min(var(--f) * var(--hero-title-k, 1.55), 8svh)), var(--wh-title-cap, 999px)); line-height: 1.08; letter-spacing: -0.035em; }
 /* tight: the date is one more line under the host's, set apart by the gap */
@@ -257,35 +264,18 @@ button.wh-cta { appearance: none; margin: 0; padding: 0; border: 0; background: 
 .wh-col.is-docked .wh-cells { order: -1; align-self: flex-start; }
 .wh-col.is-docked .wh-lead { margin-top: auto; }
 
-/* ---------- the hero's modes (saved/hero.config.json, /lab/hero) ---------- */
+/* ---------- the hero's modes (saved/hero.config.json) ---------- */
 
-/* the city's name in the box: every name stacked in one cell (fixed: the longest sets the width), the current one in
-   ink. The slot clips, so a name rolling in or out is cut at the box's words' line, never drawn over the box's edge. */
-.wh-reg-city { display: inline-grid; vertical-align: top; overflow: clip; overflow-clip-margin: 0.12em; }
-.wh-reg-city > * { grid-area: 1 / 1; white-space: nowrap; }
-.wh-reg-ghost { visibility: hidden; }
-/* hug: the slot is the new name's width; the old one leaves over the line (the paper's clip cuts it at the edge), and
-   only the rows above and below are cut */
-.wh-reg-city[data-hug] { position: relative; overflow: visible; overflow-y: clip; }
-.wh-reg-city[data-hug] > .is-out { position: absolute; left: 0; top: 0; }
-/* the verb before it: every verb stacked, set against the name, so a change of state never moves the name */
-.wh-reg-verb { display: inline-grid; justify-items: end; vertical-align: top; }
-.wh-reg-verb > * { grid-area: 1 / 1; white-space: pre; }
-/* roll: the new name comes round the turn's way (as the stub's type rolls), the old one leaves the other way, on the
-   same clock as the stub (--dur-slide) and the brand ease-out, by transform and opacity only; the opacity is done in
-   the first half, so the words are never half-seen for long. A roll that follows a fast spin is half as long. */
-.wh-reg-city { --wh-roll: var(--dur-slide, 220ms); }
-.wh-reg-city.is-quick { --wh-roll: calc(var(--dur-slide, 220ms) / 2); }
-.wh-reg-name.is-in { animation: wh-name-in var(--wh-roll) var(--ease-out, cubic-bezier(.23, 1, .32, 1)) both; }
-.wh-reg-name.is-out { animation: wh-name-out var(--wh-roll) var(--ease-out, cubic-bezier(.23, 1, .32, 1)) both; }
-.wh-reg-city[data-dir='up'] { --wh-from: 0.9em; }
-.wh-reg-city[data-dir='down'] { --wh-from: -0.9em; }
-@keyframes wh-name-in { from { transform: translateY(var(--wh-from, 0.9em)); opacity: 0; } 50% { opacity: 1; } }
-@keyframes wh-name-out { 50% { opacity: 0; } to { transform: translateY(calc(var(--wh-from, 0.9em) * -1)); opacity: 0; } }
-/* no motion: the name changes at once (the animation still ends, so the slot moves on) */
-@media (prefers-reduced-motion: reduce) { .wh-reg-name.is-in { animation-duration: 1ms; } .wh-reg-name.is-out { display: none; } }
+/* the box's words lie over an unseen sizer: every verb stacked in one cell (the mark that the engine measures,
+   engine.ts), then every name stacked in one cell. The longest of each sets the width */
+.wh-reg-words { display: inline-grid; justify-items: start; }
+.wh-reg-words > * { grid-area: 1 / 1; }
+.wh-reg-city { white-space: nowrap; }
+.wh-reg-sizer { visibility: hidden; }
+:is(.wh-reg-mark, .wh-reg-names) { display: inline-grid; vertical-align: top; }
+:is(.wh-reg-mark, .wh-reg-names) > * { grid-area: 1 / 1; white-space: pre; }
 
-/* the small type in the stub and the spoke's facts rolls flat, like the name: at 13 px a turning drum shows both faces
+/* the small type in the stub and the spoke's facts rolls flat: at 13 px a turning drum shows both faces
    at once as a smudge. The drum itself only holds the time (its animation's end ends the turn); the faces slide, the new
    one the turn's way (up: from below, as the cells' drum), the old one out the other way, clipped by the line. */
 :is(.wh-stub, .wh-spoke) .wh-prism { perspective: none; overflow: clip; overflow-clip-margin: 0.1em; }
@@ -294,6 +284,26 @@ button.wh-cta { appearance: none; margin: 0; padding: 0; border: 0; background: 
 :is(.wh-stub, .wh-spoke) .wh-drum.is-turning .is-new { transform: none; animation-name: wh-flat-in; }
 :is(.wh-stub, .wh-spoke) .wh-prism[data-dir='up'] { --wh-flat: 100%; }
 :is(.wh-stub, .wh-spoke) .wh-prism[data-dir='down'] { --wh-flat: -100%; }
+.wh-state-ring { stroke-dasharray: 2 0; }
+.wh-state-icon[data-status='soon'] .wh-state-ring { stroke-dasharray: 2 2; }
+.wh-state-fill { stroke-dasharray: 0 100; }
+.wh-state-icon[data-status='nearing'] .wh-state-fill { stroke-dasharray: 50 100; }
+.wh-state-icon:is([data-status='full'], [data-status='sold']) .wh-state-fill { stroke-dasharray: 100 100; }
+.wh-stub .wh-state-icon { transition: color var(--dur-slide, 220ms) var(--ease-out, ease-out); }
+.wh-stub .wh-state-icon circle { transition: stroke-dasharray var(--dur-slide, 220ms) var(--ease-out, cubic-bezier(.23, 1, .32, 1)); }
+@media (prefers-reduced-motion: reduce) { .wh-stub .wh-state-icon, .wh-stub .wh-state-icon circle { transition: none; } }
+
+/* the turn lasts until its last letter lands: --n letters, each one stagger later */
+.wh-letters { white-space: pre; }
+.wh-ch { display: inline-block; }
+:is(.wh-stub, .wh-spoke) .wh-drum { --wh-stagger: 30ms; }
+:is(.wh-stub, .wh-spoke) .wh-drum.is-quick { --wh-stagger: 15ms; }
+:is(.wh-stub, .wh-spoke) .wh-drum[data-letters].is-turning { animation-duration: calc(var(--wh-turn) + (var(--n, 1) - 1) * var(--wh-stagger)); }
+:is(.wh-stub, .wh-spoke) .wh-drum[data-letters].is-turning .wh-face { animation: none; }
+:is(.wh-stub, .wh-spoke) .wh-drum[data-letters].is-turning .is-new .wh-ch:not([data-still]) { animation: wh-flat-in var(--wh-turn) var(--ease-out, cubic-bezier(.23, 1, .32, 1)) calc(var(--i) * var(--wh-stagger)) both; }
+:is(.wh-stub, .wh-spoke) .wh-drum[data-letters].is-turning .is-old .wh-ch:not([data-still]) { animation: wh-flat-out var(--wh-turn) var(--ease-out, cubic-bezier(.23, 1, .32, 1)) calc(var(--i) * var(--wh-stagger)) both; }
+:is(.wh-stub, .wh-spoke) .wh-drum[data-letters].is-turning .is-old [data-still] { visibility: hidden; }
+@media (prefers-reduced-motion: reduce) { .wh-drum.is-turning .wh-ch { animation-duration: 1ms !important; animation-delay: 0s !important; } }
 @keyframes wh-hold { to { opacity: 1; } }
 @keyframes wh-flat-in { from { transform: translateY(var(--wh-flat, 100%)); opacity: 0; } 50% { opacity: 1; } }
 @keyframes wh-flat-out { 50% { opacity: 0; } to { transform: translateY(calc(var(--wh-flat, 100%) * -1)); opacity: 0; } }
@@ -313,6 +323,15 @@ button.wh-cta { appearance: none; margin: 0; padding: 0; border: 0; background: 
     radial-gradient(circle var(--notch) at var(--stub) 100%, #0000 calc(100% - 0.5px), #000) bottom / 100% 51% no-repeat;
   transition: background-color var(--dur-hover, 140ms) var(--ease-out, ease-out); }
 .wh-ticket .wh-reg { position: static; border: 0; background: none; color: inherit; padding-left: 0.55em; }
+/* the paper's grain (hero knob `paper`): a fine speckle, noise drawn in place (no image file), laid over the ticket's
+   ground and under its words; the ticket's mask cuts it with the notches */
+.wh-ticket { isolation: isolate; }
+.wh-ticket::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: var(--hero-paper, 0);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.15' numOctaves='2' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2.6 0 0 0 -1.38'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23f)'/%3E%3C/svg%3E") 0 0 / 160px 160px; }
+/* on a 1x screen each grain is a whole device pixel and reads as dirt, so it prints at under half the strength there */
+@media (max-resolution: 1.5dppx) { .wh-ticket::before { opacity: calc(var(--hero-paper, 0) * 0.4); } }
+/* on a phone the ticket is held close: the grain is finer (half the size) and fainter, so it reads as paper, not dust */
+@media (max-width: 700px) { .wh-ticket::before { opacity: calc(var(--hero-paper, 0) * 0.45); background-size: 80px 80px; } }
 .wh-ticket .wh-reg::before { content: ''; position: absolute; inset: 0; }
 .wh-ticket .wh-reg:is(:hover, :active) { background: none; }
 /* the ticket's mask clips anything drawn outside it, so its focus ring is drawn inside, on the stretched press */
@@ -321,9 +340,10 @@ button.wh-cta { appearance: none; margin: 0; padding: 0; border: 0; background: 
 @media (hover: hover) and (pointer: fine) { .wh-ticket:has(.wh-reg:hover) { background: #d6d6d3; } }
 .wh-ticket:has(.wh-reg:active) { background: #c4c4c1; transition-duration: 0s; }
 /* the stub: the city's code large, its number, then time and state, in the mono face; the perforation on its right */
-.wh-stub { --wh-cell: 1.25em; box-sizing: border-box; width: var(--stub); flex: none; margin: 0; padding: 0.9em 1.4em 0.9em 1.5em; display: flex; flex-direction: column; justify-content: center; gap: 2px;
-  font: 500 max(11px, var(--wh-f, 40px) * 0.31)/1.25 var(--wh-mono); letter-spacing: 0; white-space: nowrap;
-  background: radial-gradient(circle, rgb(12 13 13 / 0.38) 1px, #0000 1.5px) right / 3px var(--hero-perf, 6px) repeat-y; }
+.wh-stub { --wh-cell: 1.25em; position: relative; box-sizing: border-box; width: var(--stub); flex: none; margin: 0; padding: 0.9em 1.4em 0.9em 1.5em; display: flex; flex-direction: column; justify-content: center; gap: 2px;
+  font: 500 max(11px, var(--wh-f, 40px) * 0.31)/1.25 var(--wh-mono); letter-spacing: 0; white-space: nowrap; }
+.wh-stub::after { content: ''; position: absolute; top: calc(var(--notch) + 4px); bottom: calc(var(--notch) + 4px); right: -1.5px; width: 3px;
+  background: radial-gradient(circle, rgb(12 13 13 / 0.38) 1px, #0000 1.5px) center / 3px var(--hero-perf, 6px) no-repeat space; }
 .wh-stub > div { display: flex; align-items: baseline; gap: 0.75em; margin: 0; }
 .wh-stub dd { margin: 0; }
 .wh-stub .wh-face { height: auto; padding: 0; gap: 0.45em; border: 0; background: none !important; font-size: inherit; color: inherit; }
@@ -384,10 +404,28 @@ button.wh-cta { appearance: none; margin: 0; padding: 0; border: 0; background: 
 .wh-pin[data-dock] .wh-stub { padding: 10px 12px 10px 14px; font-size: 11.5px; }
 .wh-pin[data-dock] .wh-stub-no { display: none; }
 .wh-pin[data-dock] .wh-stub-code { font-size: 18px; }
-.wh-pin[data-dock] .wh-reg-ghost { display: none; }
-.wh-pin[data-dock] .wh-reg-verb { justify-items: start; }
+.wh-pin[data-dock] .wh-reg-sizer { display: none; }
 /* a narrow phone (360): the stub gives up width and the words step down, so the longest city still fits its line */
 @media (max-width: 380px) { .wh-pin[data-dock] .wh-ticket { --stub: 128px; } .wh-pin[data-dock] .wh-reg { font-size: 18px; } .wh-pin[data-dock] .wh-stub { padding-right: 10px; } }
+.wh-stub-t-short { display: none; }
+/* ...or, docked on its line (data-hero-dock='line'): the words stay under the header, but the ticket stays on the active
+   name's line and takes the wheel's name, as on a wide screen. It undoes the foot (--wh-row-dock: 0, --wh-lands: 1) and
+   slims down so the box's name starts where the wheel's names start: a narrow stub (the code, the hours, the state; no
+   serial, no "local"), no small globe, and the verb set small over the name, so the name alone stands on the line. The
+   box's name size is the wheel's names' size (the engine takes it from the box). */
+.wh-pin[data-dock][data-hero-dock='line'] .wh-reg-at { --wh-row-dock: 0; --wh-cell: 52px; top: 0; left: 0; right: auto; bottom: auto; max-width: none; transform: translateY(-50%); flex-wrap: nowrap; }
+.wh-fixed:not(.wh-rides)[data-dock][data-hero-dock='line'] .wh-reg-at { top: 0; bottom: auto; transform: translateY(-50%); }
+.wh-pin[data-dock][data-hero-dock='line'] .wh-ticket { --stub: var(--hero-stub-phone, 100px); width: auto; }
+.wh-pin[data-dock][data-hero-dock='line'] .wh-stub { --wh-cell: 1.15em; padding: 4px 8px 4px 12px; font-size: 11px; line-height: 1.15; gap: 1px; }
+.wh-pin[data-dock][data-hero-dock='line'] .wh-stub .wh-drum { --h: 1.15em; }
+.wh-pin[data-dock][data-hero-dock='line'] .wh-stub-code { font-size: 15px; line-height: 1.05; }
+.wh-pin[data-dock][data-hero-dock='line'] .wh-stub-t { display: none; }
+.wh-pin[data-dock][data-hero-dock='line'] .wh-stub-t-short { display: block; }
+.wh-pin[data-dock][data-hero-dock='line'] .wh-reg { --wh-lands: 1; flex: none; padding: 0 14px 0 10px; font-size: var(--hero-name-phone, 20px); white-space: nowrap; line-height: 1.1; }
+.wh-pin[data-dock][data-hero-dock='line'] .wh-reg .en-lens { display: none; }
+.wh-pin[data-dock][data-hero-dock='line'] .wh-reg-ghost { display: block; }
+.wh-pin[data-dock][data-hero-dock='line'] .en-reg-t { position: relative; }
+.wh-pin[data-dock][data-hero-dock='line'] .wh-reg-verb { position: absolute; left: 0; bottom: 100%; margin-bottom: 2px; font: 500 10px/1.2 var(--wh-mono); color: rgb(12 13 13 / 0.6); }
 /* the wheel's names run behind the words up here: the ground fades in behind them, down to a little under the date */
 .wh-pin[data-dock] .wh-col::before { content: ''; position: absolute; z-index: -1; left: calc(var(--wh-gutter) * -1); right: calc(var(--wh-gutter) * -1); top: calc(var(--wh-dock, 96px) * -1); bottom: -40px;
   background: linear-gradient(var(--wh-paper) calc(100% - 64px), #0000); pointer-events: none; }

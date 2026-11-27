@@ -1,6 +1,6 @@
 /* The board's numbers: the parts the day pages are made of (the header row, the announcement line, the split-flap
-   rows, the segment countdown, the state chips, the change flash, the test cards, the boarding pass, the bug). Tuned
-   in /lab/parts and saved to saved/parts.config.json; the day labs read the same file. Every look value is here, so no
+   rows, the segment countdown, the state chips, the change flash, the test cards, the boarding pass, the bug). Saved
+   in saved/parts.config.json. Every look value is here, so no
    page hardcodes one. */
 
 export type Face = 'wheel' | 'geist' | 'pixel';

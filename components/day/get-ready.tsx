@@ -1,9 +1,9 @@
 'use client';
+import { away } from '@/lib/routes';
 import { useEffect, useId, useRef, useState, type RefObject } from 'react';
-import { EDITOR_ROOM, HOW_TO_SUBMIT } from '@/lib/event/rule';
+import { EDITOR_ROOM } from '@/lib/event/rule';
 import { EDITORS, RULES, SERVER, SUPABASE_MCP, checkIt, lineFor, sayIt } from '@/lib/hackday-server';
 import { LUMA_LIVE, lumaHref } from '@/lib/luma';
-import { away } from '@/lib/routes';
 import { meNow, useFormsState } from '@/components/forms/store';
 import { useFlapText } from '@/components/preview/fold/flap';
 import './get-ready.css';
@@ -66,15 +66,15 @@ export function Picker({ live, url, name: server = SERVER.name, choice, chooser 
   if (live && !url) return (
     <div className="gr-pick">
       <p className="gr-cmd" data-off="">{signedIn
-        ? 'Your own line comes with a place on a city’s list. Registered on Luma with another email? Your account moves the place to this one.'
-        : 'Sign in and your own line appears here. Open the link in your email, or sign in with your email on this page.'}</p>
-      <p className="gr-note">It works in any editor that can add a remote MCP server. Keep the line to yourself. It signs in as you.</p>
+        ? 'Your line comes with a place on a city’s list. Registered on Luma with another email? Move the place in your account.'
+        : 'Your own line shows here once you sign in.'}</p>
+      <p className="gr-note">Works in any editor that can add a remote MCP server. Keep it private. It signs in as you.</p>
     </div>
   );
   if (!live || !url) return (
     <div className="gr-pick">
-      <p className="gr-cmd" data-off="">The server is not open yet. The line for your editor appears here when it is.</p>
-      <p className="gr-note">It works in any editor that can add a remote MCP server.</p>
+      <p className="gr-cmd" data-off="">The server isn’t open yet. Your line shows here when it is.</p>
+      <p className="gr-note">Works in any editor that can add a remote MCP server.</p>
     </div>
   );
   return (
@@ -122,46 +122,41 @@ export function GetReady({ state = 'before', city, cityId, live = SERVER.live, u
         {reg ? (
           <li className="gr-step"><span className="gr-n" aria-hidden="true">1</span>
             {pass
-              ? <div className="gr-body"><p className="ex-t">You’re on the list for {pass.cityName}</p><p className="gr-note">On the day, type the code on the screen in the room, and you can submit.</p></div>
+              ? <div className="gr-body"><p className="ex-t">You’re on the list for {pass.cityName}</p><p className="gr-note">On the day, type the code shown in the room to submit.</p></div>
               : <div className="gr-body"><p className="ex-t">Register for {city ?? 'your city'} on Luma</p>
                   {LUMA_LIVE ? <a className="gr-a" href={lumaHref(cityId)} {...away(lumaHref(cityId))}>Register</a> : <p className="gr-cmd" data-off="">The Luma pages are not open yet.</p>}
-                  <p className="gr-note">{HOW_TO_SUBMIT}</p></div>}
+                  <p className="gr-note">Only people on the list can submit.</p></div>}
           </li>
         ) : null}
         {/* the two ways in, side by side and the browser first: it needs nothing set up, so the editor never reads as the only way */}
         <li className="gr-step" data-now={now ? '' : undefined}><span className="gr-n" aria-hidden="true">{n(1)}</span>
-          <div className="gr-body"><p className="ex-t">{now ? 'Submit in your browser or from your editor' : 'On the day, submit in your browser or from your editor'}</p>
+          <div className="gr-body"><p className="ex-t">{now ? 'Submit your project' : 'On the day, submit your project'}</p>
             <ul className="gr-ways">
               <li className="gr-way"><p className="ex-k">In the browser</p>
-                <p className="gr-note">On {where}, type the code on the screen in the room, then your project’s name, a one-line pitch and its GitHub repository. Nothing to set up.</p>
+                <p className="gr-note">On {where}, type the code shown in the room. Then add a name, a one-line pitch and the GitHub repo. Nothing to set up.</p>
                 {now && onBrowser ? <button type="button" className="gr-a" onClick={onBrowser}>Submit in the browser</button> : null}</li>
               <li className="gr-way"><p className="ex-k">From your editor</p>
-                <p className="gr-note">Say one sentence and your editor sends the name, the pitch and the repository for you. It needs the Builder Day server{now ? ', below.' : ', added below before the day.'}</p></li>
-            </ul>
-            <p className="gr-note">Both ask for the code on the screen in the room, and both run the same checks.</p></div>
+                <p className="gr-note">Say one sentence and your editor sends it all. It needs the Builder Day server, {now ? 'below.' : 'set up below.'}</p></li>
+            </ul></div>
         </li>
         <li className="gr-step"><span className="gr-n" aria-hidden="true">{n(2)}</span>
-          <div className="gr-body"><p className="ex-t">Add Supabase’s server so your editor can set up your database</p>
+          <div className="gr-body"><p className="ex-k">Optional</p><p className="ex-t">Let your editor set up your database</p>
             <Picker live url={SUPABASE_MCP.url} name={SUPABASE_MCP.name} choice={choice} docs={SUPABASE_MCP.docs} />
-            <p className="gr-note">The first time, it opens Supabase in your browser to sign in.</p></div>
+            <p className="gr-note">This adds Supabase’s server. The first time, it asks you to sign in to Supabase.</p></div>
         </li>
+        {/* the editor way, in one step: the line, then the sentence to say */}
         <li className="gr-step"><span className="gr-n" aria-hidden="true">{n(3)}</span>
           <div className="gr-body"><p className="ex-k">Only to submit from your editor</p><p className="ex-t">{url && pass ? 'Add your own Builder Day line' : 'Add the Builder Day server'}</p><Picker live={live} url={url} choice={choice} chooser={false} signedIn={signedIn} />
-            {live && !url && onSignIn ? <p className="gr-note"><button type="button" className="gr-link" aria-haspopup="dialog" onClick={onSignIn}>{signedIn ? 'Open your account' : 'Sign in to get your line'}</button></p> : null}
+            {live && !url && onSignIn ? <p className="gr-note"><button type="button" className="gr-link" aria-haspopup="dialog" onClick={onSignIn}>{signedIn ? 'Open your account' : 'Sign in'}</button></p> : null}
             {url && pass ? (pass.editorSeen
               ? <p className="gr-note gr-seen" data-on="">Editor connected · last call {lastCall(pass.editorSeen)}</p>
-              : <><p className="gr-note gr-seen">Not connected yet. Once the line is in your editor, say this in it to check:</p><Say say={checkIt()} /></>) : null}</div>
+              : <><p className="gr-note gr-seen">Not connected yet. Once the line is in your editor, say this to test it:</p><Say say={checkIt()} /></>) : null}
+            <p className="ex-t gr-then">{now ? 'Then say it' : 'On the day, say it'}</p>
+            <Say say={say} />
+            <p className="gr-note">Once a host has checked you in, your editor sends your project and answers with its link.</p></div>
         </li>
         <li className="gr-step"><span className="gr-n" aria-hidden="true">{n(4)}</span>
-          <div className="gr-body">
-            <p className="ex-k">Only to submit from your editor</p>
-            <p className="ex-t">{now ? 'Say it now' : 'On the day, say it'}</p>
-            <Say say={say} />
-            <p className="gr-note">Your editor takes the name, the pitch and the repository from the project it’s in and sends them. It answers with your project’s link, where you can add a picture.</p>
-          </div>
-        </li>
-        <li className="gr-step"><span className="gr-n" aria-hidden="true">{n(5)}</span>
-          <div className="gr-body"><p className="ex-t">What is checked, both ways</p><ul className="gr-rules">{RULES.map((r) => <li key={r}>{r}</li>)}</ul></div>
+          <div className="gr-body"><p className="ex-t">What we check, both ways</p><ul className="gr-rules">{RULES.map((r) => <li key={r}>{r}</li>)}</ul></div>
         </li>
       </ol>
     </section>

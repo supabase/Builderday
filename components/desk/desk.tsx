@@ -1,12 +1,11 @@
 'use client';
-/* The desk: one screen for every role, drawn from a DeskState and acting through one act(). /lab/desk feeds it sample
-   data and a local act; /desk feeds it /api/desk/state and POST /api/desk.
+/* The desk: one screen for every role, drawn from a DeskState and acting through one act(). /desk feeds it /api/desk/state and POST /api/desk.
 
    Three levels, named in the header as a path (Events / the event / the place), each part a switcher:
    - Events: every event this person sees; a super admin makes new ones here.
    - An event: Overview (its places at a glance), Places, People, Format, Final, Switches, Outbox, Log, for its
      admins; someone who sees all its places but runs none (a judge of the whole event) gets the Overview.
-   - A place: Today, Guests, Entries, Stage, Door for its hosts (Today and Entries for a judge), and Place (its
+   - A place: Today, Guests, Entries, Stage, Check-in for its hosts (Today and Entries for a judge), and Place (its
      settings and clock) for the event's admins. An event with one place opens straight on it, with the event's own
      tabs after a rule. */
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -16,7 +15,7 @@ import { Today } from './today';
 import { Guests } from './guests';
 import { Entries } from './entries';
 import { Deck } from './deck';
-import { Door } from './door';
+import { CheckIn } from './door';
 import { Place, Log, Outbox, People, Switches } from './admin';
 import { EventList } from './events';
 import { Overview, Places, FormatTab, Final } from './event';
@@ -24,7 +23,7 @@ import './desk.css';
 import '@/components/forms/forms.css';
 
 type Tab = { id: string; label: string };
-const HOST: Tab[] = [{ id: 'today', label: 'Today' }, { id: 'guests', label: 'Guests' }, { id: 'entries', label: 'Entries' }, { id: 'stage', label: 'Stage' }, { id: 'door', label: 'Door' }];
+const HOST: Tab[] = [{ id: 'today', label: 'Today' }, { id: 'guests', label: 'Guests' }, { id: 'entries', label: 'Entries' }, { id: 'stage', label: 'Stage' }, { id: 'door', label: 'Check-in' }];
 const JUDGE: Tab[] = [{ id: 'today', label: 'Today' }, { id: 'entries', label: 'Entries' }];
 
 export function tabsFor(s: DeskState): { place: Tab[]; event: Tab[] } {
@@ -42,8 +41,8 @@ export function tabsFor(s: DeskState): { place: Tab[]; event: Tab[] } {
   return { place, event: many ? [] : admin };
 }
 
-export function Desk({ s, act, now, onGo, onSignOut, site, tab: tab0 }: {
-  s: DeskState; act: DeskAct; now: number; onGo: (event: string | null, city: string | null) => void | Promise<boolean>; onSignOut?: () => void; site: string; tab?: string;
+export function Desk({ s, act, now, onGo, onSignOut, tab: tab0 }: {
+  s: DeskState; act: DeskAct; now: number; onGo: (event: string | null, city: string | null) => void | Promise<boolean>; onSignOut?: () => void; tab?: string;
 }) {
   const { place, event } = useMemo(() => tabsFor(s), [s]);
   const all = useMemo(() => place.concat(event), [place, event]);
@@ -165,7 +164,7 @@ export function Desk({ s, act, now, onGo, onSignOut, site, tab: tab0 }: {
                                   : tab === 'guests' ? <Guests s={s} c={c} now={now} act={act} ask={ask} />
                                     : tab === 'entries' ? <Entries s={s} c={c} now={now} act={act} />
                                       : tab === 'stage' ? <Deck s={s} c={c} act={act} ask={ask} />
-                                        : tab === 'door' ? <Door c={c} act={act} site={site} />
+                                        : tab === 'door' ? <CheckIn s={s} c={c} now={now} act={act} />
                                           : tab === 'place' ? <Place s={s} c={c} now={now} act={act} ask={ask} /> : null}
             </>
           )}

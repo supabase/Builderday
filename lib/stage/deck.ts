@@ -21,7 +21,7 @@ export const ONE: string[] = ['Postgres', 'Storage', 'Edge Functions', 'Auth', '
 /* the site's own rules (the entry checks hold them), and Supabase */
 /* who may submit and who may vote, said the same way on every scene that says it, and never
    the same way as each other */
-export const TO_SUBMIT = 'To submit, sign in with the email you gave Luma and the room code. Then the Submit button appears.';
+export const TO_SUBMIT = 'To submit, sign in with your Supabase account and get checked in by a host at the door. Then the Submit button works.';
 export const TO_VOTE = 'Anyone can vote: give an email and confirm it once.';
 export const RULES = ['Start a new public repository today.', 'Push as you go, not all at the end.', 'Build anything, as long as it uses Supabase.'];
 
@@ -33,7 +33,7 @@ const sc = (city: string, position: number, kind: SceneKind, title: string, note
 export function defaultDeck(city: string, sample = false): SceneRow[] {
   let n = 0; const p = () => ++n;
   const deck: SceneRow[] = [
-    sc(city, p(), 'doors', 'Doors', 'On while people arrive. Builders sign in with the email they gave Luma and the room code on the wall; that unlocks Submit. Someone not on the list cannot submit with the code: send them to the host at the desk to be added. Anyone can still vote with an email.'),
+    sc(city, p(), 'doors', 'Doors', 'On while people arrive. Builders sign in with their Supabase account and a host checks them in at the door; that unlocks Submit. Someone not on the list is added on the desk first. Anyone signed in can vote.'),
     sc(city, p(), 'welcome', 'Welcome', 'Say who you are and who is helping tonight.', sample ? { hosts: ['Ana Costa', 'Femi Adeyemi'] } : {}),
   ];
   if (sample) {
@@ -47,9 +47,9 @@ export function defaultDeck(city: string, sample = false): SceneRow[] {
     sc(city, p(), 'say', 'Say what you want', 'Nobody needs to know how it works.'),
     sc(city, p(), 'line', 'Prototype to Petabyte', 'Tonight is the prototype. The same backend goes all the way.'),
     sc(city, p(), 'deadline', 'The deadline', 'The second press turns the wall to the deadline. Nobody has been told yet.'),
-    sc(city, p(), 'rules', 'The rules', 'One rule per press. The last press sets the two apart: submitting needs the Luma email and the room code; voting is open to anyone with an email.'),
+    sc(city, p(), 'rules', 'The rules', 'One rule per press. The last press sets the two apart: submitting needs a place on the Luma list and a check-in at the door; voting is open to anyone signed in.'),
     sc(city, p(), 'prizes', 'The prizes', 'First the city prize, then the pick.'),
-    sc(city, p(), 'submit', 'How to submit', 'Your editor first, then the web. Both need the email from Luma and the room code before Submit works. Not on the list: the host at the desk adds them; they can vote meanwhile.'),
+    sc(city, p(), 'submit', 'How to submit', 'Your editor first, then the web. Both need a check-in at the door before Submit works. Not on the list: a host adds them on the desk; they can vote meanwhile.'),
     sc(city, p(), 'questions', 'Questions?', 'Then go to Building and start the clock.'),
     sc(city, p(), 'building', 'Building', 'Start the clock from here. Add minutes if the room needs them. Show the ranking when the room is ready for it.'),
     sc(city, p(), 'voting', 'Voting', 'Voting runs from the start of building. Anyone can vote with an email, confirmed once. Read the top out now and then.'),

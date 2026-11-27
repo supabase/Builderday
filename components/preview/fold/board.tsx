@@ -7,7 +7,7 @@ import type { OurFact } from '../facts';
 import { flapInto, flapOpts, reducedMotion } from './flap';
 import familySaved from '@/saved/family.config.json';
 import { clampFamily, showPeople } from '@/lib/family';
-import { at, away } from '@/lib/routes';
+import { at, away, newTab } from '@/lib/routes';
 const FAMILY = clampFamily(familySaved);
 
 /* Ten cities, one day: the board. Ten rows, east to west: the city (a button that makes it the visitor's city), when
@@ -31,7 +31,8 @@ const useForYou = (cities: OurFact[]) => {
   return useMemo(() => {
     if (!zone) return null;
     const f = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
-    return cities.map((c) => f.format(new Date(c.opens)).replace(/,? (\d\d:\d\d)$/, ', $1'));
+    /* from the parts: Safari writes "Thu 10 Dec at 10:00", Chrome "Thu 10 Dec, 10:00" */
+    return cities.map((c) => { const p: Record<string, string> = {}; for (const x of f.formatToParts(new Date(c.opens))) p[x.type] = x.value; return `${p.weekday} ${p.day} ${p.month}, ${p.hour}:${p.minute}`; });
   }, [cities, zone]);
 };
 
@@ -147,11 +148,13 @@ export function FoldBoard({ cities, cur, nearest, pick, mode, beltSpan, beltLead
       <table className="pf-board">
         <caption className="sr-only">The {CITY_WORD} cities, east to west, each with its local start</caption>
         <thead>
-          <tr><th scope="col">City</th><th scope="col">Starts there</th><th scope="col">For you</th>{anyPeople ? <th scope="col">People</th> : null}<th scope="col">State</th><th scope="col"><span className="sr-only">Register</span></th></tr>
+          <tr><th scope="col" className="pf-c-city">City</th><th scope="col" className="pf-c-at">Starts there</th><th scope="col" className="pf-c-at">For you</th>{anyPeople ? <th scope="col" className="pf-c-people">People</th> : null}<th scope="col">State</th><th scope="col" className="pf-c-go"><span className="sr-only">Register</span></th></tr>
         </thead>
         <tbody>
           {cities.map((c, i) => (
-            <tr key={c.id} data-pf-wait="" data-you={i === cur ? '' : undefined} data-mine={i === mine ? '' : undefined}>
+            <tr key={c.id} data-pf-wait="" data-you={i === cur ? '' : undefined} data-mine={i === mine ? '' : undefined}
+              /* the whole row picks its city (the name stays the keyboard's button); a press on the row's own link or button is theirs */
+              onClick={(e) => { if (!(e.target as HTMLElement).closest('a, button')) pick(i); }}>
               <th scope="row">
                 <button type="button" className="pf-city" aria-pressed={i === cur} onClick={() => pick(i)}>{c.name}</button>
                 {i === mine ? <Tag key="mine" text="You’re on the list" />
@@ -164,7 +167,7 @@ export function FoldBoard({ cities, cur, nearest, pick, mode, beltSpan, beltLead
               <td><span className="pf-state" data-status={c.status}><StatusIcon status={c.status} />{STATUS_LABEL[c.status]}</span></td>
               <td>{i === mine && onMine
                 ? <button type="button" className="pf-go" aria-haspopup="dialog" onClick={onMine}>Your place<span className="sr-only"> in {c.name}: your account</span></button>
-                : <a className="pf-go" href={at(c.reg)} {...away(c.reg)}>{c.status === 'full' ? 'Waiting list' : c.status === 'sold' ? 'Sold out' : 'Register'}<span className="sr-only"> for {c.name}</span></a>}</td>
+                : <a className="pf-go" href={at(c.reg)} {...away(c.reg)}>{c.status === 'full' ? 'Waiting list' : c.status === 'sold' ? 'Sold out' : 'Register'}<span className="sr-only"> for {c.name}{newTab(c.reg)}</span></a>}</td>
             </tr>
           ))}
         </tbody>

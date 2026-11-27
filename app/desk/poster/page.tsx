@@ -7,7 +7,7 @@ import { EVENT } from '@/lib/day-data';
 export const metadata: Metadata = { title: 'Door poster · ' + EVENT.name, robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
 
-/* /desk/poster?city=<id>: the A4 poster for the door, with the room code */
+/* /desk/poster?city=<id>: the A4 poster for the door: the address, the QR and how to submit */
 type Q = Record<string, string | string[] | undefined>;
 export default async function PosterPage({ searchParams }: { searchParams: Promise<Q> }) {
   const c = (await searchParams).city;

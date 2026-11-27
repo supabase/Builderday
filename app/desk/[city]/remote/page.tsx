@@ -25,7 +25,7 @@ export default async function Page({ params }: P) {
   const name = CITY_IDS.includes(city) ? CITIES.find((x) => x.id === city)!.name : await placeName(city);
   if (!name) notFound();
   const who = await stageRights(city);
-  const stage = who.drive ? await loadStage(city, { hidden: true, code: true }) : null;
+  const stage = who.drive ? await loadStage(city, { hidden: true }) : null;
   if (!who.drive || !stage) {
     const why = !who.drive ? who.why : 'The stage cannot be read right now. Reload in a moment.';
     return (
@@ -33,7 +33,6 @@ export default async function Page({ params }: P) {
         <h1>{name} remote</h1>
         <p>{why}</p>
         <p><Link href="/desk">Sign in at the desk</Link></p>
-        <p className="sp-msg-2">To try the remote with no backend, open <Link href="/lab/stage">the stage lab</Link>.</p>
       </main>
     );
   }

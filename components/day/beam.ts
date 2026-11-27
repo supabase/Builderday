@@ -94,7 +94,6 @@ let S: State | null | undefined;
 let retryAt = 0;
 function state(): State | null { if (S === undefined || (S === null && retryAt && performance.now() > retryAt)) { S = init(); retryAt = S ? 0 : performance.now() + 2000; } return S ?? null; }
 const stats: BeamStats = { contexts: 0, format: 'none', lost: 0 };
-export const beamStats = (): BeamStats => ({ ...stats });
 
 function prog(gl: GL, vs: string, fs: string): WebGLProgram {
   const mk = (t: number, src: string) => { const s = gl.createShader(t)!; gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s) || 'shader'); return s; };

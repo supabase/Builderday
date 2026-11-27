@@ -3,8 +3,8 @@
    - admin: everything in one event (its places, its people, its format, the final);
    - host: one place's guest list, entries, deck, door and adding minutes (or every place of one event);
    - judge: their votes or scores (the database checks those) and seeing flags, in one place or a whole event.
-   Signing in to the desk is the six-digit code; the room is not enough: a session made by a personal link or the
-   room code does not open the desk (the signed hd_desk cookie, set only by a code; see keys.ts). */
+   Signing in to the desk is a Supabase account (or the six-digit code while its switch is on): the signed hd_desk
+   cookie, set only then, opens it (see keys.ts). */
 import { cookies } from 'next/headers';
 import { asUser } from './supabase';
 import { DESK_COOKIE, deskMarkOk } from './keys';

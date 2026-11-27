@@ -1,10 +1,13 @@
 /* POST /api/auth/code { email, next? }: email a six-digit code (and a link that does the same) */
 import { body, no, offline, ok, str } from '@/lib/server/http';
+import { emailSignIn } from '@/lib/server/env';
+import { EMAIL_OFF } from '@/lib/event/rule';
 import { sendCode } from '@/lib/server/auth';
 import { emailOK } from '@/lib/forms';
 
 export async function POST(req: Request) {
   const off = offline(); if (off) return off;
+  if (!emailSignIn()) return no(EMAIL_OFF, 403);
   const b = await body(req); const email = str(b?.email, 200), next = str(b?.next, 200);
   if (!emailOK(email)) return no('Check the email. It needs an @ and a domain.');
   const r = await sendCode(email, req, next.startsWith('/') ? next : undefined);

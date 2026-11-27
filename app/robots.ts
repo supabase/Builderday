@@ -6,7 +6,7 @@ import { at } from '@/lib/routes';
    of the index (they are still reachable by address). */
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: [{ userAgent: '*', allow: at('/'), disallow: ['/lab/', '/desk', '/api/', '/in/', '/city/*/stage'].map(at) }],
+    rules: [{ userAgent: '*', allow: at('/'), disallow: ['/desk', '/api/', '/in/', '/city/*/stage'].map(at) }],
     sitemap: SITE_URL + '/sitemap.xml',
   };
 }

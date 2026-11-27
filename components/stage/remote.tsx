@@ -3,7 +3,9 @@ import { useEffect, useRef, useState } from 'react';
 import { nextWords, stepsOf, visible } from '@/lib/stage/deck';
 import { started } from '@/lib/stage/act';
 import type { StageDriver } from '@/lib/stage/driver';
-import type { StageAction } from '@/lib/stage/types';
+import { BOARD_VIEWS, type StageAction } from '@/lib/stage/types';
+import { clampStage, isCover, type StageCfg } from '@/lib/stage/config';
+import savedStage from '@/saved/stage.config.json';
 import { placeTime } from '@/lib/stage/rows';
 import { BD_WALL, hasVote, type WallEvent } from '@/lib/stage/event';
 import { mmss } from './parts';
@@ -18,7 +20,11 @@ import './remote.css';
 
 type Ctl = { label: string; a: StageAction; on?: boolean; pri?: boolean; off?: boolean; time?: string };
 
-export function StageRemote({ driver, name, first, event = BD_WALL }: { driver: StageDriver; name: string; first: number; event?: WallEvent }) {
+const SAVED_DIR = clampStage(savedStage as Partial<StageCfg>).dir;
+
+export function StageRemote({ driver, name, first, event = BD_WALL, boards = isCover(SAVED_DIR) }: { driver: StageDriver; name: string; first: number; event?: WallEvent;
+  /* the wall shows the frame's boards (Cover, Orbit, Print): the view keys and the showcase's own keys */
+  boards?: boolean }) {
   const snap = useSnap(driver), now = useSecond(driver, first);
   const deck = visible(snap.deck), i = Math.max(0, deck.findIndex((s) => s.id === snap.row.scene)), s = deck[i];
   const steps = s ? stepsOf(s) : 1, step = snap.row.step, c = snap.city, go = snap.link === 'local' || snap.link === 'live';
@@ -67,17 +73,28 @@ export function StageRemote({ driver, name, first, event = BD_WALL }: { driver: 
     else {
       ctl.push({ label: '+1 min', a: { t: 'add', min: 1 }, off: !building }, { label: '+5 min', a: { t: 'add', min: 5 }, off: !building });
       /* the chart is votes over time: none where the judges decide alone */
-      if (hasVote(event)) ctl.push({ label: 'Chart', a: { t: 'chart' }, on: snap.row.chart_on });
+      if (hasVote(event) && !boards) ctl.push({ label: 'Chart', a: { t: 'chart' }, on: snap.row.chart_on });
     }
   }
+  /* the frame's boards: one key steps to the next view and holds it, one hands the board back to taking turns */
+  const view = snap.row.timer.view ?? null, viewKeys = (): Ctl[] => {
+    const i = BOARD_VIEWS.findIndex(([v]) => v === view), [nv, nl] = BOARD_VIEWS[(i + 1) % BOARD_VIEWS.length];
+    return [{ label: 'Show ' + nl, a: { t: 'view', v: nv } }, { label: view ? 'Held: ' + BOARD_VIEWS[i][1] + '. Take turns' : 'Taking turns', a: { t: 'view', v: null }, on: !view }];
+  };
+  if (boards && s?.kind === 'building' && started(c)) ctl.push(...viewKeys());
   if (s?.kind === 'voting') {
     ctl.push({ label: '+1 min', a: { t: 'add', min: 1 }, off: !voting }, { label: '+5 min', a: { t: 'add', min: 5 }, off: !voting });
-    if (hasVote(event)) ctl.push({ label: 'Chart', a: { t: 'chart' }, on: snap.row.chart_on });
+    if (hasVote(event) && !boards) ctl.push({ label: 'Chart', a: { t: 'chart' }, on: snap.row.chart_on });
+    if (boards) ctl.push(...viewKeys());
     ctl.push({ label: snap.can.super ? 'Close voting' : 'Close voting (super admin)', a: { t: 'close' }, off: !voting || !snap.can.super });
   }
   if (s?.kind === 'top3') {
     ctl.push({ label: step < 3 ? ['Reveal third', 'Reveal second', 'Reveal first'][step] : 'All three shown', a: { t: 'next' }, off: step >= 3 });
     ctl.push({ label: talk ? 'Talk timer' : 'Start talk timer', a: { t: 'talk' }, on: !!talk, time: talk ? mmss(talk / 1000) : undefined });
+  }
+  if (s?.kind === 'showcase') {
+    const held = snap.row.timer.show !== null && snap.row.timer.show !== undefined;
+    ctl.push({ label: 'Previous project', a: { t: 'show', d: -1 } }, { label: 'Next project', a: { t: 'show', d: 1 }, pri: !held }, { label: held ? 'Walk them again' : 'Walking on its own', a: { t: 'show', d: 0 }, on: !held });
   }
   if (s?.kind === 'tombola') ctl.push({ label: step ? 'Spin again' : 'Spin', a: { t: 'spin' }, pri: !step });
 

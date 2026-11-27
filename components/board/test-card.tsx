@@ -2,7 +2,7 @@
    hands stand at the city's real opening time, a step ramp or a grating, and the city's code, name, page and opening
    time. After it closes, its closedown card: the same pattern dimmed, with its three finalists.
    Each city's card is drawn from a seed (its id, or the seed kept in saved/parts.config.json), so it is the same on
-   every visit; /lab/parts makes new ones on a click. The pattern is an SVG; the words are HTML over it, so they stay
+   every visit. The pattern is an SVG; the words are HTML over it, so they stay
    sharp and readable at any size. The card is a picture: nothing on it is under the screen lines. */
 import { mulberry32 } from '@/lib/day-data';
 import { hhmm, tz } from '@/lib/format';

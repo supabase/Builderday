@@ -7,6 +7,7 @@
 import { useSyncExternalStore } from 'react';
 import { slugOf } from '@/lib/forms';
 import { at } from '@/lib/routes';
+import * as supa from './supabase';
 
 export type Session = { email: string; handle: string; voter: boolean };
 /* what the live driver knows about the person (GET /api/me) */
@@ -19,14 +20,6 @@ export type Me = {
   judging: Record<string, { budget: number; used: number; per: Record<string, number> }>;
   editor: { url: string } | null;
   open?: boolean;
-  /* the person's team (lib/server/teams.ts), and whether this event has teams and how many may be in one */
-  team?: MyTeam | null;
-  teams?: { on: boolean; max: number };
-};
-export type MyTeam = {
-  code: string; city: string; cityName: string; max: number; set: boolean;
-  members: { name: string; you: boolean; named: boolean }[];
-  entry: { name: string; slug: string } | null; link: string;
 };
 export type Result<T = unknown> = { ok: true; data: T } | { ok: false; error: string; wait?: number; field?: string };
 export type Entry = {
@@ -75,6 +68,10 @@ const standIn = {
       write('session', s); write('code', null); return { ok: true, session: s };
     });
   },
+  /* the stand-in's Supabase sign-in: a pretend account, signed in at once */
+  supabaseIn(acct: supa.Account): Promise<{ ok: boolean; session?: Session; error?: string }> {
+    return wait().then(() => { const s = { email: acct.email, handle: handleOf(acct.email), voter: true }; write('session', s); write('out-of', null); return { ok: true, session: s }; });
+  },
   signOut() { write('session', null); write('code', null); return Promise.resolve(); },
 
   /* one entry per person, keyed by handle */
@@ -112,7 +109,6 @@ const standIn = {
   reset() { const drop: string[] = []; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.indexOf(PREFIX) === 0) drop.push(k); } drop.forEach((k) => localStorage.removeItem(k)); } catch { /* storage blocked */ } },
 };
 
-
 /* ---------------- live: the site's routes ---------------- */
 let me: Me | null = null, loaded = false, loading: Promise<void> | null = null;
 async function call<T>(path: string, method: string, data?: unknown): Promise<Result<T>> {
@@ -143,31 +139,24 @@ const live = {
       return s ? { ok: true, session: s } : { ok: false, error: 'Signed in, but the page could not read who you are. Reload the page.' };
     });
   },
-  /* the code on the screen: for an email on the city's list, signs in at once and checks in (no email needed);
-     field says whether the code or the email was refused */
-  roomIn(email: string, code: string, city: string): Promise<{ ok: boolean; session?: Session; error?: string; field?: string }> {
-    write('last-email', email);
-    return call<{ checkedIn: boolean }>('/api/auth/room', 'POST', { email, code, city }).then(async (r) => {
-      if (!r.ok) return { ok: false, error: r.error, field: r.field };
-      await loadMe(); const s = live.session();
+  /* the supabase.com login this browser shares: the server checks the token and signs in its email here */
+  supabaseIn(acct: supa.Account): Promise<{ ok: boolean; session?: Session; error?: string }> {
+    return call('/api/auth/supabase', 'POST', { token: acct.token }).then(async (r) => {
+      if (!r.ok) return { ok: false, error: r.error };
+      write('via', 'supabase'); write('out-of', null); await loadMe(); const s = live.session();
       return s ? { ok: true, session: s } : { ok: false, error: 'Signed in, but the page could not read who you are. Reload the page.' };
     });
   },
-  /* a signed-in person on a list types the code on the screen: checked in for the day, which unlocks Submit */
-  checkIn(code: string): Promise<{ ok: boolean; error?: string; field?: string }> {
-    return call('/api/checkin', 'POST', { code }).then(async (r) => { if (!r.ok) return { ok: false, error: r.error, field: r.field }; await loadMe(); return { ok: true }; });
-  },
-  sendLinkAgain(email: string): Promise<Result> { write('last-email', email); return call('/api/auth/again', 'POST', { email }); },
-  /* "Registered with a different email?": a code to the address on the list, then the place moves to this account */
+  /* "Add the email you used on Luma": a code to the address on the list, then the place moves to this account */
   claim(email: string): Promise<Result<{ sent: boolean; wait: number }>> { return call('/api/auth/claim', 'POST', { email }); },
   claimVerify(email: string, code: string): Promise<Result<{ claimed: boolean; city: string; cityName: string; replaced: string | null }>> {
     return call<{ claimed: boolean; city: string; cityName: string; replaced: string | null }>('/api/auth/claim/verify', 'POST', { email, code }).then(async (r) => { if (r.ok) await loadMe(); return r; });
   },
-  /* make a team, join one by its code, or leave yours; the person is read again after, since the entry may change */
-  team(action: 'make' | 'join' | 'leave', code?: string): Promise<Result<{ team: MyTeam | null }>> {
-    return call<{ team: MyTeam | null }>('/api/team', 'POST', { action, code }).then(async (r) => { if (r.ok) { if (me) { me = { ...me, team: r.data.team }; emit(); } await loadMe(); } return r; });
+  /* signing out here leaves supabase.com signed in, so this browser stops following that login until Sign in is pressed */
+  signOut() {
+    const was = me?.email || null;
+    return call('/api/auth/out', 'POST').then(() => { me = null; write('code', null); write('via', null); if (was) write('out-of', was); emit(); });
   },
-  signOut() { return call('/api/auth/out', 'POST').then(() => { me = null; write('code', null); emit(); }); },
 
   entryFor(handle: string | null): Entry | null { void handle; return me ? me.entry : null; },
   /* the server runs the checks; a refusal comes back as an Error with the field it is about */
@@ -209,7 +198,7 @@ const live = {
       call('/api/vote', 'POST', { city, entry: n, on }).then((r) => {
         if (r.ok || !me) return;
         const now = new Set(me.votes[city] || []); if (on) now.delete(n); else now.add(n);
-        me = { ...me, votes: { ...me.votes, [city]: Array.from(now) } }; lastError = r.error; emit();
+        me = { ...me, votes: { ...me.votes, [city]: Array.from(now) } }; emit();
       });
     });
   },
@@ -220,7 +209,7 @@ const live = {
     const before = j.per, keys = new Set(Object.keys(before).concat(Object.keys(v)));
     keys.forEach((k) => {
       const d = (v[k] || 0) - (before[k] || 0); if (!d) return;
-      call<{ used: number }>('/api/judge', 'POST', { city, entry: Number(k), delta: d }).then((r) => { if (!r.ok) lastError = r.error; loadMe(); });
+      call<{ used: number }>('/api/judge', 'POST', { city, entry: Number(k), delta: d }).then(() => loadMe());
     });
     me = { ...me, judging: { ...me.judging, [city]: { ...j, per: { ...v }, used: j.used + Object.values(v).reduce((a, n) => a + n, 0) - Object.values(before).reduce((a, n) => a + n, 0) } } }; emit();
   },
@@ -231,19 +220,41 @@ const live = {
   reset() { live.signOut(); },
 };
 const RESEND = 30;
-/* the last refusal from a vote or a judge's press, for the page to say */
-let lastError = '';
-export function takeError(): string { const e = lastError; lastError = ''; return e; }
 
-type Driver = typeof standIn & Partial<Pick<typeof live, 'roomIn' | 'checkIn' | 'sendLinkAgain' | 'deleteEntry' | 'claim' | 'claimVerify' | 'team'>>;
+type Driver = typeof standIn & Partial<Pick<typeof live, 'deleteEntry' | 'claim' | 'claimVerify'>>;
 let driver: Driver = standIn;
 /* FormsProvider sets the driver as it renders, before any child reads the store */
 export function useDriver(on: boolean) {
   const next = on ? live as unknown as Driver : standIn;
   if (driver !== next) { driver = next; cached = null; }
-  if (on && !loaded && !loading && typeof window !== 'undefined') loading = loadMe().finally(() => { loading = null; });
+  if (on && !loaded && !loading && typeof window !== 'undefined') loading = loadMe().then(follow).finally(() => { loading = null; });
+  if (on && typeof window !== 'undefined' && !following) { following = true; supa.watch(() => { follow(); }); }
   if (on && typeof window !== 'undefined' && !watching) { watching = true; window.addEventListener('focus', backAgain); document.addEventListener('visibilitychange', backAgain); }
 }
+/* The page follows the supabase.com login (owner, 2026-11-25: signed in there means signed in here):
+   - a login there, and nobody (or someone else) signed in here: sign in as it, unless this browser signed out here on
+     purpose while that same login was on (out-of), which holds until Sign in is pressed;
+   - no login there, and this session came from it: sign out here too.
+   A session from the email fallback is left alone when there is no login there. */
+let following = false, followRun: Promise<void> | null = null;
+export function follow(): Promise<void> {
+  if (!liveOn() || !loaded) return Promise.resolve();
+  if (followRun) return followRun;
+  followRun = (async () => {
+    const acct = await supa.current();
+    if (acct) {
+      if (me && me.email === acct.email) return;
+      if (read<string | null>('out-of', null) === acct.email) return;
+      await live.supabaseIn(acct);
+    } else if (me && read<string | null>('via', null) === 'supabase') {
+      await call('/api/auth/out', 'POST'); me = null; write('via', null); emit();
+    }
+  })().finally(() => { followRun = null; });
+  return followRun;
+}
+/* Sign in pressed: follow the login again */
+export function followAgain() { write('out-of', null); }
+
 /* A person with an editor line their editor has not called yet: they add it in another app and come back. Coming back
    (the window's focus, the tab shown again) reads /api/me once more, so "Not connected yet" turns to "Editor connected"
    without a reload. Nobody else is asked again; at most once in two seconds. */
@@ -258,7 +269,7 @@ export function meNow(): Me | null { return liveOn() ? me : null; }
 /* the first /api/me has answered (always true for the stand-in) */
 export function meLoaded(): boolean { return !liveOn() || loaded; }
 /* every method goes to the driver in use */
-type Store = Driver & { roomIn: typeof live.roomIn; checkIn: typeof live.checkIn; sendLinkAgain: typeof live.sendLinkAgain; deleteEntry: typeof live.deleteEntry; claim: typeof live.claim; claimVerify: typeof live.claimVerify; team: typeof live.team };
+type Store = Driver & { deleteEntry: typeof live.deleteEntry; claim: typeof live.claim; claimVerify: typeof live.claimVerify };
 export const store: Store = new Proxy({} as Store, {
   get: (_t, k: string) => { const d = driver as unknown as Record<string, unknown>; const v = d[k]; return typeof v === 'function' ? (v as (...a: unknown[]) => unknown).bind(d) : v; },
 });
@@ -303,6 +314,4 @@ function votesSnapshot(key: string) { let v = voteCache.get(key); if (!v) { v = 
 export function useVotes(key: string): Readonly<Record<string, 1>> { return useSyncExternalStore(subscribe, () => votesSnapshot(key), () => NO_VOTES); }
 /* a judge's votes for one city and seed; none on the server and in the first render */
 const judgedCache = new Map<string, Readonly<Record<string, number>>>();
-const NO_JUDGED: Readonly<Record<string, number>> = Object.freeze({});
-function judgedSnapshot(key: string) { let v = judgedCache.get(key); if (!v) { v = Object.freeze(store.judged(key)); judgedCache.set(key, v); } return v; }
-export function useJudged(key: string, on: boolean): Readonly<Record<string, number>> { return useSyncExternalStore(subscribe, () => (on ? judgedSnapshot(key) : NO_JUDGED), () => NO_JUDGED); }
+

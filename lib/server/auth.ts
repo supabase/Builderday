@@ -1,26 +1,24 @@
-/* auth.ts: the three ways to prove an email, none with a password.
-   - the personal link: our own key (keys.ts), opened as many times as needed until the day after;
-   - the room code on the stage: email plus the four characters, for an email on that city's list only (no walk-ins);
-     it also checks the person in, which is what unlocks Submit (rule 7c, lib/server/room.ts);
-   - a six-digit code by email: Supabase Auth makes it with generateLink, we send it (mail.ts).
-   Each ends with a Supabase Auth session in the browser's cookies: generateLink gives a one-use hashed token for the
-   email, and verifyOtp on the cookie client turns it into a session. Auth sends no mail of its own. */
+/* auth.ts: proving who someone is, with no password here.
+   - a supabase.com account (always): the browser sends the token of the login it shares with supabase.com, the
+     server asks supabase.com whose it is (platform.ts) and signs in that confirmed email;
+   - a six-digit code by email: only while EMAIL_SIGNIN=on, an emergency switch. Supabase Auth makes it with
+     generateLink, we send it (mail.ts).
+   Each ends with our own Supabase Auth session in the browser's cookies: generateLink gives a one-use hashed token for
+   the email, and verifyOtp on the cookie client turns it into a session. Auth sends no mail of its own.
+   Being on a city's list comes from Luma (or a host); being in the room comes from a host at the door (room.ts). */
 import { cookies } from 'next/headers';
-import { admin, asUser } from './supabase';
+import { COOKIE_PATH, admin, asUser } from './supabase';
 import { DESK_COOKIE, deskMark } from './keys';
 import { send } from './mail';
-import { bootstrapSuper, ensurePass, ensurePerson, linkFor, norm, passOf, personByEmail, rolesOf, type Person } from './people';
-import { siteUrl, superAdmins } from './env';
+import { bootstrapSuper, ensurePerson, norm, passOf, type Person } from './people';
+import { siteUrl } from './env';
 import { RESEND_S } from '@/lib/forms';
-import { whenLocal } from './time';
-import { guestStatus, lumaOn } from './luma';
 import { lookUpOnLuma } from './registrations';
-import { checkIn, codeOK, nameOfCity } from './room';
-import { otherCity, roomNotListed, wrongCode } from '@/lib/event/rule';
+import { platformUser } from './platform';
 
 /* make (if new) the Auth user for this email and put its session in the cookies. Auth keeps one token per user, so
    two sign-ins for one email in the same instant (one person, two devices) can spend each other's token: try twice. */
-export async function signInAs(email: string): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function signInAs(email: string): Promise<{ ok: true; user: string } | { ok: false; error: string }> {
   let last = '';
   for (let k = 0; k < 2; k++) {
     if (k) await new Promise((r) => setTimeout(r, 250 + Math.random() * 500));   // spread out when Auth is busy
@@ -28,23 +26,24 @@ export async function signInAs(email: string): Promise<{ ok: true } | { ok: fals
     if (error || !data?.properties?.hashed_token) { last = error?.message || 'no token'; continue; }
     const sb = await asUser();
     const v = await sb.auth.verifyOtp({ type: 'email', token_hash: data.properties.hashed_token });
-    if (!v.error) { await clearDesk(); return { ok: true }; }
+    if (!v.error && v.data.user) { await clearDesk(); return { ok: true, user: v.data.user.id }; }
+    if (!v.error) { last = 'no user'; continue; }
     last = v.error.message;
   }
   console.error('sign-in failed:', last);
   return { ok: false, error: 'Signing in did not go through. Try again in a moment.' };
 }
 
-/* the code (or its link) proves the email at this moment: it may open the desk; links and the room code may not */
+/* a Supabase account or the code proves the email at this moment: it may open the desk */
 async function markDesk(authUser: string) {
   const jar = await cookies();
-  jar.set(DESK_COOKIE, deskMark(authUser), { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 60 * 60 * 24 * 14 });
+  jar.set(DESK_COOKIE, deskMark(authUser), { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: COOKIE_PATH, maxAge: 60 * 60 * 24 * 14 });
 }
-async function clearDesk() { (await cookies()).delete(DESK_COOKIE); }
+async function clearDesk() { (await cookies()).delete({ name: DESK_COOKIE, path: COOKIE_PATH }); }
 
 /* after any sign-in: the person row is linked to the Auth user by the database trigger; give SUPER_ADMINS their role */
-async function afterSignIn(email: string, lookUp = false): Promise<Person> {
-  const p = await ensurePerson(email);
+async function afterSignIn(email: string, lookUp = false, name?: string | null): Promise<Person> {
+  const p = await ensurePerson(email, name);
   await bootstrapSuper(p);
   /* no place yet: the webhook may not have arrived for someone who registered minutes ago, so ask Luma once */
   if (lookUp && !(await passOf(p.id))) { try { await lookUpOnLuma(p.email); } catch (e) { console.error('Luma look-up failed:', e instanceof Error ? e.message : e); } }
@@ -89,45 +88,14 @@ export async function confirmToken(tokenHash: string): Promise<{ ok: true; perso
   return { ok: true, person: await afterSignIn(v.data.user.email, true) };
 }
 
-/* ---------------- the room code ---------------- */
-/* Email plus the code on the screen: signs in and checks in, for an email on this city's list. An email we do not
-   have is asked about once on the city's Luma event, where a key exists (approved: on the list with Luma's name);
-   anything else is refused in words, with no place made. A place in another city is never moved by a code. */
-export type RoomResult = { ok: true } | { ok: false; error: string; field: 'code' | 'email' };
-export async function roomSignIn(email: string, code: string, city: string, ip: string | null): Promise<RoomResult> {
-  const { data: row } = await admin().from('cities').select('id, name, room_code, room_code_prev, room_code_at, luma_event_id').eq('id', city).maybeSingle();
-  if (!row) return { ok: false, field: 'code', error: 'That city is not one of ours.' };
-  if (!codeOK(row, code)) return { ok: false, field: 'code', error: wrongCode(row.name as string) };
-  const e = norm(email);
-  let p = await personByEmail(e), pass = p ? await passOf(p.id) : null;
-  if (pass && pass.city !== city) return { ok: false, field: 'email', error: otherCity(await nameOfCity(pass.city), row.name as string) };
-  if (!pass && lumaOn() && row.luma_event_id) {
-    const g = await guestStatus(row.luma_event_id as string, e);
-    if (g.status === 'approved') {
-      p = await ensurePerson(e, g.name, ip);
-      const r = await ensurePass(p, city, 'luma', null, { status: 'approved', guestId: g.id, registeredAt: g.registeredAt });
-      pass = r.kept === 'held' ? null : r.pass;
-      if (pass) await admin().from('log').insert({ who: p.id, what: 'on the list from Luma (room code)', city });
-    }
-  }
-  if (!p || !pass) return { ok: false, field: 'email', error: roomNotListed(e, row.name as string) };
-  /* the room code proves a seat in the room, not the inbox: an email with a desk role (or one SUPER_ADMINS names) would
-     get that role's database rights with no code, so it signs in by the code from its email, then types the room code */
-  if (superAdmins().indexOf(e) >= 0 || (await rolesOf(p.id)).length) return { ok: false, field: 'email', error: 'This email runs the desk, so it signs in with the code we email you. Then type the room code.' };
-  await checkIn(pass, 'room', null);
-  const s = await signInAs(p.email);
-  if (!s.ok) return { ok: false, field: 'code', error: s.error };
-  await afterSignIn(p.email);
-  return { ok: true };
-}
-
-/* ---------------- the personal link ---------------- */
-export async function sendLinkAgain(email: string, req: Request): Promise<void> {
-  /* the same answer whether or not the address is on a list, so the sheet cannot be used to test addresses */
-  const p = await personByEmail(email);
-  if (!p) return;
-  const pass = await passOf(p.id);
-  if (!pass) return;
-  const { data: city } = await admin().from('cities').select('name, planned_start, offset_min').eq('id', pass.city).single();
-  await send(p.email, 'again', { city: city?.name, link: linkFor(pass, req), name: p.name || undefined, when: city ? whenLocal(city.planned_start, city.offset_min) : undefined }, pass.city);
+/* ---------------- a supabase.com account ---------------- */
+/* the token of the supabase.com login: its confirmed email signs in here and may open the desk (it proves the inbox
+   as well as a code does) */
+export async function supabaseSignIn(token: string): Promise<{ ok: true; person: Person } | { ok: false; error: string; status: number }> {
+  const u = await platformUser(token);
+  if (!u.ok) return u;
+  const s = await signInAs(u.user.email);
+  if (!s.ok) return { ok: false, status: 502, error: s.error };
+  await markDesk(s.user);
+  return { ok: true, person: await afterSignIn(u.user.email, true, u.user.name) };
 }

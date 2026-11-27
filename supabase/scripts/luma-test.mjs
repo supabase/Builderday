@@ -1,9 +1,10 @@
 // luma-test.mjs: the Luma path against a stand-in Luma on this machine. Start the site with
 //   LUMA_API_KEY=test LUMA_API_URL=http://127.0.0.1:4395/v1
 // then: node supabase/scripts/luma-test.mjs [--site http://localhost:4399]
-// It gives Berlin a Luma event, syncs its approved guests from the desk, signs in by room code as an approved guest
-// (on the list with Luma's name, and checked in), and as a waitlisted email, an unknown email and with Luma down (each
-// refused in words, with no place made: rule 7c, no walk-ins), then puts everything back.
+// It gives Berlin a Luma event, syncs its approved guests from the desk, signs in with the stand-in Supabase account
+// (HACKDAY_FAKE_SUPABASE=1) as an approved guest the list does not have yet (Luma is asked: on the list with Luma's
+// name, not checked in), and as a waitlisted email, an unknown email and with Luma down (each signed in, with no place
+// made: no walk-ins), checks that no email went out, then puts everything back.
 import http from 'node:http';
 import { env, rest } from './env.mjs';
 
@@ -43,11 +44,11 @@ function jar() {
     const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch { /* not json */ } return { status: r.status, body: j };
   } };
 }
-async function byCode(email) {
-  const j = jar(); let s = await j.go('/api/auth/code', { email });
-  if (s.body?.wait) { await new Promise((r) => setTimeout(r, (s.body.wait + 1) * 1000)); s = await j.go('/api/auth/code', { email }); }
-  const [row] = await rest(e, 'outbox?to_email=eq.' + encodeURIComponent(email) + '&template=eq.code&order=created_at.desc&limit=1&select=data');
-  await j.go('/api/auth/verify', { email, code: row.data.code }); return j;
+/* sign in with the stand-in Supabase account for this email (the site runs with HACKDAY_FAKE_SUPABASE=1) */
+async function signIn(email) {
+  const j = jar(), r = await j.go('/api/auth/supabase', { token: 'fake.' + email });
+  if (r.status !== 200) throw new Error('Supabase sign-in for ' + email + ': ' + JSON.stringify(r.body) + ' (is HACKDAY_FAKE_SUPABASE=1 set on the site?)');
+  return j;
 }
 let bad = 0; const check = (t, ok, extra = '') => { if (!ok) bad++; console.log((ok ? 'ok   ' : 'FAIL ') + t + (extra ? '  · ' + String(extra).slice(0, 160) : '')); };
 const passOf = async (email) => (await rest(e, 'people?email=eq.' + encodeURIComponent(email) + '&select=name,passes!passes_person_fkey(source,city,checked_in_at)'))[0];
@@ -63,30 +64,31 @@ const clean = async () => {
 try {
   await clean();
   await rest(e, 'cities?id=eq.berlin', { method: 'PATCH', body: JSON.stringify({ luma_event_id: EVENT }) });
-  const host = await byCode('host.berlin@hackday.test');
+  const host = await signIn('host.berlin@hackday.test');
   const st = await host.go('/api/desk/state?city=berlin');
   check('desk state says Luma is connected and Berlin has its event', st.body?.luma === true && st.body?.cities?.find((c) => c.id === 'berlin')?.lumaEvent === EVENT);
   const pv = await host.go('/api/desk', { action: 'import.preview', city: 'berlin', from: 'luma' });
   check('preview from Luma: 2 new, 1 repeat, waitlist left out', pv.body?.preview?.fresh === 2 && pv.body.preview.repeats === 1, JSON.stringify(pv.body?.preview || pv.body));
   check('the key reached Luma in its header', keySeen === 'test');
-  const cm = await host.go('/api/desk', { action: 'import.commit', city: 'berlin', from: 'luma', send: false });
+  const cm = await host.go('/api/desk', { action: 'import.commit', city: 'berlin', from: 'luma' });
   check('import from Luma added 2', cm.body?.added === 2, JSON.stringify(cm.body));
   const ada = await passOf('ada@' + D);
   check('an imported guest has Luma\'s name and a luma pass', ada?.name === 'Ada Lovelace' && [].concat(ada?.passes || [])[0]?.source === 'luma', JSON.stringify(ada));
 
   await rest(e, 'people?email=eq.' + encodeURIComponent('grace@' + D), { method: 'DELETE' });   // grace is on Luma but not on our list
-  const [{ room_code: code }] = await rest(e, 'cities?id=eq.berlin&select=room_code');
-  const g = await jar().go('/api/auth/room', { email: 'grace@' + D, code, city: 'berlin' });
+  const g = await signIn('grace@' + D), gme = await g.go('/api/me');
   const gp = await passOf('grace@' + D);
   const gpass = [].concat(gp?.passes || [])[0];
-  check('room code, approved on Luma: signed in and checked in, on the list from Luma with Luma\'s name', g.status === 200 && g.body?.checkedIn === true && gpass?.source === 'luma' && !!gpass?.checked_in_at && gp?.name === 'Grace Hopper', JSON.stringify(g.body) + ' ' + JSON.stringify(gp));
-  const w = await jar().go('/api/auth/room', { email: 'wait@' + D, code, city: 'berlin' });
-  check('room code, waitlisted on Luma: refused, no place made', w.status === 403 && /not on the list for Berlin/.test(w.body?.error || '') && await noPlace('wait@' + D), JSON.stringify(w.body));
-  const n = await jar().go('/api/auth/room', { email: 'nobody@' + D, code, city: 'berlin' });
-  check('room code, unknown to Luma: refused, no place made', n.status === 403 && /ask the host/i.test(n.body?.error || '') && await noPlace('nobody@' + D), JSON.stringify(n.body));
+  check('sign-in, approved on Luma: on the list from Luma with Luma\'s name, not checked in', gme.body?.pass?.city === 'berlin' && gpass?.source === 'luma' && !gpass?.checked_in_at && gp?.name === 'Grace Hopper', JSON.stringify(gme.body?.pass) + ' ' + JSON.stringify(gp));
+  const w = await signIn('wait@' + D), wme = await w.go('/api/me');
+  check('sign-in, waitlisted on Luma: signed in, no place made', wme.body?.signedIn === true && !wme.body?.pass && await noPlace('wait@' + D), JSON.stringify(wme.body?.pass));
+  const n = await signIn('nobody@' + D), nme = await n.go('/api/me');
+  check('sign-in, unknown to Luma: signed in, no place made', nme.body?.signedIn === true && !nme.body?.pass && await noPlace('nobody@' + D), JSON.stringify(nme.body?.pass));
+  const mail = await rest(e, 'outbox?to_email=like.*%40' + D + '&select=template,to_email');
+  check('no email went out for any of it', mail.length === 0, JSON.stringify(mail));
   up = false;
-  const d = await jar().go('/api/auth/room', { email: 'down@' + D, code, city: 'berlin' });
-  check('room code, Luma down: refused, no place made', d.status === 403 && await noPlace('down@' + D), JSON.stringify(d.body));
+  const dn = await signIn('down@' + D), dme = await dn.go('/api/me');
+  check('sign-in, Luma down: signed in, no place made', dme.body?.signedIn === true && !dme.body?.pass && await noPlace('down@' + D), JSON.stringify(dme.body?.pass));
   const dv = await host.go('/api/desk', { action: 'import.preview', city: 'berlin', from: 'luma' });
   check('sync with Luma down: plain words, nothing saved', dv.status >= 400 && /Luma/.test(dv.body?.error || ''), dv.body?.error);
 } finally {

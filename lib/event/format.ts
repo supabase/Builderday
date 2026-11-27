@@ -10,29 +10,29 @@ export type Format = {
   decide: Decide; judging: Judging; judgeBudget: number; criteria: Criterion[];
   finalOn: boolean; finalists: number; finalBy: 'pickers' | 'judges'; pickers: string;
   buildMin: number; voteAfter: number;
-  /* minutes after a place starts when its counts and order are hidden from the public, until its voting closes; null:
-     never (column hide_at, supabase/migrations/20261123100000_hide_at.sql) */
-  hideAt: number | null;
-  /* minutes after a place starts when anyone may vote, and the judges; before it only builders on that place's list.
-     null: everyone from the start (column public_at, supabase/migrations/20261123110000_vote_rules.sql) */
+  /* the counts are hidden from the public from the start until this minute, then shown live; null: never hidden
+     (column show_at, supabase/migrations/20261125110000_one_block.sql) */
+  showAt: number | null;
+  /* minutes after a place starts when voting opens, for everyone alike; null: from the start (column public_at) */
   publicAt: number | null;
+  /* minutes after the start when judges may vote; null: with everyone else (column judge_at) */
+  judgeAt: number | null;
   /* what one judge's vote counts in the tally (judge_weight); judgeBudget is in the judge's own votes */
   judgeWeight: number;
-  roomCode: boolean; repoRequired: boolean; repoNew: boolean; teams: boolean; demoRequired: boolean;
-  /* the most people in one team (team_max, supabase/migrations/20261123120000_teams.sql) */
-  teamMax: number;
+  roomCode: boolean; repoRequired: boolean; repoNew: boolean; demoRequired: boolean;
   prize: string; placePrize: string;
 };
 
 export const CRITERIA: Criterion[] = [{ id: 'idea', name: 'Idea' }, { id: 'build', name: 'Execution' }, { id: 'supabase', name: 'Use of Supabase' }];
 
-/* Builder Day's format, as it ran before events had settings */
+/* Builder Day's format (2026-11-25): one 90-minute block, voting from the start (changed 2026-11-26), counts shown and judges in at 60,
+   everything closed at 90; the top 3 of each place go to the global final */
 export const BUILDER_DAY: Format = {
   decide: 'both', judging: 'budget', judgeBudget: 10, criteria: CRITERIA,
-  finalOn: true, finalists: 3, finalBy: 'pickers', pickers: 'Ant and Copple',
-  buildMin: 90, voteAfter: 30, hideAt: 70, publicAt: 60, judgeWeight: 5,
-  roomCode: true, repoRequired: true, repoNew: true, teams: true, demoRequired: false, teamMax: 4,
-  prize: '$10,000', placePrize: 'A MacBook Neo',
+  finalOn: true, finalists: 3, finalBy: 'pickers', pickers: 'the Supabase team',
+  buildMin: 90, voteAfter: 0, showAt: 60, publicAt: 0, judgeAt: 60, judgeWeight: 5,
+  roomCode: true, repoRequired: true, repoNew: true, demoRequired: false,
+  prize: 'A MacBook Pro', placePrize: 'A Meta Quest 3',
 };
 
 /* what a new event starts from; everything can be changed after */
@@ -43,11 +43,6 @@ export const PRESETS: Preset[] = [
   { id: 'people', name: 'Votes only', line: 'Only the votes decide. Judges have no part.', f: { decide: 'votes', judging: 'budget', finalOn: false } },
   { id: 'apart', name: 'Judges, and a people’s choice', line: 'Judges score and pick the winner; the votes give a people’s choice on the side.', f: { decide: 'apart', judging: 'scores', finalOn: false } },
 ];
-export function presetOf(f: Format): string | null {
-  const p = PRESETS.find((x) => x.f.decide === f.decide && x.f.judging === f.judging);
-  return p ? p.id : null;
-}
-
 /* the row on `events`, mapped */
 type Row = Record<string, unknown>;
 export function formatOf(r: Row): Format {
@@ -55,11 +50,10 @@ export function formatOf(r: Row): Format {
   return {
     decide: (r.decide as Decide) || 'both', judging: (r.judging as Judging) || 'budget', judgeBudget: Number(r.judge_budget) || 50, criteria: crit.length ? crit : CRITERIA,
     finalOn: r.final_on !== false, finalists: Number(r.finalists) || 3, finalBy: r.final_by === 'judges' ? 'judges' : 'pickers', pickers: String(r.pickers ?? ''),
-    buildMin: Number(r.build_min) || 90, voteAfter: Number(r.vote_after ?? 30),
-    /* a database without the column hides as Builder Day does; null in the column never hides */
-    hideAt: r.hide_at === undefined ? 70 : r.hide_at == null ? null : Number(r.hide_at),
-    publicAt: r.public_at == null ? null : Number(r.public_at), judgeWeight: Number(r.judge_weight) || 1,
-    roomCode: r.room_code !== false, repoRequired: r.repo_required !== false, repoNew: r.repo_new !== false, teams: r.teams !== false, demoRequired: r.demo_required === true, teamMax: Number(r.team_max) || 4,
+    buildMin: Number(r.build_min) || 90, voteAfter: Number(r.vote_after ?? 0),
+    showAt: r.show_at == null ? null : Number(r.show_at),
+    publicAt: r.public_at == null ? null : Number(r.public_at), judgeAt: r.judge_at == null ? null : Number(r.judge_at), judgeWeight: Number(r.judge_weight) || 1,
+    roomCode: r.room_code !== false, repoRequired: r.repo_required !== false, repoNew: r.repo_new !== false, demoRequired: r.demo_required === true,
     prize: String(r.prize ?? ''), placePrize: String(r.place_prize ?? ''),
   };
 }
@@ -75,14 +69,13 @@ export function formatRow(f: Partial<Format>): Row {
   if (f.pickers != null) o.pickers = f.pickers;
   if (f.buildMin != null) o.build_min = f.buildMin;
   if (f.voteAfter != null) o.vote_after = f.voteAfter;
-  if (f.hideAt !== undefined) o.hide_at = f.hideAt;
+  if (f.showAt !== undefined) o.show_at = f.showAt;
   if (f.publicAt !== undefined) o.public_at = f.publicAt;
+  if (f.judgeAt !== undefined) o.judge_at = f.judgeAt;
   if (f.judgeWeight != null) o.judge_weight = f.judgeWeight;
   if (f.roomCode != null) o.room_code = f.roomCode;
   if (f.repoRequired != null) o.repo_required = f.repoRequired;
   if (f.repoNew != null) o.repo_new = f.repoNew;
-  if (f.teams != null) o.teams = f.teams;
-  if (f.teamMax != null) o.team_max = f.teamMax;
   if (f.demoRequired != null) o.demo_required = f.demoRequired;
   if (f.prize != null) o.prize = f.prize;
   if (f.placePrize != null) o.place_prize = f.placePrize;
@@ -96,10 +89,12 @@ export function formatProblem(f: Format): string | null {
   if (!(f.finalists >= 1 && f.finalists <= 20)) return 'Between 1 and 20 go to the final from each place.';
   if (!(f.buildMin >= 15 && f.buildMin <= 600)) return 'Building lasts between 15 and 600 minutes.';
   if (!(f.voteAfter >= 0 && f.voteAfter <= 240)) return 'Voting runs on between 0 and 240 minutes.';
-  if (f.hideAt != null && !(Number.isInteger(f.hideAt) && f.hideAt >= 0 && f.hideAt <= 600)) return 'Votes hide between 0 and 600 minutes after the start, or never.';
-  if (f.publicAt != null && !(Number.isInteger(f.publicAt) && f.publicAt >= 0 && f.publicAt <= 600)) return 'Everyone votes from between 0 and 600 minutes after the start, or from the start.';
+  const end = f.buildMin + f.voteAfter, ok = (v: number | null) => v == null || (Number.isInteger(v) && v >= 0 && v < end);
+  if (!ok(f.publicAt)) return 'Voting opens between the start and the close.';
+  if (!ok(f.judgeAt)) return 'Judges start voting between the start and the close.';
+  if (f.judgeAt != null && f.judgeAt < (f.publicAt ?? 0)) return 'Judges can’t start before voting opens.';
+  if (!ok(f.showAt)) return 'Counts are shown from between the start and the close, or never hidden.';
   if (!(Number.isInteger(f.judgeWeight) && f.judgeWeight >= 1 && f.judgeWeight <= 20)) return 'A judge’s vote counts as between 1 and 20 votes.';
-  if (!(Number.isInteger(f.teamMax) && f.teamMax >= 2 && f.teamMax <= 10)) return 'A team has between 2 and 10 people.';
   if (!(f.judgeBudget >= 1 && f.judgeBudget <= 1000)) return 'A judge has between 1 and 1000 votes.';
   if (!f.repoRequired && !f.demoRequired) return null;
   return null;
@@ -107,7 +102,6 @@ export function formatProblem(f: Format): string | null {
 
 /* who has a say, for the desk's columns */
 export const hasVotes = (f: Format) => f.decide !== 'judges';
-export const hasJudges = (f: Format) => f.decide !== 'votes';
 
 /* one entry's numbers, as the tally keeps them */
 export type Tallied = { votes: number; judge: number; scoreSum?: number; scoreN?: number; reached?: number; created?: number; tie?: number | null };
@@ -122,8 +116,6 @@ export function rankValue(e: Tallied, f: Format): number {
   if (f.decide === 'both') return e.votes;
   return f.judging === 'scores' ? meanScore(e) : e.judge;
 }
-/* the people's choice, where it is apart */
-export const choiceValue = (e: Tallied) => publicVotes(e);
 
 /* the order of a place's entries: the format's number, then who got there first */
 export function ranked<T extends Tallied>(list: T[], f: Format, by: (e: T) => number = (e) => rankValue(e, f)): T[] {

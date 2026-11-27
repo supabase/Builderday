@@ -36,7 +36,8 @@ export function useWrite(root: RefObject<HTMLElement | null>, step: number, shar
 export function useConverge(root: RefObject<HTMLElement | null>, on: boolean, key: unknown) {
   useEffect(() => {
     const el = root.current; if (!el) return;
-    const hs = Array.from(el.querySelectorAll<HTMLElement>('h2'));
+    /* a part marked still (Get ready) keeps its headings plain: no red and blue split on them */
+    const hs = Array.from(el.querySelectorAll<HTMLElement>('h2')).filter((h) => !h.closest('[data-still]'));
     if (!on || reducedMotion()) return;
     /* a heading already on screen when the page starts (the first part's, in the peek) is left as it is: splitting it
        then would show it sharp, split, and settling, all before anyone scrolled */
@@ -50,21 +51,73 @@ export function useConverge(root: RefObject<HTMLElement | null>, on: boolean, ke
 }
 
 export type JumpMode = 'roll' | 'smooth' | 'cut';
-/* the roll running now, if any: a new jump stops it first */
+/* the roll or glide running now, if any: a new jump stops it first */
 let rolling: (() => void) | null = null;
 
-export function jumpTo(id: string, mode: JumpMode, o: { ms: number; bar: number; ease: string; byKey: boolean; scroller: HTMLElement | null }) {
-  const el = document.getElementById(id); if (!el) return;
+/* The glide's curves. The page is already on screen and only moves, so every one speeds up and brakes; they differ in
+   how soon the page answers the press. */
+export const GLIDE_EASES = { brake: [0.3, 0.1, 0.1, 1], ease: [0.25, 0.1, 0.25, 1], 'in-out': [0.65, 0, 0.35, 1] } as const;
+export type GlideEase = keyof typeof GLIDE_EASES;
+/* a cubic-bezier as a function of time: x(u) solved for u by Newton, bisection where Newton stalls */
+function bezier([x1, y1, x2, y2]: readonly number[]) {
+  const at = (a: number, b: number, u: number) => 3 * a * u * (1 - u) ** 2 + 3 * b * u * u * (1 - u) + u ** 3;
+  const dx = (u: number) => 3 * x1 * (1 - u) ** 2 + 6 * (x2 - x1) * u * (1 - u) + 3 * (1 - x2) * u * u;
+  return (t: number) => {
+    if (t <= 0) return 0; if (t >= 1) return 1;
+    let u = t;
+    for (let i = 0; i < 6; i++) { const e = at(x1, x2, u) - t, d = dx(u); if (Math.abs(e) < 1e-5) break; if (Math.abs(d) < 1e-6) { u = NaN; break; } u -= e / d; }
+    if (!(u >= 0 && u <= 1)) { let lo = 0, hi = 1; u = t; for (let i = 0; i < 30; i++) { u = (lo + hi) / 2; if (at(x1, x2, u) < t) lo = u; else hi = u; } }
+    return at(y1, y2, u);
+  };
+}
+
+/* The glide: the page itself scrolls to the target. The target is measured again every frame (parts above can still
+   settle), the time grows with the distance between min and max, and the reader's own wheel, touch, press or key
+   stops it where it is. Returns how long it will take (0 when it went straight there). */
+function glide(target: () => number, o: { min: number; max: number; ease?: GlideEase }, end: () => void): number {
+  const from = window.scrollY, max = () => document.documentElement.scrollHeight - window.innerHeight;
+  const to0 = Math.max(0, Math.min(max(), target())), d = Math.abs(to0 - from);
+  if (d < 2) { end(); return 0; }
+  /* one screen takes about the minimum; four screens or more take the maximum */
+  const ms = Math.round(o.min + (o.max - o.min) * Math.min(1, d / (window.innerHeight * 4)));
+  const curve = bezier(GLIDE_EASES[o.ease ?? 'brake'] ?? GLIDE_EASES.brake);
+  const t0 = performance.now(); let raf = 0, over = false;
+  const off = () => { for (const t of ['wheel', 'touchstart', 'pointerdown', 'keydown'] as const) window.removeEventListener(t, stop, true); };
+  const finish = (landed: boolean) => { if (over) return; over = true; cancelAnimationFrame(raf); off(); if (rolling === stop) rolling = null; if (landed) end(); };
+  function stop() { finish(false); }
+  const step = (now: number) => {
+    const t = Math.min(1, (now - t0) / ms), to = Math.max(0, Math.min(max(), target()));
+    window.scrollTo(0, from + (to - from) * curve(t));
+    if (t < 1) raf = requestAnimationFrame(step); else finish(true);
+  };
+  for (const t of ['wheel', 'touchstart', 'pointerdown', 'keydown'] as const) window.addEventListener(t, stop, { capture: true, passive: true });
+  rolling = stop;
+  raf = requestAnimationFrame(step);
+  return ms;
+}
+
+/* the top of the page, by the same glide (or at once by key or with reduced motion) */
+export function jumpTop(mode: JumpMode, o: { min: number; max: number; ease?: GlideEase; byKey: boolean }): number {
+  rolling?.(); rolling = null;
+  if (mode !== 'smooth' || o.byKey || reducedMotion() || o.max <= 0) { window.scrollTo(0, 0); return 0; }
+  return glide(() => 0, o, () => {});
+}
+
+export function jumpTo(id: string, mode: JumpMode, o: { ms: number; bar: number; ease: string; byKey: boolean; scroller: HTMLElement | null; min?: number; max?: number; glide?: GlideEase }): number {
+  const el = document.getElementById(id); if (!el) return 0;
   const head = el.matches('h2, h3') ? el : el.querySelector<HTMLElement>('h2, h3') ?? el;
   const land = () => { if (!head.hasAttribute('tabindex')) head.setAttribute('tabindex', '-1'); head.focus({ preventScroll: true }); };
   /* the address stays the page's own: a part's name in it would open the page part way down the next time */
   const up = el.getBoundingClientRect().top < 0;
-  if (mode === 'smooth' && !o.byKey && !reducedMotion()) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); window.setTimeout(land, 600); return; }
+  rolling?.(); rolling = null;
+  if (mode === 'smooth' && !o.byKey && !reducedMotion() && (o.max ?? 0) > 0) {
+    const margin = parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
+    return glide(() => el.getBoundingClientRect().top + window.scrollY - margin, { min: o.min ?? 0, max: o.max ?? 0, ease: o.glide }, land);
+  }
   el.scrollIntoView({ block: 'start' });
   land();
   const box = o.scroller;
-  rolling?.(); rolling = null;
-  if (mode !== 'roll' || o.byKey || reducedMotion() || o.ms <= 0 || !box) return;
+  if (mode !== 'roll' || o.byKey || reducedMotion() || o.ms <= 0 || !box) return 0;
   /* the roll: the new frame comes up (or down) from the window's edge with the black blanking bar on its leading edge */
   const H = window.innerHeight, dir = up ? -1 : 1, from = dir * (H + o.bar);
   const bar = document.createElement('div'); bar.className = 'pf-roll'; bar.setAttribute('aria-hidden', 'true'); bar.style.height = o.bar + 'px';
@@ -88,4 +141,5 @@ export function jumpTo(id: string, mode: JumpMode, o: { ms: number; bar: number;
     b = bar.animate(dir > 0 ? [{ transform: `translateY(${H}px)` }, { transform: `translateY(${-o.bar}px)` }] : [{ transform: `translateY(${-o.bar}px)` }, { transform: `translateY(${H}px)` }], opt);
     const run = a; run.finished.then(() => run.cancel(), () => {}).finally(done);
   } catch { done(); }
+  return o.ms;
 }

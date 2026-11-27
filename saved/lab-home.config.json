@@ -6,7 +6,7 @@
   "schedule": "sun",
   "startHour": 9,
   "buildMin": 90,
-  "voteAfter": 30,
+  "voteAfter": 0,
   "pickAfter": 60,
   "display": 88,
   "ratio": 1.5,

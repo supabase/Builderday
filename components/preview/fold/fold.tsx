@@ -1,13 +1,13 @@
 'use client';
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
 import type { WheelCfg } from '@/components/wheel/config';
 import type { WheelEngine, WheelFlow } from '@/components/wheel/engine';
 import { HERO, Wheel, wheelVars } from '@/components/wheel/wheel';
 import type { HeroCfg } from '@/components/wheel/hero-config';
-import { HowItWorks, PrizeBlock } from '@/components/day/explain';
+import { PrizeBlock } from '@/components/day/explain';
 import { GetReady } from '@/components/day/get-ready';
 import { DayScreen } from '@/components/day/shared';
-import { DayFooter, lastLine, useWhiteDot } from '@/components/day/footer';
+import { DayFooter } from '@/components/day/footer';
 import { Ending, type EndCity } from '@/components/day/ending';
 import { clampEnd, type EndCfg } from '@/components/day/ending-config';
 import { clampFoot, type FootCfg } from '@/components/day/footer-config';
@@ -17,26 +17,32 @@ import { clampParts, partsVars, type PartsCfg } from '@/components/board/config'
 import { realMinute } from '@/lib/clock';
 import { LUMA_LIVE, lumaHref } from '@/lib/luma';
 import { PRIZES } from '@/lib/prizes';
-import { EPOCH, EVENT, startsSentence } from '@/lib/day-data';
+import { EPOCH, EVENT } from '@/lib/day-data';
 import footSaved from '@/saved/footer.config.json';
 import endSaved from '@/saved/ending.config.json';
 import partsSaved from '@/saved/parts.config.json';
 import { CAPTION, useOurCities } from '../preview';
-import { nearestCity, type Here, type OurWheel } from '../facts';
+import { nearestCity, type Here, type OurFacts } from '../facts';
 import { foldVars, type FoldCfg } from './config';
 import { FoldHeader, type Part } from './header';
 import { FoldBar } from './bar';
 import { FoldBoard, type BoardCity } from './board';
 import { FoldReady } from './ready';
-import { FoldQuestions } from './questions';
+import { FoldList } from './checklist';
+import { FoldShort } from './short';
+import { FoldPodium } from './podium';
+import { FoldPrizeType } from './prize-type';
+import { FoldHow } from './how';
 import { Unroll } from './unroll';
-import { jumpTo, once, useConverge, useWrite } from './motion';
-import { flapInto, reducedMotion } from './flap';
+import { jumpTo, jumpTop, once, useConverge, useWrite } from './motion';
+import { flapInto } from './flap';
 import { BACK_ATTR, arrivePlan } from './arrive';
 import { mountGlobes } from '@/components/screen/globe';
+import { useLaunch } from '@/components/wheel/use-launch';
+import { LAUNCH, type LaunchCfg } from '@/components/wheel/launch-config';
 import { mountDotGlobes } from '@/components/wheel/dot-globes';
 import { usePref } from '@/components/board/prefs';
-import { tokEase } from '@/components/shared/motion';
+import { tokEase, useReduced } from '@/components/shared/motion';
 import { SupabaseLockup } from '@/components/shared/supabase-mark';
 import { useForms } from '@/components/forms/forms-provider';
 import { meNow, useFormsState } from '@/components/forms/store';
@@ -58,26 +64,29 @@ import './fold.css';
 
 const never = () => () => {};
 const useOffset = () => useSyncExternalStore(never, () => -new Date().getTimezoneOffset(), () => null);
-const useReduced = () => useSyncExternalStore((f) => { const m = window.matchMedia('(prefers-reduced-motion: reduce)'); m.addEventListener('change', f); return () => m.removeEventListener('change', f); }, reducedMotion, () => false);
 const WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve'];
 const count = (n: number) => WORDS[n] ?? String(n);
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 type Props = {
-  cfg: FoldCfg; wheel: WheelCfg; ours: OurWheel; forced: number | null; here?: Here | null; noGl: boolean; nowMs: number;
+  cfg: FoldCfg; wheel: WheelCfg; ours: OurFacts; forced: number | null; here?: Here | null; noGl: boolean; nowMs: number;
   /* how the page ends (saved/ending.config.json unless a lab passes its own) */
   ending?: EndCfg;
   /* the first screen's left side (saved/hero.config.json unless a lab passes its own) */
   hero?: HeroCfg;
+  /* the Register launch (default: saved/launch.config.json); dry: it plays and Luma does not open (the lab) */
+  launch?: LaunchCfg; dry?: boolean;
   /* the lab's own things over the page (its panel) */
   children?: ReactNode;
 };
 
-export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, ending, hero: heroCfg = HERO, children }: Props) {
+export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, ending, hero: heroCfg = HERO, launch = LAUNCH, dry = false, children }: Props) {
   const { cities, start } = useOurCities(ours, forced, here), off = useOffset();
   const nearest = off === null ? 0 : nearestCity(ours.cities, off, here);
   const [pick, setPick] = useState<number | null>(null), cur = pick ?? start, city = cities[cur] ?? cities[0];
   const eng = useRef<WheelEngine | null>(null), rm = useReduced();
+  /* pressing the ticket's Register folds it into a rocket that flies to its city, then Luma opens (use-launch.ts) */
+  useLaunch(eng, launch, dry);
   /* the wheel's clicks follow the visitor's Sound and Screen switches, the same ones the day pages use */
   const [snd] = usePref('sound'), [scr] = usePref('screen');
   const wcfg = useMemo(() => (snd && scr ? wheel : { ...wheel, sound: 0 }), [wheel, snd, scr]);
@@ -87,20 +96,21 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
   /* unroll: the names leave the wheel for the board, so the board comes straight after the bar */
   const unroll = cfg.dir === 'unroll' && fixed, gone = useRef(false), ord = unroll ? 'cities-first' : cfg.order;
   const onCity = useCallback((i: number) => setPick(i), []);
-  const choose = useCallback((i: number) => { setPick(i); eng.current?.go(i); }, []);
+  const choose = useCallback((i: number) => { setPick(i); eng.current?.go(i, true); }, []);
 
   /* the person, drawn after /api/me answers, so the first paint is the signed-out page */
   const forms = useForms(), fs = useFormsState(), me = meNow();
-  const pass = me?.pass ?? null, mine = pass ? cities.findIndex((c) => c.id === pass.city) : -1;
+  /* with signing in off, the page is the signed-out page for everyone */
+  const pass = cfg.signin === 'on' ? me?.pass ?? null : null, mine = pass ? cities.findIndex((c) => c.id === pass.city) : -1;
   /* the header's register cell is the person's own (a button, not the link): the dock is measured again when it changes */
-  const mineCell = !!forms && cfg.acct === 'merged' && cellState(fs.signedIn, me) === 'place';
+  const mineCell = !!forms && cfg.signin === 'on' && cfg.acct === 'merged' && cellState(fs.signedIn, me) === 'place';
   const signIn = useMemo(() => (forms ? () => openAccount(forms) : undefined), [forms]);
   const acct: Acct | null = useMemo(() => {
-    if (!forms || hero) return null;
+    if (!forms || hero || cfg.signin === 'off') return null;
     const state = cellState(fs.signedIn, me);
     return { state, code: pass ? CODE[pass.city] || pass.city.slice(0, 3).toUpperCase() : '', cityName: pass?.cityName || '', merged: cfg.acct === 'merged', top: cfg.acctTop === 'both',
       open: signIn! };
-  }, [forms, hero, fs.signedIn, me, pass, cfg.acct, cfg.acctTop, signIn]);
+  }, [forms, hero, fs.signedIn, me, pass, cfg.acct, cfg.acctTop, cfg.signin, signIn]);
   /* arriving signed in, the wheel turns to the person's city, once, and never after the visitor has turned it (an
      address with ?city= already says where to start) */
   /* the register links: for the person's own city they open the account instead ("Your place in Berlin"). No
@@ -153,7 +163,7 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
     const parts = Array.from((m.parentElement ?? m).querySelectorAll<HTMLElement>('[data-part]'));
     const io = new IntersectionObserver((es) => { if (performance.now() < litHold.current) return; for (const e of es) if (e.isIntersecting) setLit((e.target as HTMLElement).dataset.part ?? null); }, { rootMargin: '-40% 0px -55% 0px' });
     parts.forEach((p) => io.observe(p)); return () => io.disconnect();
-  }, [line, ord, cfg.cities, cfg.ready, cfg.questions]);
+  }, [line, ord, cfg.cities, cfg.ready]);
 
   /* where the globe docks: the header's register lens, measured on resize; the header sticks after a short scroll */
   const dockAt = useRef<{ x: number; y: number; r: number; stick: number } | null>(null);
@@ -243,18 +253,18 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
   /* the page's ground, under an overscroll too: in the server's HTML (PaperStyle), so the first paint is already it */
 
   /* arrivals */
-  useConverge(main, line && cfg.arrive === 'tube', ord);
+  useConverge(main, line && cfg.arrive === 'tube' && cfg.convMs > 0, ord);
   /* the bloom on the prize, once, when the amount is well in view */
   useEffect(() => {
     const el = main.current?.querySelector<HTMLElement>('.pf-prize'); if (!el || !line || cfg.arrive !== 'tube' || cfg.bloom <= 0 || cfg.bloomMs <= 0) return;
     return once(el.querySelector('.ex') ?? el, 0.5, () => el.setAttribute('data-bloom', ''));
   }, [line, cfg.arrive, cfg.bloom, cfg.bloomMs, ord]);
-  const boardRef = useRef<HTMLElement>(null), qRef = useRef<HTMLElement>(null);
+  const boardRef = useRef<HTMLElement>(null);
   /* the rows a step apart, the whole write never longer than rowTotal however many cities there are */
   const rowStep = cfg.rowTotal > 0 ? Math.min(cfg.rowStep, cfg.rowTotal / Math.max(1, cities.length - 1)) : cfg.rowStep;
   useWrite(boardRef, line && cfg.arrive === 'tube' ? rowStep : 0, 0.15, line);
 
-  /* a link to a part (#how, #questions, the footer's own) lands on it; the address then goes back to the page's own, so
+  /* a link to a part (#how, the footer's own) lands on it; the address then goes back to the page's own, so
      a reload, or the address the browser remembers, opens at the top and not part way down */
   useEffect(() => {
     /* a reload does not bring back the place the visitor had scrolled to: the page always opens at its first screen */
@@ -270,20 +280,22 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
   const jump = useCallback((id: string, e: MouseEvent) => {
     e.preventDefault();
     const byKey = e.detail === 0;
-    if (id === 'top') { window.scrollTo({ top: 0 }); history.replaceState(null, '', location.pathname + location.search); return; }
+    if (id === 'top') { jumpTop(line ? cfg.jump : 'cut', { min: cfg.scrollMin, max: cfg.scrollMax, ease: cfg.scrollEase, byKey }); history.replaceState(null, '', location.pathname + location.search); return; }
     /* a jump lands on a finished section: its rows and its heading are simply there */
     const part = document.getElementById(id)?.closest('.pf-part') ?? document.getElementById(id);
     part?.querySelectorAll('[data-pf-wait]').forEach((n) => n.removeAttribute('data-pf-wait'));
     /* the headings the roll passes are settled too */
     document.querySelectorAll('.pf [data-pf-conv]').forEach((n) => n.removeAttribute('data-pf-conv'));
-    setLit(id); litHold.current = performance.now() + Math.max(cfg.rollMs, 600) + 100;
-    jumpTo(id, line ? cfg.jump : 'cut', { ms: cfg.rollMs, bar: cfg.rollBar, ease: tokEase('--ease-out', 'cubic-bezier(0.23, 1, 0.32, 1)'), byKey, scroller: main.current });
-  }, [line, cfg.jump, cfg.rollMs, cfg.rollBar]);
+    /* the lit cell renders between frames: the first frame of the scroll is not held for it */
+    startTransition(() => setLit(id));
+    /* the lit cell holds on the target while the page passes the parts between */
+    const ms = jumpTo(id, line ? cfg.jump : 'cut', { ms: cfg.rollMs, bar: cfg.rollBar, ease: tokEase('--ease-out', 'cubic-bezier(0.23, 1, 0.32, 1)'), byKey, scroller: main.current, min: cfg.scrollMin, max: cfg.scrollMax, glide: cfg.scrollEase });
+    litHold.current = performance.now() + ms + 100;
+  }, [line, cfg.jump, cfg.rollMs, cfg.rollBar, cfg.scrollMin, cfg.scrollMax, cfg.scrollEase]);
 
-  const f = { buildMin: ours.buildMin, voteAfter: ours.voteAfter, startHour: ours.startHour, date: ours.date };
   const n = cities.length, g = PRIZES.global.what;
-  const order: string[] = ord === 'prize-first' ? ['prizes', 'how', 'cities', 'ready', 'questions'] : ord === 'how-first' ? ['how', 'prizes', 'cities', 'ready', 'questions'] : ['cities', 'how', 'prizes', 'ready', 'questions'];
-  const LABEL: Record<string, string> = { cities: 'Cities', how: 'How it works', prizes: 'Prizes', ready: 'Get ready', questions: 'Questions' };
+  const order: string[] = ord === 'prize-first' ? ['prizes', 'how', 'cities', 'ready'] : ord === 'how-first' ? ['how', 'prizes', 'cities', 'ready'] : ['cities', 'how', 'prizes', 'ready'];
+  const LABEL: Record<string, string> = { cities: 'Cities', how: 'How it works', prizes: 'Prizes', ready: 'Get ready' };
   const parts: Part[] = hero ? [] : order.map((id) => ({ id, label: LABEL[id] }));
   const barCells = useMemo(() => {
     const c: [string, string][] = [['Date', ours.date], ['Cities', count(n) + ', east to west'], ['Build', ours.buildMin + ' minutes']];
@@ -291,23 +303,36 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
     return c;
   }, [ours.date, ours.buildMin, n, ord, g]);
   const flap = useMemo(() => ({ flapMs: cfg.flapMs, flaps: line && cfg.arrive === 'tube' ? cfg.flaps : 0, stagger: cfg.flapStagger }), [cfg.flapMs, cfg.flaps, cfg.flapStagger, cfg.arrive, line]);
-  const lede = `${count(n)} cities, one day: ${ours.date}. Each city starts at its own local time and builds for ${ours.buildMin} minutes; voting closes ${ours.voteAfter} minutes after building ends.`;
+  const lede = `${count(n)} cities, one day: ${ours.date}. Each city starts at its own local time and builds for ${ours.buildMin} minutes. Votes are shown from minute ${EVENT.showAt ?? 60}.`;
   const late = ord === 'prize-first';
-  const cityLede = `${startsSentence()} Pick yours here and every Register button on this page follows it.`;
+  /* each row shows its own start, so the lede only says what picking does */
+  const cityLede = 'Pick your city and every Register button switches to it.';
 
+  /* the footer's links to the page's own parts (Prizes, How it works) take the header's jump, so going back
+     up from the end moves the same way as the header's cells; a modified click keeps the browser's own way */
+  const footJump = useCallback((e: MouseEvent) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const a = (e.target as Element).closest('a'), h = a?.getAttribute('href');
+    if (!h || !h.startsWith('#') || !document.getElementById(h.slice(1))) return;
+    jump(h.slice(1), e);
+  }, [jump]);
   /* the footer: the end board, built from the day pages' data as it stands before the day */
   const P = useMemo(() => clampParts(partsSaved as Partial<PartsCfg>), []);
   const day = useMemo(() => dayOf(0), []), minute = realMinute(nowMs), W = useMemo(() => homeAt(day, minute), [day, minute]);
   /* the ending: the world opened flat, unless the saved ending is today's end board */
   const end = useMemo(() => clampEnd(ending ?? (endSaved as Partial<EndCfg>)), [ending]), foot = useMemo(() => clampFoot(footSaved as Partial<FootCfg>), []);
+  const howCities = useMemo(() => reg.map((c) => ({ id: c.id, code: c.code ?? CODE[c.id] ?? c.name.slice(0, 3).toUpperCase(), name: c.name })), [reg]);
   const endCities: EndCity[] = useMemo(() => reg.map((c) => ({ id: c.id, name: c.name, code: c.code ?? CODE[c.id] ?? c.name.slice(0, 3).toUpperCase(), lat: c.lat, lon: c.lon, opens: c.opens, href: c.href, action: c.action, press: 'press' in c ? c.press : undefined })), [reg]);
   /* the white dot belongs to the footer; with the new ending in its place the page keeps it */
-  useWhiteDot(!hero && !!foot.dot && end.end !== 'board');
 
   const section = (id: string): ReactNode => {
     switch (id) {
-      case 'prizes': return <div key={id} className="pf-part pf-prize" data-part={id}><PrizeBlock id="prizes" text={dots ? wheel : undefined} arrive={line && cfg.arrive === 'tube'} /></div>;
-      case 'how': return <div key={id} className="pf-part" data-part={id}><HowItWorks f={f} id="how" /></div>;
+      case 'prizes': return line && cfg.prizes === 'type'
+        ? <FoldPrizeType key={id} cities={n} finalists={n * EVENT.finalists} auto={cfg.arrive === 'tube'} ms={cfg.typeMs} step={cfg.typeStep} />
+        : line && cfg.prizes === 'podium'
+        ? <FoldPodium key={id} city={city.name} auto={cfg.arrive === 'tube'} step={cfg.podiumStep} />
+        : <div key={id} className="pf-part pf-prize" data-part={id}><PrizeBlock id="prizes" text={dots ? wheel : undefined} arrive={line && cfg.arrive === 'tube'} /></div>;
+      case 'how': return <FoldHow key={id} cfg={cfg} cities={howCities} mine={cur} finalists={cities.length * EVENT.finalists} buildMin={ours.buildMin} date={ours.date} />;
       case 'cities': return (
         <section key={id} ref={boardRef} id="cities" className="pf-part pf-cities" data-part={id} aria-labelledby="cities-h">
           <h2 id="cities-h" className="pf-h">{count(n)} cities, one day</h2>
@@ -316,16 +341,10 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
             mine={mine} onMine={forms ? () => forms.account() : undefined} />
         </section>
       );
-      case 'ready': return (
+      case 'ready': return line && cfg.ready === 'short' ? <FoldShort key={id} city={city.name} cityId={city.id} auto={cfg.arrive === 'tube'} step={cfg.dryStep} more={cfg.readyMore} signin={cfg.signin === 'on'} /> : line && cfg.ready === 'list' ? <FoldList key={id} city={city.name} cityId={city.id} auto={cfg.arrive === 'tube'} step={cfg.dryStep} /> : (
         <div key={id} id="ready" className="pf-part" data-part={id}>
-          {line ? <FoldReady city={city.name} cityId={city.id} mode={cfg.ready} auto={!late && cfg.arrive === 'tube'} step={cfg.dryStep} hold={cfg.dryHold} onSignIn={signIn} /> : <GetReady city={city.name} cityId={city.id} id="ready" onSignIn={signIn} />}
+          {line ? <FoldReady city={city.name} cityId={city.id} mode={cfg.ready === 'list' || cfg.ready === 'short' ? 'steps' : cfg.ready} auto={!late && cfg.arrive === 'tube'} step={cfg.dryStep} hold={cfg.dryHold} onSignIn={signIn} /> : <GetReady city={city.name} cityId={city.id} id="ready" onSignIn={signIn} />}
         </div>
-      );
-      case 'questions': return (
-        <section key={id} ref={qRef} id="questions" className="pf-part pf-q" data-part={id} aria-labelledby="questions-h">
-          <h2 id="questions-h" className="pf-h">Questions</h2>
-          <FoldQuestions how={ours.how} mode={line ? cfg.questions : 'open'} />
-        </section>
       );
     }
     return null;
@@ -337,7 +356,9 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
   const WEEKDAY = new Date(EPOCH).toLocaleDateString('en-GB', { weekday: 'long', timeZone: 'UTC' });
   const rsvp = LUMA_LIVE && ours.regOpen ? 'RSVP now open' : 'RSVP opens soon';
   const dateLine = heroCfg.weekday ? `${WEEKDAY} ${ours.date}` : ours.date;
-  const head = <><h1><span className="sr-only">{EVENT.name}, {ours.date}: </span>{ours.buildMin}min Build Challenge<span className="sr-only">, in {n} cities</span></h1><p className="wh-lead-muted">Officially hosted by <SupabaseLockup className="wh-supabase" /></p></>;
+  /* the line under the headline (saved/hero.config.json `sub`): what the day is, for a visitor who knows nothing yet */
+  const sub = heroCfg.sub === 'facts' ? `${n} cities · one day · in person` : heroCfg.sub === 'reach' ? `In person, in ${n} cities, each at its own local time` : null;
+  const head = <><h1><span className="sr-only">{EVENT.name}, {ours.date}: </span>{ours.buildMin}min Build Challenge<span className="sr-only">{sub ? '' : `, in ${n} cities`}</span></h1>{sub ? <p className="wh-lead-sub">{sub}</p> : null}<p className="wh-lead-muted">Hosted by <SupabaseLockup className="wh-supabase" /></p></>;
   const lead = column ? (heroCfg.words === 'tight'
     ? <div>{head}<p className="wh-lead-date">{dateLine}</p>{heroCfg.rsvp ? <p>{rsvp}</p> : null}</div>
     : <><div>{head}</div><div><p>{dateLine}</p>{heroCfg.rsvp ? <p>{rsvp}</p> : null}</div></>
@@ -371,12 +392,12 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
         {line ? null : <p className="pf-lede pf-plain-lede">{lede}</p>}
         {order.map(section)}
       </main>
-      <div className="pf-foot" data-part="">
+      <div className="pf-foot" data-part="" onClick={footJump}>
         {end.end === 'board'
           ? <DayFooter W={W} day={day} href={(id) => '/city/' + id} sound={P.sound === 'steps'} city={city.id} cfg={foot} minute={minute}
             sections={{ how: '#how', prizes: '#prizes' }} style={partsVars(P) as CSSProperties} face={P.face} noCities placed={mine >= 0 && forms ? () => forms.account() : undefined} />
-          : <Ending cfg={end} wheel={wheel} cities={endCities} start={cur} last={lastLine(W)} date={ours.date} sound={P.sound === 'steps'}
-            links={{ how: '#how', prizes: '#prizes', questions: '#questions' }} style={partsVars(P) as CSSProperties} face={P.face} markMode={wheel.mark} onPick={choose} />}
+          : <Ending cfg={end} wheel={wheel} cities={endCities} start={cur} last="" date={ours.date} sound={P.sound === 'steps'}
+            links={{ how: '#how', prizes: '#prizes' }} style={partsVars(P) as CSSProperties} face={P.face} markMode={wheel.mark} onPick={choose} />}
       </div>
       </>}
       <Unroll names={cities.map((c) => c.name)} cfg={wheel} eng={eng} board={boardRef} from={cfg.unrollFrom} spread={cfg.unrollSpread} on={unroll} gone={gone} />

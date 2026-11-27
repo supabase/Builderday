@@ -3,8 +3,8 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useReduced, useTubesStill } from './tube';
 
 /* The city prize, drawn: a MacBook Neo given ten times, once in each city. One picture is a pure function of the
-   config (seed included), the size and a time t, so a saved config draws the same picture every time. Tuned at
-   /lab/neo, saved in saved/neo.config.json.
+   config (seed included), the size and a time t, so a saved config draws the same picture every time. Saved in
+   saved/neo.config.json.
 
    The rules every mode keeps: no outline and no wireframe (the laptop is a dark object told by its light); one light,
    from the upper left, so every edge is bright on the left and gone by the right; the site's ground, white ink and blue

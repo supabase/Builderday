@@ -1,0 +1,22 @@
+{
+  "on": "on",
+  "open": "land",
+  "trail": "chars",
+  "back": "print",
+  "pressMs": 90,
+  "press": 0.97,
+  "foldMs": 320,
+  "shipW": 112,
+  "shipH": 0.3,
+  "flightMs": 560,
+  "arc": 0.4,
+  "shrink": 0.22,
+  "turn": 0.22,
+  "sway": 4,
+  "trailN": 9,
+  "trailMs": 520,
+  "landMs": 560,
+  "ring": 3,
+  "backMs": 420,
+  "backDelay": 600
+}

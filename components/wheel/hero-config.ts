@@ -1,6 +1,6 @@
 /* The first screen's left side in the column layout: the page's words, then the city's row on the active name's line
-   (its time, its state and the Luma box whose name is the wheel's own). Every taste value is here, tuned at
-   /lab/hero and saved in saved/hero.config.json, which the preview reads. Pure.
+   (its time, its state and the Luma box whose name is the wheel's own). Every taste value is here, saved in
+   saved/hero.config.json, which the preview reads. Pure.
 
    Modes (what the row is):
    - row: three boxes side by side, time, state, then "Register for <city>" (the first cut of this layout).
@@ -18,6 +18,9 @@ export type HeroCfg = {
   words: 'stack' | 'tight';
   /* the date line says the weekday; the RSVP line (the state cell already says it) */
   weekday: boolean; rsvp: boolean;
+  /* a line under the headline that says what the day is: off, facts ("14 cities · one day · in person") or reach
+     ("In person, in 14 cities, each at its own local time") */
+  sub: 'off' | 'facts' | 'reach';
   /* how the city's name gets into the box: fade (the wheel's name fades in as it comes to rest), roll (the new name
      comes round the turn's way; a fast spin finishes its roll, then makes one quick roll to the latest), none */
   hand: 'fade' | 'roll' | 'none';
@@ -26,6 +29,12 @@ export type HeroCfg = {
   /* how the row meets the wheel: row (the wheel's names come in to start where the box's name starts) or wheel (the
      names stay where the wheel puts them: the ticket's body stretches to them, the spoke's box moves out to them) */
   reach: 'row' | 'wheel';
+  /* the row when there is no room for the words beside the wheel (a phone, a tall tablet; the words then sit under the
+     header): line (the row stays on the active name's line and takes the wheel's name, as on a wide screen, with a
+     slimmer stub) or foot (docked at the foot of the first screen, apart from the wheel) */
+  dock: 'line' | 'foot';
+  /* line: the slim stub's width and the box's name size (the wheel's names take it), px */
+  stubPhone: number; namePhone: number;
   /* where the screen's lines and colour fringe fall in the hero (the screen kit marks all big type): wheel (only the
      wheel, which is the screen; the words and the ticket are print), words (the headline too), all (the ticket too) */
   screen: 'wheel' | 'words' | 'all';
@@ -46,29 +55,33 @@ export type HeroCfg = {
   widthMs: number;
   /* ticket: the perforation's dot gap, the notches' radius, px */
   perf: number; notch: number;
+  /* ticket: the paper's grain, 0 (flat) to 1 (a fine speckle over a soft mottle, drawn as noise, no image) */
+  paper: number;
   /* the stub's serial */
   seed: number;
 };
 
 export const HERO_DEF: HeroCfg = {
-  mode: 'ticket', words: 'tight', weekday: true, rsvp: false, hand: 'roll', width: 'fixed', reach: 'row', screen: 'wheel', state: 'ink', zone: 'local',
+  mode: 'ticket', words: 'tight', weekday: true, rsvp: false, sub: 'off', hand: 'roll', width: 'fixed', reach: 'row', dock: 'foot', screen: 'wheel', state: 'ink', zone: 'local',
   titleK: 1.55, bodyK: 0.5, cellK: 2.1, stubK: 5, gapK: 0.6, liftK: 1.2,
   min: 24, grow: 1.15, tall: 0.05,
+  stubPhone: 100, namePhone: 20,
   widthMs: 220,
-  perf: 6, notch: 10,
+  perf: 6, notch: 10, paper: 0,
   seed: 4217,
 };
 
 export const HERO_BOUNDS: Record<string, [number, number, number]> = {
   titleK: [1, 2, 0.05], bodyK: [0.35, 0.7, 0.01], cellK: [1.6, 2.8, 0.05], stubK: [4, 7, 0.1], gapK: [0.2, 1.4, 0.05], liftK: [0.5, 2.2, 0.05],
   min: [18, 34, 1], grow: [1, 1.4, 0.01], tall: [0.04, 0.08, 0.002],
+  stubPhone: [80, 140, 1], namePhone: [15, 26, 0.5],
   widthMs: [0, 400, 10],
-  perf: [4, 12, 1], notch: [0, 16, 1],
+  perf: [4, 12, 1], notch: [0, 16, 1], paper: [0, 1, 0.05],
   seed: [1, 99999, 1],
 };
 
 export const HERO_CHOICES: Record<string, readonly string[]> = {
-  mode: HERO_MODES, words: ['stack', 'tight'], hand: ['fade', 'roll', 'none'], width: ['hug', 'fixed'], reach: ['row', 'wheel'], screen: ['wheel', 'words', 'all'], state: ['block', 'ink'], zone: ['utc', 'local'],
+  mode: HERO_MODES, words: ['stack', 'tight'], sub: ['off', 'facts', 'reach'], hand: ['fade', 'roll', 'none'], width: ['hug', 'fixed'], reach: ['row', 'wheel'], dock: ['line', 'foot'], screen: ['wheel', 'words', 'all'], state: ['block', 'ink'], zone: ['utc', 'local'],
 };
 
 export function clampHero(v: Partial<HeroCfg> | null | undefined): HeroCfg {

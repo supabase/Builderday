@@ -2,7 +2,7 @@
    All through the service role; callers have already checked who may do what. */
 import { admin } from './supabase';
 import { makeKey, readKey } from './keys';
-import { siteUrl, superAdmins } from './env';
+import { superAdmins } from './env';
 import { EVENT } from '@/lib/day-data';
 import { eventOfCity } from './events';
 
@@ -55,7 +55,7 @@ export async function passByListEmail(email: string, event: string = EVENT_ID): 
 export type LumaFacts = { guestId?: string | null; status?: string | null; registeredAt?: string | null };
 export type Ensured = { pass: Pass; made: boolean; moved: string | null; kept?: 'later' | 'checked-in' | 'held' };
 
-/* A place on a city's list (from Luma or a host; never from the room code), matched on the address it is listed
+/* A place on a city's list (from Luma or a host), matched on the address it is listed
    under. One per address and one per account in the event.
    - Listed already in this city: Luma's facts are brought up to date.
    - Listed in another city: a host's add moves it; a Luma registration moves it only when it is the later one
@@ -108,7 +108,6 @@ export async function bootstrapSuper(p: Person): Promise<void> {
   await admin().from('log').insert({ who: p.id, what: 'super admin from SUPER_ADMINS' });
 }
 
-export const linkFor = (pass: Pick<Pass, 'id' | 'key_version'>, req?: Request) => siteUrl(req) + '/in/' + makeKey('in', pass.id, pass.key_version);
 /* the editor key has its own version, so replacing it (a key found in a repository, a host ending it) leaves the link */
 export const editorKeyFor = (pass: Pick<Pass, 'id' | 'editor_version'>) => makeKey('mcp', pass.id, pass.editor_version);
 

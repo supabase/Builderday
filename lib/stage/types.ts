@@ -9,10 +9,6 @@ export type SceneKind =
      card), and a product (a Supabase product's name, one line, a picture, and its link as a QR) */
   | 'words' | 'link' | 'product';
 
-/* the event's scenes: these can be hidden, never deleted */
-export const EVENT_KINDS: SceneKind[] = ['doors', 'welcome', 'question', 'needs', 'tour', 'say', 'line', 'deadline', 'rules', 'prizes', 'submit', 'questions', 'building', 'voting', 'showcase', 'top3', 'tombola', 'final'];
-/* the scenes drawn from the city's live numbers */
-export const LIVE_KINDS: SceneKind[] = ['doors', 'building', 'voting', 'showcase', 'top3', 'tombola', 'final'];
 
 export type SceneData = {
   /* welcome: the hosts' names */ hosts?: string[];
@@ -30,8 +26,12 @@ export type SceneRow = { id: string; city: string; position: number; kind: Scene
    are this build's, kept in the same json until the row has columns of its own:
    - qr: the QR shown over any scene;
    - deadline: the deadline the wall said when it flipped (scene 9), in ms; Start building ends there;
-   - spin: the tombola's draw, started at `at` with `seed`, so every screen lands on the same entry. */
-export type StageTimer = { ends_at?: number | null; paused_left?: number | null; qr?: boolean; deadline?: number | null; spin?: { at: number; seed: number } | null };
+   - spin: the tombola's draw, started at `at` with `seed`, so every screen lands on the same entry;
+   - view: what the building and voting boards show (null: they take turns);
+   - show: the project the showcase is on, counted by the host's presses (null: it walks them on its own). */
+export type BoardView = 'arrivals' | 'pulse' | 'top10' | 'chart' | 'moments' | 'world';
+export const BOARD_VIEWS: [BoardView, string][] = [['arrivals', 'Latest'], ['pulse', 'Pulse'], ['top10', 'Top 10'], ['chart', 'Chart'], ['moments', 'Moments'], ['world', 'Cities']];
+export type StageTimer = { ends_at?: number | null; paused_left?: number | null; qr?: boolean; deadline?: number | null; spin?: { at: number; seed: number } | null; view?: BoardView | null; show?: number | null };
 
 /* the `stage` row */
 export type StageRow = { city: string; scene: string; step: number; timer: StageTimer; chart_on: boolean; blank: boolean; updated_at: number; updated_by: string | null };
@@ -57,4 +57,5 @@ export type StageAction =
   | { t: 'next' } | { t: 'back' } | { t: 'jump'; i: number }
   | { t: 'blank' } | { t: 'qr' } | { t: 'chart' }
   | { t: 'start' } | { t: 'add'; min: number } | { t: 'close' }
-  | { t: 'talk' } | { t: 'spin' };
+  | { t: 'talk' } | { t: 'spin' }
+  | { t: 'view'; v: BoardView | null } | { t: 'show'; d: -1 | 0 | 1 };

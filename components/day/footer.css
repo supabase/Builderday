@@ -119,7 +119,3 @@ html[data-globes] .fx { z-index: 61; }
   .ft-tl { font-size: 14px; }
 }
 @media (prefers-reduced-motion: reduce) { .ft-c a, .ft-cells a, .ft-cells button { transition: none; } }
-
-/* the white dot: a dark veil over the page with a bright line that collapses to a dot (or opens from one) */
-.ft-veil { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; background: #0c0d0d; pointer-events: none; opacity: 0; }
-.ft-line { width: 100vw; height: 2px; background: #f4f4f2; box-shadow: 0 0 12px 2px rgb(220 230 255 / 0.8), 0 0 40px 6px rgb(61 61 255 / 0.45); opacity: 0; will-change: transform, opacity; }

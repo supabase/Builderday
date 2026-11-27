@@ -1,10 +1,12 @@
-/* The stage's look: the direction, the wall's screen, its sizes and every stage-only timing. Tuned at /lab/stage and
-   saved to saved/stage.config.json; the wall and the remote read the same file. Durations that the whole site shares
+/* The stage's look: the direction, the wall's screen, its sizes and every stage-only timing. Saved to
+   saved/stage.config.json; the wall and the remote read the same file. Durations that the whole site shares
    (a press, a slide, a flash) stay in saved/motion.config.json; these are the ones only a wall needs, because a wall is
    read from the back of a room and its moves travel further than a page's. Pure. */
 
-export type StageDir = 'tube' | 'board' | 'plain';
-export const STAGE_DIRS: [StageDir, string][] = [['tube', 'Tube'], ['board', 'Board'], ['plain', 'Plain']];
+export type StageDir = 'tube' | 'board' | 'plain' | 'cover' | 'orbit' | 'print';
+export const STAGE_DIRS: [StageDir, string][] = [['cover', 'Cover'], ['orbit', 'Orbit'], ['print', 'Print'], ['tube', 'Tube'], ['board', 'Board'], ['plain', 'Plain']];
+/* the directions drawn on the Builder Day cover: the text globe behind, the mark, the cells, the hosted-by line */
+export const isCover = (d: StageDir) => d === 'cover' || d === 'orbit' || d === 'print';
 
 export type StageCfg = {
   dir: StageDir;
@@ -25,6 +27,15 @@ export type StageCfg = {
   arrivals: number; rows: number;
   /* the tombola: a click per name (a step you can feel); off by default, a room has its own sound */
   sound: number;
+  /* the cover's globe: its land's grey (0 to 255 on the wall's ground), one turn step every globeStep ms (whole frames
+     of the study, 3.6 degrees each), how long it takes to move to the next scene's place (Orbit), its size against
+     the cover's (1: as on the cover, the sphere about 1560 px across) */
+  globeInk: number; globeStep: number; globeMove: number; globeSize: number;
+  /* the dashed line down the middle, and the hosted-by line along the bottom */
+  guide: number; hosted: number;
+  /* the boards' views (the frame's looks): how long each shows while they take turns, s; a pulse column, min; how
+     many hatch characters the leader's bar is */
+  viewSec: number; pulseBin: number; barCells: number;
 };
 
 export const STAGE_DEF: StageCfg = {
@@ -36,6 +47,9 @@ export const STAGE_DEF: StageCfg = {
   tick: 10, talkMin: 2,
   arrivals: 5, rows: 10,
   sound: 0,
+  globeInk: 68, globeStep: 420, globeMove: 900, globeSize: 1,
+  guide: 1, hosted: 1,
+  viewSec: 12, pulseBin: 5, barCells: 30,
 };
 
 export const STAGE_BOUNDS: Record<string, [number, number, number]> = {
@@ -45,8 +59,10 @@ export const STAGE_BOUNDS: Record<string, [number, number, number]> = {
   enterMs: [0, 900, 10], drawMs: [0, 1600, 20], foldMs: [0, 2400, 20], lineMs: [0, 3000, 20], glideMs: [0, 1400, 20], spinMs: [5000, 25000, 500],
   tick: [2, 60, 1], talkMin: [1, 5, 0.5],
   arrivals: [3, 8, 1], rows: [8, 12, 1],
+  globeInk: [30, 150, 1], globeStep: [120, 2000, 10], globeMove: [0, 2000, 20], globeSize: [0.6, 1.4, 0.01],
+  viewSec: [5, 40, 1], pulseBin: [2, 15, 1], barCells: [12, 48, 1],
 };
-const TOGGLES = ['sound'];
+const TOGGLES = ['sound', 'guide', 'hosted'];
 
 export function clampStage(c: Partial<StageCfg> | Record<string, unknown> | null | undefined): StageCfg {
   const o = { ...STAGE_DEF } as Record<string, unknown>, src = (c || {}) as Record<string, unknown>;
@@ -58,7 +74,7 @@ export function clampStage(c: Partial<StageCfg> | Record<string, unknown> | null
     const b = STAGE_BOUNDS[k], n = Number(v);
     if (b && Number.isFinite(n)) o[k] = Math.min(b[1], Math.max(b[0], n));
   }
-  for (const k of ['pitch', 'tick', 'arrivals', 'rows']) o[k] = Math.round(o[k] as number);
+  for (const k of ['pitch', 'tick', 'arrivals', 'rows', 'globeInk', 'globeStep', 'globeMove', 'viewSec', 'pulseBin', 'barCells']) o[k] = Math.round(o[k] as number);
   return o as StageCfg;
 }
 
@@ -68,6 +84,7 @@ export function stageVars(c: StageCfg): Record<string, string> {
   return {
     '--st-lines': String(c.lines), '--st-pitch': String(c.pitch), '--st-fringe': String(c.fringe), '--st-grain': String(c.grain),
     '--st-safe': String(c.safe), '--st-ink2': `oklch(${c.ink2} 0.004 100)`,
+    '--st-globe-move': c.globeMove + 'ms', '--st-view': String(c.viewSec),
     '--st-enter': c.enterMs + 'ms', '--st-draw': c.drawMs + 'ms', '--st-fold': c.foldMs + 'ms', '--st-line': c.lineMs + 'ms', '--st-glide': c.glideMs + 'ms',
   } as Record<string, string>;
 }

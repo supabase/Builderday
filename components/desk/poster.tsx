@@ -1,6 +1,6 @@
 'use client';
-/* The door poster, A4: the QR to the city's page, the address, and the code line. Printed in black on white paper;
-   on screen it shows as the sheet that will come out of the printer. The room code is read from the desk, so only a
+/* The door poster, A4: the QR to the city's page, the address, and how to submit. Printed in black on white paper;
+   on screen it shows as the sheet that will come out of the printer. The poster is read from the desk, so only a
    host of the city (or a super admin) can print it. */
 import { useEffect, useMemo, useState } from 'react';
 import qrcode from 'qrcode-generator';
@@ -45,9 +45,7 @@ export function Poster({ city, site }: { city: string | null; site: string }) {
         <h1 className="dk-poster-h">Submit and vote</h1>
         <Qr url={url} />
         <p className="dk-poster-a">Scan, or go to <b>{addr}</b></p>
-        <p className="dk-poster-line">To submit, press Submit and type the code on the screen with the email you used on Luma. To vote, press Vote and confirm your email.</p>
-        <p className="dk-poster-code">Code today: <b>{c.roomCode}</b></p>
-        <p className="dk-poster-f">The code may change during the day. The one on the screen is always right.</p>
+        <p className="dk-poster-line">Sign in with your Supabase account. To submit, get checked in by a host at the door, then press Submit. To vote, press Vote.</p>
       </article>
     </div>
   );

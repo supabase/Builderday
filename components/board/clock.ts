@@ -56,10 +56,7 @@ export function createClock(at: number, live: boolean, speed = 1): DayClock {
 export function useSecond(c: DayClock, first: number): number {
   return useSyncExternalStore(c.subSec, () => Math.floor(c.sec()), () => Math.floor(first * 60));
 }
-/* the whole minute, for everything else */
-export function useMinute(c: DayClock, first: number): number {
-  return useSyncExternalStore(c.subMin, () => Math.floor(c.sec() / 60), () => Math.floor(first));
-}
+
 /* the board's minute: it moves on the board tick (every `tick` seconds), so rows and counts change together, as on a
    departures board, and the page draws once a tick instead of once a second */
 export function useTick(c: DayClock, first: number, tick: number): number {

@@ -1,5 +1,5 @@
-/* The sheets' drawing (components/forms/art.ts): its modes, defaults, bounds and clamp. Saved in saved/sheet.config.json,
-   tuned at /lab/sheet. Kept out of the client files so a server page can read and clamp it.
+/* The sheets' drawing (components/forms/art.ts): its modes, defaults, bounds and clamp. Saved in saved/sheet.config.json.
+   Kept out of the client files so a server page can read and clamp it.
 
    The rules (never knobs): the wheel's neutral black and white ink; green for one mark only; the text globe's hatch,
    `::|` fixed to the screen, for every solid cell and a `.` for a cell only partly covered; every glyph is decoration

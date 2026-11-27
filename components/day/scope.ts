@@ -6,7 +6,7 @@
    Two renderers draw every scene (pen.ts): the canvas pen (a blur for the glow; the fallback without WebGL) and the
    beam (beam.ts: the light worked out along each line, added in a high-range buffer, one WebGL context per page).
 
-   Rules (fixed here; everything else is a knob in /lab/explain, saved to saved/explain.config.json):
+   Rules (fixed here; everything else is a knob, saved to saved/explain.config.json):
    - one ground (#0e0f0f), a white beam; green for now, the leader, the cut, the pick and you; blue for what just
      arrived; orange only as light inside glass (the lab keeps an Accent switch to see the old orange);
    - lines only (fills only for a flap face, a lit screen, the pick's cell); text only as segment digits, flaps or
@@ -120,18 +120,7 @@ export const SCOPE_CHOICES: Record<string, string[]> = {
   prize: ['tubes', 'glass', 'flaps', 'nixie', 'docket'], story: ['acts', 'scenes'], jump: ['move', 'cut'],
   letters: ['mono', 'stroke'], lines: ['page', 'tube'],
 };
-export const SCOPE_LABELS: Record<string, string> = {
-  beam: 'Beam draws the app', boot: 'Terminal boot log', trace: 'Live step chart', radar: 'Radar sweep', thirty: 'Thirty into one', lissajous: 'Thirty figures lock',
-  flap: 'Split-flap roll', vector: 'Beam-drawn figure', laptop: 'Wireframe laptop', ten: 'Ten laptops', reel: 'One tube plays the day', stacked: 'A tube per step', side: 'Small tube beside the words',
-  canvas: 'Canvas with a blur (today)', green: 'Green (our rule)', orange: 'Orange (the first tubes)',
-  nixie: 'Nixie tubes', tubes: 'Two tubes (today)', glass: 'Under glass', flaps: 'The big flaps', docket: 'The docket',
-  acts: 'One object (the direction)', scenes: 'Three scenes (today)', move: 'The picture moves there', cut: 'Cut',
-  mono: "The site's mono", stroke: 'Stroke letters (first built)', page: "The page's scan lines", tube: "The tube's own (first built)",
-  globe: 'One globe, three acts', rack: 'The rack', plans: 'The plans', board: 'The board, small',
-  wire: 'Wire (meridians every 30°)', template: 'The text globe’s template, dotted', dots: 'Glowing dots', plus: 'A + each, yours [+]', one: 'One column', two: 'Two banks from nine cities',
-  line: 'The morning line', steady: 'Steady (one speed)', stepped: 'Stepped (the wheel turns to each city)',
-  story: 'Story (card, ranking, line-up)', list: 'Only the line-up', off: 'Off', events: 'Flights and hits only', all: 'Everything (today)',
-};
+
 export const SCOPE_BOUNDS: Record<string, [number, number, number]> = {
   loop: [4, 20, 0.5], fps: [8, 60, 1], hold: [0, 0.5, 0.02], still: [0, 1, 0.01], glow: [0, 16, 0.5], lw: [0.75, 2.5, 0.05],
   jitter: [0, 1.5, 0.05], trail: [0, 14, 1], decay: [0.3, 0.9, 0.02], scan: [0, 0.5, 0.02], blips: [6, 48, 1], seed: [1, 99999, 1],

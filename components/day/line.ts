@@ -16,7 +16,7 @@
      most once a beat (700 ms or more);
    - green is you: your city, your row, your cell, and at the end the pick, which is the same project. Blue is only the
      newest arrival and fades to white. Everything else is white.
-   Drawn in the 320 x 180 space; every number with a taste in it is a knob in /lab/explain. */
+   Drawn in the 320 x 180 space; every number with a taste in it is a knob in saved/explain.config.json. */
 
 import { LAND_DOTS } from './land-dots';
 import motionSaved from '@/saved/motion.config.json';
@@ -465,10 +465,10 @@ function content(x: X, S: Score, o: View, L: Lay, t: number, k: number, evOnly: 
   });
 
   /* ----- the caption: the act's rule, in one fixed slot ----- */
-  const prize = x.f.prize ?? '$10,000', fin = cs.length * top - (x.f.empty?.length ?? 0);
-  /* who votes and from when (anyone, from the first minute of building), and who picks (the event's own pickers) */
+  const fin = cs.length * top - (x.f.empty?.length ?? 0);
+  /* who votes and from when (anyone, from the event's minute), and who picks (the event's own pickers) */
   const pickers = (x.f.pickers ?? 'the judges').toUpperCase();
-  const caps: [number, string][] = [[0, x.f.buildMin + ' MINUTES TO BUILD'], [S.B, 'ANYONE CAN VOTE · MINUTE 0 TO ' + (x.f.buildMin + x.f.voteAfter)], [S.Fs, fin + ' FINALISTS · ' + pickers + ' PICK ONE'], [F.p2, 'PICKED BY ' + pickers + ' · ' + prize], [S.loop - 0.25, x.f.buildMin + ' MINUTES TO BUILD']];
+  const caps: [number, string][] = [[0, x.f.buildMin + ' MINUTES TO BUILD'], [S.B, 'ANYONE CAN VOTE · MINUTE ' + (x.f.publicAt ?? 0) + ' TO ' + (x.f.buildMin + x.f.voteAfter)], [S.Fs, fin + ' FINALISTS · ' + pickers + ' PICK 3'], [F.p2, '1ST, 2ND AND 3RD · PICKED BY ' + pickers], [S.loop - 0.25, x.f.buildMin + ' MINUTES TO BUILD']];
   if (!evOnly) caps.forEach(([t0, s], i) => {
     const t1 = caps[i + 1]?.[0] ?? Infinity, a = (i ? cl((t - t0 - 0.1) / 0.15) : 1) * (t >= t1 ? 1 - cl((t - t1) / 0.1) : 1);
     if (t >= t0 && a > 0) word(x, s, 16, L.cy, fs, i === 3 ? GREEN : LABEL, a * k, 'left', { k: 'cap' });
@@ -723,7 +723,5 @@ export function fit(s: string, n: number) {
   return c.replace(/[\s·,:;&-]+$/, '') + '…';
 }
 
-/* the moments a still of each act shows (its rest), and the share of the loop each act starts at, for the clock */
-export function lineStills(S: Score) { return S.stills.map((s) => s / S.loop); }
 /* what the line direction sets on top of a saved config when it is tried from the command line */
 export const lineDefaults: Partial<ScopeCfg> = { dir: 'line' };

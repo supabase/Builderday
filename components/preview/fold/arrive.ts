@@ -31,7 +31,7 @@ export type ArrivePlan = {
 };
 
 export function arrivePlan(a: Arrival, c: FoldCfg): ArrivePlan {
-  const tail = Math.max(c.peekAt + c.peekMs, c.linkAt + c.linkMs + c.wordsStep, c.cellsAt + 4 * c.writeStep) + 60;
+  const tail = Math.max(c.linkAt + c.linkMs + c.wordsStep, c.cellsAt + 4 * c.writeStep) + 60;
   switch (a) {
     case 'tune': case 'mask': return { sweep: c.introSweep, ink: c.introMs, globe: 'print', globeMs: c.printMs, namesAfter: 0, end: tail };
     case 'flap': return { sweep: 0, ink: c.introMs, globe: 'print', globeMs: c.printMs, namesAfter: 0, end: tail + 200 };

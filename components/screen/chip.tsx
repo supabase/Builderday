@@ -7,7 +7,6 @@
 
 export type StateWord = 'opens' | 'building' | 'last' | 'closed' | 'finalists' | 'picked';
 export const STATE_WORD: Record<StateWord, string> = { opens: 'Opens', building: 'Building', last: 'Last votes', closed: 'Closed', finalists: 'Finalists', picked: 'Picked' };
-export const STATE_ORDER: StateWord[] = ['opens', 'building', 'last', 'closed', 'finalists', 'picked'];
 
 function Shape({ s }: { s: StateWord }) {
   const p = { width: 10, height: 10, viewBox: '0 0 10 10', 'aria-hidden': true as const, className: 'ch-shape' };

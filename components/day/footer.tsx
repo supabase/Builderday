@@ -1,16 +1,16 @@
 'use client';
+import { away } from '@/lib/routes';
 import Link from 'next/link';
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
 import { CITIES, EPOCH, EVENT, CITY_WORD } from '@/lib/day-data';
 import type { HomeWorld } from '@/lib/home';
 import { hhmm } from '@/lib/format';
 import { LUMA_LIVE, lumaHref } from '@/lib/luma';
-import { away } from '@/lib/routes';
 import { CODE, PLACE, localTime } from '@/lib/places';
 import { StateChip } from '@/components/screen/chip';
 import { mountGlobes } from '@/components/screen/globe';
 import { BuilderLogo } from '@/components/wheel/builder-logo';
-import { Switches, setScreenFx, step, wake } from '@/components/board/prefs';
+import { Switches, step, wake } from '@/components/board/prefs';
 import { cityWord, focusCity, type Day } from '@/components/board/day-model';
 import { cityPrizeName, finalLine, globalPrizeName } from '@/components/home/final-parts';
 import { tokEase, tokMs, wipe } from '@/components/shared/motion';
@@ -18,7 +18,7 @@ import { DATE, type Href } from './home-parts';
 import './footer.css';
 
 /* How every day page ends. One footer for the day home and the city pages, in four
-   directions, tuned at /lab/footer and saved in saved/footer.config.json:
+   directions, saved in saved/footer.config.json:
    - horizon: the wheel's glass globe rising from a horizon, the ten cities on an arc over it, the city you are on (or
      the one that is live) at the top and lit; pointing at a name turns the globe to that city. The globe is drawn by
      the screen kit's one canvas ([data-globe][data-half]), so the footer adds no drawing context of its own.
@@ -74,33 +74,6 @@ function useArc(on: boolean, phoneToo: boolean): boolean {
   }, () => false);
 }
 
-/* the white dot: Screen off collapses the picture to a line and then a dot, and the plain page appears; Screen on
-   opens from the line. The switch itself flips when the screen is dark, so the change is never seen. Under reduced
-   motion (the token is 0) it flips at once. */
-export function useWhiteDot(on: boolean) {
-  useEffect(() => {
-    if (!on) return;
-    setScreenFx((next, commit) => {
-      const d = tokMs('--dur-dot');
-      if (!d) { commit(); return; }
-      const veil = document.createElement('div'), line = document.createElement('div');
-      veil.className = 'ft-veil'; line.className = 'ft-line'; veil.appendChild(line); veil.setAttribute('aria-hidden', 'true'); document.body.appendChild(veil);
-      const ease = tokEase('--ease-out', 'ease-out'), opt = { duration: d, easing: 'linear', fill: 'forwards' as const };
-      if (!next) {
-        veil.animate([{ opacity: 0 }, { opacity: 1, offset: 0.3 }, { opacity: 1, offset: 0.82 }, { opacity: 0 }], opt);
-        line.animate([{ opacity: 0, transform: 'scale(1, 60)', easing: ease }, { opacity: 1, transform: 'scale(1, 1)', offset: 0.3, easing: ease }, { opacity: 1, transform: 'scale(0.004, 1)', offset: 0.66 }, { opacity: 1, transform: 'scale(0.004, 1)', offset: 0.78 }, { opacity: 0, transform: 'scale(0.004, 1)' }], opt);
-        window.setTimeout(commit, d * 0.3);
-      } else {
-        veil.animate([{ opacity: 0 }, { opacity: 1, offset: 0.18 }, { opacity: 1, offset: 0.7 }, { opacity: 0 }], opt);
-        line.animate([{ opacity: 0, transform: 'scale(0.004, 1)' }, { opacity: 1, transform: 'scale(0.004, 1)', offset: 0.2, easing: ease }, { opacity: 1, transform: 'scale(1, 1)', offset: 0.55, easing: ease }, { opacity: 0, transform: 'scale(1, 40)', offset: 0.8 }, { opacity: 0, transform: 'scale(1, 40)' }], opt);
-        window.setTimeout(commit, d * 0.18);
-      }
-      window.setTimeout(() => veil.remove(), d + 40);
-    });
-    return () => setScreenFx(null);
-  }, [on]);
-}
-
 /* the globe faces the city pointed at, turning there in --dur-turn (the shorter way round); at rest, the lit one */
 function useTurn(el: React.RefObject<HTMLElement | null>, aim: number) {
   const from = useRef<[number, number] | null>(null);
@@ -138,7 +111,6 @@ export function DayFooter({ W, day, href, sound, city, cfg: given, sections, min
   const globe = useRef<HTMLSpanElement>(null);
   const wide = useWide(), horizon = cfg.dir === 'horizon', draws = horizon && (wide || cfg.phone === 'same');
   useEffect(() => (draws ? mountGlobes(document) : undefined), [draws]);
-  useWhiteDot(!!cfg.dot);
   useTurn(globe, aim ?? lit);
   const arc = useArc(horizon, cfg.phone === 'same');
   const ms = EPOCH + minute * 60000;

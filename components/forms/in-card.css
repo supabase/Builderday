@@ -1,0 +1,19 @@
+/* The sign-in pages (in-card.tsx): the preview's ground and mark, the sign-in ticket in the middle, the emails' foot. */
+.in-page {
+  --in-gutter: max(clamp(20px, 4.6vw, 88px), env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
+  box-sizing: border-box; display: grid; grid-template-rows: auto 1fr auto; min-height: 100dvh; padding: 0 var(--in-gutter);
+  background: rgb(12 13 13); color: var(--c-ink); -webkit-font-smoothing: antialiased;
+}
+:root:has(.in-page) { background: rgb(12 13 13); }
+/* the mark where the preview's header has it */
+.in-mark { display: inline-flex; align-items: center; gap: 12px; justify-self: start; min-height: 48px; margin-top: 26px; color: #56bd88; text-decoration: none; }
+.in-mark span { font: 600 22px/1 var(--font-manrope), var(--font-sans); letter-spacing: -0.02em; }
+.in-logo { width: 28px; height: 28px; flex: none; shape-rendering: crispEdges; }
+.in-mark:focus-visible { outline: 2px solid var(--c-ink); outline-offset: 4px; }
+/* the ticket stands in the middle; there is nothing to close */
+.in-ticket { display: grid; place-items: center; padding: 40px 0; }
+.in-ticket .fm { width: min(var(--fm-w), 100%); }
+.in-ticket .fm-xr { display: none; }
+.in-foot { margin: 0 0 28px; font: 500 11px/17px var(--font-mono); letter-spacing: 0.04em; color: var(--c-ink-3); text-align: center; }
+.in-foot span { color: #56bd88; }
+@media (max-width: 480px) { .in-mark { margin-top: 22px; } .in-ticket { padding: 24px 0; } }

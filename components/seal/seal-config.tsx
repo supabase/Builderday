@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useMemo } from 'react';
 import saved from '@/saved/seal.config.json';
 import { clampCfg, forCity, merged, type SealCfg, type SealCfgInput } from '@/lib/seal';
 import { SealSvgView } from './seal-svg';
@@ -7,10 +7,6 @@ import { SealSvgView } from './seal-svg';
 /* The seal look the pages draw with: the saved config, unless a tuning page passes another. */
 const SAVED = clampCfg(saved as SealCfgInput);
 const SealCfgContext = createContext<SealCfg>(SAVED);
-export function SealCfgProvider({ cfg, children }: { cfg: SealCfg; children: ReactNode }) {
-  return <SealCfgContext.Provider value={cfg}>{children}</SealCfgContext.Provider>;
-}
-
 export function useSealCfg(): SealCfg { return useContext(SealCfgContext); }
 
 /* one city's seal; draw adds the stroke replay */

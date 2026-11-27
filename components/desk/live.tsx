@@ -19,7 +19,7 @@ const stateUrl = (event: string | null, city: string | null) => {
 
 type Load = { kind: 'loading' } | { kind: 'in'; why?: string } | { kind: 'no'; text: string } | { kind: 'ok'; s: DeskState };
 
-export function DeskLive({ event: event0, city: city0, mail, site, tab }: { event: string | null; city: string | null; mail: 'resend' | 'outbox'; site: string; tab?: string }) {
+export function DeskLive({ event: event0, city: city0, mail, tab }: { event: string | null; city: string | null; mail: 'resend' | 'outbox'; tab?: string }) {
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [now, setNow] = useState(() => Date.now());
   const city = useRef(city0), event = useRef(event0);
@@ -71,7 +71,7 @@ export function DeskLive({ event: event0, city: city0, mail, site, tab }: { even
     const r = await fetch(withBase('/api/desk'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action, ...p }) });
     const j = await r.json().catch(() => ({ ok: false, error: 'That did not work. Try again.' }));
     if (r.status === 401) setLoad({ kind: 'in' });
-    else if (r.ok && action !== 'import.preview' && action !== 'guest.link') await read();
+    else if (r.ok && action !== 'import.preview') await read();
     return r.ok ? { ...j, ok: true } : { ok: false, error: j.error || 'That did not work. Try again.' };
   }, [read]);
 
@@ -93,5 +93,5 @@ export function DeskLive({ event: event0, city: city0, mail, site, tab }: { even
       <div className="dk-acts-row"><button type="button" className="fm-b" onClick={signOut}>Sign in with another email</button><Link className="dk-t" href="/">Go to the site</Link></div>
     </div></main></div>
   );
-  return <Desk s={load.s} act={act} now={now} onGo={onGo} onSignOut={signOut} site={site} tab={tab} />;
+  return <Desk s={load.s} act={act} now={now} onGo={onGo} onSignOut={signOut} tab={tab} />;
 }

@@ -61,13 +61,12 @@ export async function claimVerify(p: Person, email: string, code: string): Promi
   const place = await passByListEmail(e);
   if (!place || place.id !== c.pass) return { ok: false, status: 409, error: 'That place is no longer on the list. Ask your host.' };
   if (place.person !== p.id) {
-    /* in use: the other account has an entry, has voted, or is in a team */
-    const [{ count: entries }, { count: votes }, { count: teams }] = await Promise.all([
+    /* in use: the other account has an entry or has voted */
+    const [{ count: entries }, { count: votes }] = await Promise.all([
       db.from('entries').select('id', { count: 'exact', head: true }).eq('owner', place.person),
       db.from('votes').select('id', { count: 'exact', head: true }).eq('person', place.person),
-      db.from('team_members').select('team', { count: 'exact', head: true }).eq('person', place.person),
     ]);
-    if ((entries || 0) > 0 || (votes || 0) > 0 || (teams || 0) > 0) return { ok: false, status: 409, error: 'That place is already in use. Ask your host.' };
+    if ((entries || 0) > 0 || (votes || 0) > 0) return { ok: false, status: 409, error: 'That place is already in use. Ask your host.' };
   }
   const held = await passOf(p.id);
   let replaced: string | null = null;

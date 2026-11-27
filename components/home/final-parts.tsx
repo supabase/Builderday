@@ -1,11 +1,11 @@
 'use client';
 import { Fragment } from 'react';
 import clsx from 'clsx';
-import { EVENT, type Top, CITY_WORD } from '@/lib/day-data';
+import { EVENT, type Top } from '@/lib/day-data';
 import { dur, fmtN, hhmm, ord } from '@/lib/format';
 import { cityHref, localSpan, type HomeCity, type HomeWorld } from '@/lib/home';
 import { PRIZES, globalPrize } from '@/lib/prizes';
-import { BELOW, LABEL } from '@/components/shared/page-parts';
+import { LABEL } from '@/components/shared/page-parts';
 import { useDay } from './day-context';
 import { JudgeMark, liveOf } from './sheet-parts';
 
@@ -70,53 +70,6 @@ export function CityCell({ x, big, cls }: { x: HomeCity; big?: boolean; cls?: st
       <span className="truncate text-xs text-ink-2 tabular-nums">{localSpan(x)} local</span>
       <span className="truncate text-xs text-ink-2 tabular-nums">{cityNote(x)}</span>
     </span>
-  );
-}
-
-/* ---------------- the questions, in the new format ---------------- */
-function faq(W: HomeWorld): [string, string][] {
-  const pk = hhmm(W.S.pickAt) + ' UTC', s = W.cs[0];
-  const build = localSpan({ ...s, end: s.buildEnd }), vote = localSpan(s);
-  return [
-    ['How do I enter?', 'Open your city’s page and submit your project while building is open, ' + build + ' local time. Then share it. Anyone with the link can vote for it.'],
-    ['Who can vote?', 'Anyone with the link, after confirming an email once. Voting opens when building starts and closes ' + dur(s.end - s.buildEnd) + ' after it ends (' + vote + ' local). You can vote on a project as soon as it is in.'],
-    ['Who goes to the final?', 'The top ' + EVENT.finalists + ' by votes in each city, so ' + EVENT.finalists * 10 + ' finalists. 1st place in each city wins the city prize.'],
-    ['What do the judges do?', 'Each judge has ' + EVENT.judgeVotes + ' votes and can put several on one project. Their votes count in the same tally as everyone’s, and the row says how many came from judges.'],
-    W.picked ? ['How was the winner picked?', EVENT.pickers + ' picked one of the ' + EVENT.finalists * 10 + ' finalists at ' + pk + '. The pick won the global prize.'] : ['How is the winner picked?', EVENT.pickers + ' pick one of the ' + EVENT.finalists * 10 + ' finalists at ' + pk + '. The pick wins the global prize.'],
-  ];
-}
-export function HomeQuestions() {
-  const { W } = useDay();
-  return (
-    <section className={clsx(BELOW, 'py-8')} id="questions" aria-labelledby="lq-h">
-      <h2 className={clsx(LABEL, 'mb-4')} id="lq-h">Questions</h2>
-      <dl>{faq(W).map((f, j) => (
-        <div key={f[0]} className={clsx('grid grid-cols-[var(--c5)_minmax(0,1fr)] gap-x-(--g) py-4 text-md leading-[1.45] phone:grid-cols-[minmax(0,1fr)] phone:gap-y-1', j > 0 && 'rule-t')}>
-          <dt className="font-medium text-balance text-ink">{f[0]}</dt><dd className="max-w-[60ch] text-pretty text-ink-2">{f[1]}</dd>
-        </div>
-      ))}</dl>
-    </section>
-  );
-}
-
-/* ---------------- the footer: the ten cities as one run, then the date and Supabase ---------------- */
-export function CitiesFooter() {
-  const { cfg, W, carry } = useDay();
-  return (
-    <footer className={clsx(BELOW, 'grid grid-cols-[minmax(0,1fr)] gap-y-6 pt-8 pb-18')}>
-      <p className="text-xl leading-[1.5] tracking-snug text-ink-2 phone:text-lg">
-        {W.cs.map((x, j) => (
-          <Fragment key={x.i}>
-            {/* the slash goes with the name after it, so a line never ends on one */}
-            <span className="whitespace-nowrap">{j ? <span className="px-1 text-ink-3" aria-hidden="true">{"\u00a0/ "}</span> : null}<a className="-my-[7px] inline-block py-[7px] text-ink hover:underline" href={cityHref(x, cfg, W, carry)}>{x.name}</a></span>{' '}
-          </Fragment>
-        ))}
-      </p>
-      <p className="flex flex-wrap justify-between gap-x-6 gap-y-2 text-xs text-ink-2">
-        <span>{EVENT.name} · {EVENT.date} · {CITY_WORD} cities, each at its own local time</span>
-        <span className="flex gap-4"><a className="-my-3 inline-flex min-h-11 items-center hover:text-ink" href="https://supabase.com">supabase.com</a><a className="-my-3 inline-flex min-h-11 items-center hover:text-ink" href="https://supabase.com/docs">Docs</a></span>
-      </p>
-    </footer>
   );
 }
 

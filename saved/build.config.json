@@ -1,0 +1,21 @@
+{
+  "shape": "stack",
+  "shade": "print",
+  "arrive": "drop",
+  "seed": 12,
+  "cols": 44,
+  "rows": 17,
+  "font": 10,
+  "cube": 5,
+  "tall": 1.2,
+  "ground": 0,
+  "fill": 0.6,
+  "fall": 5,
+  "drop": 2,
+  "settle": 12,
+  "sweep": 5,
+  "left": 0.62,
+  "right": 0.55,
+  "ghost": 0.5,
+  "edge": 0.3
+}

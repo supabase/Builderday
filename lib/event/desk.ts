@@ -6,12 +6,12 @@ import type { Format } from './format';
 export type DeskCity = {
   id: string; event: string; name: string; offset: number; zone: string; venue: string; luma: string; lumaEvent: string; editor: string; prize: string;
   planned: number; buildMin: number; voteAfter: number; buildStart: number | null; buildEnd: number | null; voteEnd: number | null;
-  roomCode: string; submissionsPaused: boolean; votingPaused: boolean;
+  submissionsPaused: boolean; votingPaused: boolean;
 };
-/* inRoom: when they checked in (the room code with their email, or a host by hand); only then may they submit (rule 7c) */
+/* inRoom: when a host checked them in at the door; only then may they submit (rule 7c) */
 /* listedAs: the address the place is listed under, when another account holds it (claimed with a code); editor: the
    last call from their editor ("editor connected") */
-export type DeskGuest = { person: string; email: string; name: string; source: 'luma' | 'host'; sent: number | null; opened: number | null; signedIn: boolean; inRoom: number | null; inRoomHow: 'room' | 'host' | null; entry: boolean; listedAs?: string | null; editor?: number | null; team?: string | null };
+export type DeskGuest = { person: string; email: string; name: string; source: 'luma' | 'host'; sent: number | null; opened: number | null; signedIn: boolean; inRoom: number | null; inRoomHow: 'room' | 'host' | null; entry: boolean; listedAs?: string | null; editor?: number | null };
 export type DeskEntry = {
   no: number; slug: string; name: string; pitch: string; url: string; repo: string; picture: string | null; pictureFrom: string | null; via: string;
   by: string; byEmail: string; flags: string[]; hidden: boolean; created: number; votes: number; judge: number;
@@ -47,8 +47,8 @@ export type DeskState = {
   judging: { budget: number; used: number; per: Record<string, number> } | { scores: Record<string, Record<string, number>> } | null;
   /* the super admins, for a super admin */
   supers: DeskPerson[];
-  /* editors: places whose editor has called the server; unsent: places whose link has not gone out */
-  counts: { listed: number; opened: number; signedIn: number; inRoom: number; entries: number; votes: number; editors?: number; unsent?: number } | null;
+  /* editors: places whose editor has called the server */
+  counts: { listed: number; opened: number; signedIn: number; inRoom: number; entries: number; votes: number; editors?: number } | null;
   guests: DeskGuest[]; entries: DeskEntry[]; scenes: DeskScene[];
   people: DeskPerson[]; outbox: DeskOutbox[]; log: DeskLog[]; pick: { no: number; name: string; city: string; at: number } | null;
   /* Luma's calendar is read for new places when the server holds a key */

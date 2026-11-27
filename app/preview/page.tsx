@@ -6,7 +6,7 @@ import type { FoldCfg } from '@/components/preview/fold/config';
 import { FoldPreview } from '@/components/preview/fold/preview-page';
 import { BACK_SCRIPT } from '@/components/preview/fold/arrive';
 import { pageMeta } from '@/lib/meta';
-import { EVENT, CITY_WORD, CITY_WORD_CAP } from '@/lib/day-data';
+import { EVENT, CITY_WORD, CITY_WORD_CAP, USUAL_START, cityStartLocal } from '@/lib/day-data';
 import { backendOn } from '@/lib/server/env';
 import { signups } from '@/lib/server/signups';
 import { headers } from 'next/headers';
@@ -16,7 +16,7 @@ import { previewLd } from '@/lib/structured';
 import { FormsProvider } from '@/components/forms/forms-provider';
 
 const TITLE = `${EVENT.name}: ${CITY_WORD} cities, one day`;
-const DESCRIPTION = `${CITY_WORD_CAP} cities, east to west on 10 December 2026. Build for 90 minutes from your city’s local start; the top 3 by votes in each city go to the final. Register for your city on Luma.`;
+const DESCRIPTION = `${CITY_WORD_CAP} cities, east to west on 10 December 2026. Most build for 90 minutes from ${cityStartLocal({ start: USUAL_START })} local time. The top 3 in each city win prizes and go to the global final, for a MacBook Pro, a Mac mini or a MacBook Neo.`;
 /* one address for every ?city= and ?at= variant (the site's own, with no trailing slash: that one redirects); the share
    image is opengraph-image.tsx beside this file */
 const meta = pageMeta(TITLE, DESCRIPTION);
@@ -25,10 +25,9 @@ export const metadata: Metadata = { ...meta, alternates: { canonical: SITE_URL }
 const hex = (n: number) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0');
 const P = clampWheel(wheel).paper;
 export const viewport: Viewport = { themeColor: '#' + hex(P) + hex(P + 1) + hex(P + 1) };
-const LD = previewLd({ url: SITE_URL, description: DESCRIPTION, how: ourWheel().how });
+const LD = previewLd({ url: SITE_URL, description: DESCRIPTION });
 
-/* The preview home, until the day: the wheel, then the day under the fold (saved/fold.config.json, tuned at
-   /lab/fold). ?city= opens on a city by its place in the list (from 0), ?gl=0 draws without WebGL, ?mark= and ?globe= try the wheel's others, ?admin shows the page's knobs. */
+/* The preview home, until the day: the wheel, then the day under the fold (saved/fold.config.json). ?city= opens on a city by its place in the list (from 0), ?gl=0 draws without WebGL, ?mark= and ?globe= try the wheel's others, ?admin shows the page's knobs. */
 /* the time of the request: the end board is drawn at it */
 function requestTime() { return Date.now(); }
 
@@ -43,7 +42,7 @@ function whereFrom(h: Headers, at?: string) {
 }
 
 export default async function PreviewPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  const q = await searchParams, here = whereFrom(await headers(), q.at), ours = ourWheel(backendOn() ? await signups() : undefined);
+  const q = await searchParams, here = whereFrom(await headers(), q.at), { cities, date, buildMin, regOpen } = ourWheel(backendOn() ? await signups() : undefined), ours = { cities, date, buildMin, regOpen };
   /* the line before the first paint that marks a return in the same tab, so the first screen plays its quiet arrival */
   return <FormsProvider live={backendOn()}><script dangerouslySetInnerHTML={{ __html: BACK_SCRIPT }} /><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: LD }} /><FoldPreview saved={saved as Partial<FoldCfg>} wheel={clampWheel({ ...wheel, ...pick(q) })} ours={ours} here={here} q={q} nowMs={requestTime()} /></FormsProvider>;
 }

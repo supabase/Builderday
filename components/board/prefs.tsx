@@ -41,16 +41,11 @@ export function SoundKey() {
   );
 }
 
-/* the Screen switch's change can be dressed (the footer's white dot): the dresser calls commit when the screen is dark */
-type ScreenFx = (next: boolean, commit: () => void) => void;
-let screenFx: ScreenFx | null = null;
-export function setScreenFx(fx: ScreenFx | null) { screenFx = fx; }
-
 export function Switches({ sound }: { sound: boolean }) {
   const [snd, setSnd] = usePref('sound'), [scr] = usePref('screen');
   if (!sound) return null;
   return (
-    <div className="sw" role="group" aria-label="Page settings">
+    <div className="bd-sw" role="group" aria-label="Page settings">
       {sound ? <button type="button" className="sw-b" aria-label="Sound" aria-pressed={snd && scr} disabled={!scr} title={scr ? undefined : 'Sound needs the screen on'} onClick={() => { wake(); setSnd(!snd); }}>Sound<span className="sw-s">{scr ? (snd ? 'on' : 'off') : 'needs Screen'}</span></button> : null}
     </div>
   );

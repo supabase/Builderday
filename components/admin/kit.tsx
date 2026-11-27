@@ -39,46 +39,31 @@ export function useLabSave(name: string, storeKey: string) {
   return { save, msg, rail };
 }
 
-/* the share of the viewport painted green ([data-g] marks every green thing); the budget is 5% */
-export function greenShare(page: Element | null, weigh: (e: Element, r: DOMRect) => number): number {
-  if (!page) return 0;
-  const vw = window.innerWidth, vh = window.innerHeight; let sum = 0;
-  page.querySelectorAll('[data-g]').forEach((e) => {
-    const r = e.getBoundingClientRect(), w = Math.max(0, Math.min(vw, r.right) - Math.max(0, r.left)), h = Math.max(0, Math.min(vh, r.bottom) - Math.max(0, r.top));
-    sum += w * h * weigh(e, r);
-  });
-  return sum / (vw * vh) * 100;
-}
-export function meterText(g: number): string { return 'Green: ' + g.toFixed(1) + '% of the viewport' + (g >= 5 ? ' (over budget)' : ''); }
-
-/* the arrival again: forget that this session has seen it and play it once more (it runs on <html>, as on load) */
-export function replayArrival(key: string, speed: number, reduced: boolean) {
-  try { sessionStorage.removeItem(key); } catch { /* storage blocked */ }
-  if (reduced || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const h = document.documentElement; h.classList.remove('arrive'); void h.offsetWidth; h.classList.add('arrive');
-  try { sessionStorage.setItem(key, '1'); } catch { /* storage blocked */ }
-  window.setTimeout(() => h.classList.remove('arrive'), 1400 / speed);
-}
 export function togglePanel() {
   const open = !document.documentElement.classList.toggle('lab-closed');
   document.querySelector('.lab-toggle')?.setAttribute('aria-expanded', String(open));
 }
 
-export function LabPanel({ tab = 'Lab', title, cfg, bounds, choices, groups, set, moments, momentIdx, out, optionLabel, buttons, meter, msg, rail, railLabel, apply, children }: {
-  tab?: string; title: string; cfg: Cfg; bounds: Record<string, [number, number, number]>; choices: Record<string, string[]>; groups: Group[];
+export function LabPanel({ tab = 'Lab', title, cfg, bounds, choices, groups, set, moments, momentIdx, out, optionLabel, buttons, meter, msg, rail, railLabel, apply, children, closed = false }: {
+  /* closed: start closed on every screen (the sample day, where the page is the point and the tab opens the moments) */
+  closed?: boolean; tab?: string; title: string; cfg: Cfg; bounds: Record<string, [number, number, number]>; choices: Record<string, string[]>; groups: Group[];
   set: (k: string, v: unknown) => void; moments: [string, string, number][]; momentIdx: number;
   out: (k: string) => string; optionLabel?: (k: string, v: string) => string;
   buttons: [string, () => void, boolean?][]; meter: { text: string; bad: boolean }; msg: string; rail: Cfg[]; railLabel: (s: Cfg) => string; apply: (s: Cfg) => void; children?: ReactNode;
 }) {
   /* on a phone the panel would cover the page: it starts closed there, and the toggle opens it */
+  /* a panel that starts closed is held hidden until the page's class says so, so it never shows for a frame */
+  const aside = useRef<HTMLElement>(null);
   useEffect(() => {
-    if (!window.matchMedia('(max-width: 640px)').matches) return;
-    document.documentElement.classList.add('lab-closed');
-    document.querySelector('.lab-toggle')?.setAttribute('aria-expanded', 'false');
-  }, []);
+    if (closed || window.matchMedia('(max-width: 640px)').matches) {
+      document.documentElement.classList.add('lab-closed');
+      document.querySelector('.lab-toggle')?.setAttribute('aria-expanded', 'false');
+    }
+    aside.current?.removeAttribute('hidden');
+  }, [closed]);
   return (
     <>
-      <aside className="lab" aria-label={title}>
+      <aside ref={aside} className="lab" aria-label={title} hidden={closed}>
         <div className="lab-h"><h2>{title}</h2>{cfg.seed === undefined || cfg.seed === '–' ? null : <span className="lab-seed">Seed {String(cfg.seed)}</span>}</div>
         <div className="lab-moments">{moments.map((m, i) => <button key={m[0]} type="button" aria-pressed={i === momentIdx} onClick={() => set('t', m[2])}>{m[1]}</button>)}</div>
         {groups.map((g) => (
@@ -96,7 +81,7 @@ export function LabPanel({ tab = 'Lab', title, cfg, bounds, choices, groups, set
         <p className="lab-msg">{msg}</p>
         <div className="lab-rail">{rail.map((s, i) => <button key={i} type="button" title="Apply this saved config" onClick={() => apply(s)}>{railLabel(s)}</button>)}</div>
       </aside>
-      <button type="button" className="lab-toggle" aria-expanded="true" onClick={togglePanel}>{tab}</button>
+      <button type="button" className="lab-toggle" aria-expanded={!closed} onClick={togglePanel}>{tab}</button>
     </>
   );
 }

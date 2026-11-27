@@ -7,6 +7,10 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { need } from './env';
+import { BASE } from '@/lib/routes';
+
+/* our cookies stay under our own path: on supabase.com/builderday they must not reach the rest of supabase.com */
+export const COOKIE_PATH = BASE || '/';
 
 let adminClient: SupabaseClient | null = null;
 export function admin(): SupabaseClient {
@@ -20,6 +24,7 @@ export function admin(): SupabaseClient {
 export async function asUser(): Promise<SupabaseClient> {
   const jar = await cookies();
   return createServerClient(need('NEXT_PUBLIC_SUPABASE_URL'), need('NEXT_PUBLIC_SUPABASE_ANON_KEY'), {
+    cookieOptions: { path: COOKIE_PATH },
     cookies: {
       getAll: () => jar.getAll(),
       setAll: (list) => { try { list.forEach(({ name, value, options }) => jar.set(name, value, options)); } catch { /* a server component cannot set cookies; the next route call will */ } },

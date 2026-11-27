@@ -12,7 +12,7 @@ import { LiveSegment } from '@/components/day/shared';
 import { Cells, FAMILY, Key } from '@/components/kit/kit';
 import { Picture } from '@/components/pictures/picture';
 import { slugOf } from '@/lib/city';
-import { routes, unbase } from '@/lib/routes';
+import { projectVia, unbase } from '@/lib/routes';
 
 /* The home's first screen on the family's frame: the news as the headline (the event's name is already in the header),
    one strip of cells, the day's clock and one Key; the voting gate is said on the city page. The globe on the right is the
@@ -56,7 +56,7 @@ export function HomeHero({ W, clock, first, href, segSecs, mine }: {
   const news = homeNews(W);
   const name = FAMILY.headline === 'name';
   /* the one thing to do now */
-  const key = W.picked ? { words: 'See ' + W.final.p.name, href: unbase(routes.project(W.final.city.id, slugOf(W.final.p))), link: true }
+  const key = W.picked ? { words: 'See ' + W.final.p.name, href: unbase(projectVia(href(W.final.city.id), W.final.city.id, slugOf(W.final.p))), link: true }
     : W.allDone ? { words: 'Watch the final', href: '#final', link: false }
     : { words: fx.state === 'next' ? 'See ' + fx.name : early ? 'Watch ' + fx.name : 'Vote in ' + fx.name, href: href(fx.id), link: true };
   const what = fx.state === 'next' ? 'opens' : fx.state === 'build' ? 'entries close' : 'votes close';
@@ -67,7 +67,7 @@ export function HomeHero({ W, clock, first, href, segSecs, mine }: {
         : <h1 id="dh-h" className="oa-hh-h"><span className="sr-only">{EVENT.name}: </span>{news}</h1>}
       {W.picked ? (
         /* the winner's picture is the hero at Picked (H8) */
-        <a className="oa-hh-pick" href={routes.project(W.final.city.id, slugOf(W.final.p))}>
+        <a className="oa-hh-pick" href={projectVia(href(W.final.city.id), W.final.city.id, slugOf(W.final.p))}>
           <Picture p={W.final.p} cls="oa-just-pic" />
           <span className="oa-hh-pk">{W.final.p.name} · {W.final.city.name} · @{W.final.p.handle}</span>
         </a>

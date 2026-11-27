@@ -10,6 +10,9 @@ import { paintArt, planArt, type ArtAssets, type ArtPlan } from './art';
    ArtLookProvider. The picture is decoration: aria-hidden, and every word it shows is also in the sheet as text. */
 
 const SAVED = clampArt(saved as Partial<ArtLook>);
+/* the subjects already printed in this visit */
+const PRINTED = new Set<string>();
+
 const ArtLookContext = createContext<ArtLook>(SAVED);
 export const ArtLookProvider = ArtLookContext.Provider;
 export function useArtLook(): ArtLook { return useContext(ArtLookContext); }
@@ -63,12 +66,14 @@ export function SheetArt({ subject, className, still }: { subject: ArtSubject; c
     return () => { off = true; ro.disconnect(); };
   }, []);
 
-  /* the print, once per subject: from revealDelay over revealMs, in 24 whole steps, painted only when the step changes.
-     Reduced motion, a still lab frame or no reveal: at once. A timer finishes it too, so a background tab (where
-     frames stall) never leaves it half printed. */
+  /* the print, once per subject in a visit: from revealDelay over revealMs, in 24 whole steps, painted only when the
+     step changes. Sheets open and close often, so a picture already printed in this visit is simply there. Reduced
+     motion, a still lab frame or no reveal: at once. A timer finishes it too, so a background tab (where frames stall)
+     never leaves it half printed. */
   useEffect(() => {
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (still || reduced || look.reveal === 'none' || look.revealMs === 0) { p.current = 1; drawRef.current(); return; }
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches, seen = PRINTED.has(key);
+    PRINTED.add(key);
+    if (still || reduced || seen || look.reveal === 'none' || look.revealMs === 0) { p.current = 1; drawRef.current(); return; }
     p.current = 0; drawRef.current();
     const t0 = performance.now() + look.revealDelay, dur = look.revealMs;
     let raf = 0;

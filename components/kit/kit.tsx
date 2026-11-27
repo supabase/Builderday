@@ -4,7 +4,7 @@ import familySaved from '@/saved/family.config.json';
 import { clampFamily, type FamilyCfg } from '@/lib/family';
 import { MARK, type MarkState } from '@/components/air/devices';
 import './kit.css';
-import { at, away } from '@/lib/routes';
+import { at, away, newTab } from '@/lib/routes';
 
 /* The kit (family plan): the parts the three public pages share, each built once. The looks are in kit.css and the
    family tokens; the modes come from saved/family.config.json, or from the specimen lab through `fam`. */
@@ -19,7 +19,7 @@ export function Key({ kind = 'primary', size, href, onClick, children, label, po
 }) {
   const p = { className: 'k-key' + (className ? ' ' + className : ''), 'data-kind': kind, 'data-size': size, 'aria-label': label, ref };
   return href && !disabled
-    ? <a {...p} href={at(href)} {...away(href)} onClick={onClick}>{children}</a>
+    ? <a {...p} aria-label={label ? label + newTab(href) : undefined} href={at(href)} {...away(href)} onClick={onClick}>{children}{!label && newTab(href) ? <span className="sr-only">{newTab(href)}</span> : null}</a>
     : <button {...p} type="button" onClick={onClick} disabled={disabled} aria-haspopup={popup ? 'dialog' : undefined}>{children}</button>;
 }
 
@@ -52,16 +52,6 @@ export function Cells({ cells, className, label }: { cells: Cell[]; className?: 
     <dl className={'k-cells' + (className ? ' ' + className : '')} aria-label={label} style={{ ['--k-n' as string]: cells.length } as CSSProperties}>
       {cells.map((c) => <div key={c.k}><dt>{c.k}</dt><dd aria-live={c.live ? 'off' : undefined}>{c.v}</dd></div>)}
     </dl>
-  );
-}
-
-/* ---------- the Section head ---------- */
-export function SectionHead({ id, children, lede, className }: { id: string; children: ReactNode; lede?: ReactNode; className?: string }) {
-  return (
-    <>
-      <h2 id={id} className={'k-h2 pf-h' + (className ? ' ' + className : '')}>{children}</h2>
-      {lede ? <p className="k-lede pf-lede">{lede}</p> : null}
-    </>
   );
 }
 

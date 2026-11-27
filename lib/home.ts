@@ -1,6 +1,6 @@
 /* home.ts: the home's model. world(cfg) is a pure function of the config and one UTC minute: the seed decides every
    city's entries, votes and winner (day-data.ts, shared with the city page), the minute decides the moment, and the
-   config decides the look. The config is saved/day.config.json; the tuning page (/lab/day) writes it.
+   config decides the look. The config is saved/day.config.json; the tuning page writes it.
 
    Rules: cities east to west, always; one green now line; every city is one fixed row and text never reflows;
    unchanged cells do not move; heavier weight means live; green only for now, the leader or winner, you, the main
@@ -64,8 +64,8 @@ export type HomeCity = CityState & { win?: { p: CityState['list'][number]['p']; 
 export type HomeWorld = {
   S: Sched; now: number; cs: HomeCity[]; live: HomeCity[]; done: HomeCity[]; allDone: boolean; picked: boolean; archived: boolean; early: boolean;
   pick: HomeCity & { win: { p: CityState['list'][number]['p']; v: number } }; total: number;
-  /* the final: every finalist in so far (three per closed city, east to west, first place first), and the one Ant and
-     Copple pick, which is one of the thirty (today's page reads pick, which is that city's first place) */
+  /* the final: every finalist in so far (three per closed city, east to west, first place first), and the one the
+     Supabase team picks, which is one of the finalists (today's page reads pick, which is that city's first place) */
   finalists: (Top & { city: HomeCity })[];
   final: Top & { city: HomeCity };
 };
@@ -82,8 +82,7 @@ export function world(c: HomeCfg): HomeWorld {
 
 /* ---------------- links (they carry the preview parameters) ---------------- */
 /* what a link to the other pages carries: the moment (as that page's t), the seed and the ground, if this page was given them */
-/* lab: the tuning page links to the city's tuning page, with its own clock (ht) */
-export type Carry = { preview: boolean; still: boolean; seed?: string | null; ground?: string | null; lab?: { panel: boolean } };
+export type Carry = { preview: boolean; still: boolean; seed?: string | null; ground?: string | null };
 export function carryQuery(carry: Carry, t: number | null): string {
   let u = '';
   if ((carry.preview || carry.still) && t != null) u += '&t=' + t.toFixed(5);
@@ -93,13 +92,6 @@ export function carryQuery(carry: Carry, t: number | null): string {
   return u ? '?' + u.slice(1) : '';
 }
 export function cityHref(x: { id: string; start: number }, c: HomeCfg, W: HomeWorld, carry: Carry): string {
-  if (carry.lab) {
-    let u = '/lab/city?city=' + x.id + '&ht=' + (c.now != null ? tOf(c.now, W.S) : +c.t).toFixed(4);
-    if (c.seed !== DEF.seed) u += '&seed=' + c.seed;
-    if (carry.ground && carry.ground !== 'night') u += '&ground=' + carry.ground;
-    if (!carry.lab.panel) u += '&panel=0';
-    return u;
-  }
   const w0 = x.start - 60, w1 = W.S.pickAt + 30;
   return '/city/' + x.id + carryQuery(carry, (W.now - w0) / (w1 - w0));
 }
@@ -131,8 +123,8 @@ export function action(W: HomeWorld, c: HomeCfg, href: (x: HomeCity) => string):
 export function slotText(x: HomeCity, W: HomeWorld): { k: string; a: string; b: string } {
   if (x.state === 'next') return { k: 'Starts in', a: dur(x.wait!, true), b: 'Entries open then' };
   if (!x.lead) return x.state === 'done' ? { k: 'Closed', a: 'No entries', b: '' } : { k: 'Building', a: 'No entries yet', b: '' };
-  /* while the counts are hidden the leader is the one at the freeze, said as such, with no count */
-  if (x.hidden && (x.state === 'build' || x.state === 'vote')) return { k: 'Leading at ' + (x.hideAt! - x.start) + ' min', a: x.lead!.p.name, b: 'Votes hidden · ' + (x.state === 'build' ? plural(x.n!, 'project') : dur(x.left!, true) + ' left') };
+  /* while the counts are hidden there is no leader to name: the count of projects in, and when the counts appear */
+  if (x.hidden && (x.state === 'build' || x.state === 'vote')) return { k: 'Votes hidden', a: plural(x.n!, 'project'), b: 'Counts at ' + hhmm(x.showAt! + x.city.offset) + ' · ' + dur(x.left!, true) + ' left' };
   if (x.state === 'build') return { k: 'Leading', a: x.lead!.p.name, b: plural(x.lead!.v, 'vote') + ' · ' + plural(x.n!, 'project') };
   if (x.state === 'vote') return { k: 'Leading', a: x.lead!.p.name, b: plural(x.lead!.v, 'vote') + ' · ' + dur(x.left!, true) + ' left' };
   const pk = W.picked && W.pick === x;

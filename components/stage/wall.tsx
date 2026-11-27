@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
-import { stageVars, type StageCfg } from '@/lib/stage/config';
+import { isCover, stageVars, type StageCfg } from '@/lib/stage/config';
 import { TO_SUBMIT, TO_VOTE, visible } from '@/lib/stage/deck';
 import { BD_WALL, hasVote, type WallEvent } from '@/lib/stage/event';
 import { worldAt, type Content, type World } from '@/lib/stage/world';
@@ -12,11 +12,16 @@ import partsSaved from '@/saved/parts.config.json';
 import { Deadline, DeadlineCtx, Doors, LinkSlide, Line, Needs, Prizes, Question, Questions, Rules, Say, ProductSlide, Speaker, Submit, Tour, Welcome, WordsSlide, type SceneProps } from './intro';
 import { Building, Final, Showcase, Tombola, Top3, Voting, wakeSound, type LiveProps } from './live';
 import { Door } from './parts';
+import { CoverDeadline, CoverDoors, CoverPrizes, CoverQuestion, CoverQuestions, CoverRules, CoverSay, CoverSpeaker, CoverTour, CoverWelcome, CoverWords } from './cover';
+import { Hosted, Mark } from './brand';
+import { CoverBuilding, CoverShowcase, CoverVoting } from './board';
+import { StageGlobe } from './stage-globe';
 import { Wall as WallCtx, useArrival, useReduced, useSecond, useSnap, useAwake } from './use';
 import { useStageKeys } from './keys';
 import '@/components/board/board.css';
 import '@/components/day/explain.css';
 import './stage.css';
+import './stage-cover.css';
 
 /* The wall: one 16:9 screen, designed at 1920 by 1080 and scaled to whatever shows it (every size is in its own
    pixels, --px). It shows the scene the stage row names, at its step, over the screen's lines and grain; glass objects
@@ -29,6 +34,23 @@ const SCENES: Record<SceneKind, (p: SceneProps & LiveProps) => ReactNode> = {
   line: Line, deadline: Deadline, rules: Rules, prizes: Prizes, submit: Submit, questions: Questions,
   building: Building, voting: Voting, showcase: Showcase, top3: Top3, tombola: Tombola, final: Final,
 };
+
+/* the Builder Day cover's look: its own intro scenes (the live ones stay the boards they are, in its frame) */
+const COVER: Partial<Record<SceneKind, (p: SceneProps & LiveProps) => ReactNode>> = {
+  welcome: CoverWelcome, doors: CoverDoors, speaker: CoverSpeaker, words: CoverWords, question: CoverQuestion, tour: CoverTour, say: CoverSay,
+  deadline: CoverDeadline, rules: CoverRules, prizes: CoverPrizes, questions: CoverQuestions,
+  building: CoverBuilding, voting: CoverVoting, showcase: CoverShowcase,
+};
+/* Cover keeps the globe for the cover and the scenes of one line; Orbit and Print have it on every scene */
+const GLOBE_ON: SceneKind[] = ['welcome', 'question', 'tour', 'say', 'questions', 'tombola'];
+/* the scenes that need the whole height: no Hosted by along the bottom */
+const NO_FOOT: SceneKind[] = ['welcome', 'doors', 'needs', 'submit', 'building', 'voting', 'showcase', 'top3', 'tombola', 'final'];
+
+/* the scene for a kind, in the cover's look when the direction has it */
+function SceneOf({ kind, cover, ...p }: SceneProps & LiveProps & { kind: SceneKind; cover: boolean }) {
+  const C = (cover && COVER[kind]) || SCENES[kind];
+  return <C {...p} />;
+}
 
 export type WallProps = {
   driver: StageDriver; cfg: StageCfg; name: string; url: string; seed: number; content: Content; first: number;
@@ -64,14 +86,23 @@ export function StageWall({ driver, cfg, name, url, seed, content, first, keys =
   }, onList: () => setList((v) => !v), ask, onConfirm: () => { if (ask) void driver.send(ask.a); setAsk(null); }, onCancel: () => { setAsk(null); setList(false); }, onNum: setNum });
   const style = { ...stageVars(cfg), ...PARTS } as CSSProperties;
   const ctx = useMemo(() => ({ cfg, name, ev: event, fresh: (i: number) => i > base, reduced, now: driver.now }), [cfg, name, event, base, reduced, driver]);
-  const Scene = s ? SCENES[s.kind] : null;
-  const props = s ? { s, step, city: snap.city, world, now, url, ranked, chart: snap.row.chart_on, talkEnds: snap.row.timer.ends_at ?? null, spin: snap.row.timer.spin ?? null } : null;
+  const cover = isCover(cfg.dir), kind = s?.kind;
+  const globe = cover && (cfg.dir !== 'cover' || (!!kind && GLOBE_ON.includes(kind)));
+  const props = s ? { s, step, city: snap.city, world, now, url, ranked, chart: snap.row.chart_on, talkEnds: snap.row.timer.ends_at ?? null, spin: snap.row.timer.spin ?? null, view: snap.row.timer.view ?? null, show: snap.row.timer.show ?? null } : null;
   return (
     <div className={'sw bd' + (className ? ' ' + className : '')} data-dir={cfg.dir} style={style} role="region" aria-roledescription="stage" aria-label={'Stage for ' + name + (s ? ': ' + s.title : '')}>
       <WallCtx.Provider value={ctx}>
         <DeadlineCtx.Provider value={{ deadline: snap.row.timer.deadline ?? null }}>
-          <div className="sw-in" data-kind={s?.kind}>
-            {Scene && props ? <Scene key={s!.id} {...props} /> : <div className="st-sc st-mid"><p className="st-h st-2">The deck is empty.</p></div>}
+          {globe ? <StageGlobe cfg={cfg} kind={kind} city={snap.city.id} reduced={reduced} /> : null}
+          {cover && kind !== 'welcome' ? (
+            <div className="stc-rail" aria-hidden="true">
+              <Mark size="small" />
+              <p className="stc-lab">{s ? s.title + ' · ' + name : name}</p>
+            </div>
+          ) : null}
+          {cover && cfg.hosted && kind && !NO_FOOT.includes(kind) ? <div className="stc-foot"><Hosted /></div> : null}
+          <div className="sw-in" data-kind={s?.kind} data-cover={cover ? '' : undefined}>
+            {s && props ? <SceneOf key={s.id + (cover ? ":c" : "")} kind={s.kind} cover={cover} {...props} /> : <div className="st-sc st-mid"><p className="st-h st-2">The deck is empty.</p></div>}
             {snap.row.timer.qr ? <div className="sw-qr"><p className="st-h">To submit</p><Door url={url} code={snap.city.room_code} /><p className="st-l st-key">{TO_SUBMIT.replace(/^To submit, s/, 'S')}</p>{hasVote(event) ? <p className="st-l st-2">{TO_VOTE}</p> : null}</div> : null}
             {list ? <ol className="sw-list">{deck.map((x, i) => <li key={x.id} data-on={x.id === s?.id ? '' : undefined}><span>{i + 1}</span>{x.title}</li>)}</ol> : null}
             {num ? <p className="sw-num st-k">Scene {num}, Enter to go</p> : null}

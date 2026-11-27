@@ -2,7 +2,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode, type RefObject } from 'react';
 import { emailOK } from '@/lib/forms';
 import { CODE } from '@/lib/places';
-import { EVENT } from '@/lib/day-data';
+import { DAY_SHORT, EVENT } from '@/lib/day-data';
 import { LUMA_LIVE, lumaHref } from '@/lib/luma';
 import { SERVER, checkIt } from '@/lib/hackday-server';
 import { Picker, Say } from '@/components/day/get-ready';
@@ -11,7 +11,6 @@ import { useForms } from '@/components/forms/forms-provider';
 import { token, ErrBox, FM_F, FM_FORM, FM_H, FM_L, FM_NOTE, FM_P, FM_T, Sheet, useSheet, useSheetId } from '@/components/forms/sheet';
 import '@/components/forms/forms.css';
 import type { ArtSubject } from '@/components/forms/art-config';
-import { TeamPart, type TeamLook } from './team';
 import './account.css';
 import { at, away } from '@/lib/routes';
 
@@ -20,9 +19,9 @@ import { at, away } from '@/lib/routes';
      "Account". Its width is kept for the longest of these, so the header never moves when /api/me answers. The first
      answer swaps the label at once (the page is still arriving); a sign-in or sign-out after that fades the new label
      in over the hover duration.
-   - The sheet: the city, the date and the local start; the team (components/account/team.tsx); the editor line with
-     its picker and Copy, and whether the editor has called yet; "Registered with a different email?" when there is no place; the desk for a host or a
-     judge; Sign out.
+   - The sheet: the city, the date and the local start; the editor line with
+     its picker and Copy, and whether the editor has called yet; "Registered on Luma with a different email?" (add it
+     by a code) when there is no place; the desk for a host or a judge; Sign out. Signing in is a supabase.com account.
    Everything is drawn from /api/me after the page loads, so the first paint is the signed-out page. On a site
    without the backend the cell still signs in through the stand-in, and the sheet says there is no list here. */
 
@@ -84,7 +83,7 @@ export function AccountCell({ here, look, onOpen }: { here?: string; look?: { st
 export function openAccount(forms: NonNullable<ReturnType<typeof useForms>>, here?: string) {
   meKnown().then(() => {
     if (store.session()) forms.account(here);
-    else forms.signIn({ title: 'Sign in to ' + EVENT.short, reason: 'Use the email you registered with on Luma.' }).then((who) => { if (who) forms.account(here); });
+    else forms.signIn({ title: 'Sign in to ' + EVENT.short }).then((who) => { if (who) forms.account(here); });
   });
 }
 
@@ -100,9 +99,8 @@ export function accountArt(me: Me | null): ArtSubject {
   const p = me?.pass;
   if (!p) return { word: 'You', lines: [EVENT.short, DAY_SHORT] };
   const start = localStart(p);
-  return { word: CODE[p.city] || p.city.slice(0, 3), city: p.city, lines: [p.cityName, DAY_SHORT].concat(start ? [start + ' local'] : [], me?.team ? ['Team ' + me.team.code] : []) };
+  return { word: CODE[p.city] || p.city.slice(0, 3), city: p.city, lines: [p.cityName, DAY_SHORT].concat(start ? [start + ' local'] : []) };
 }
-const DAY_SHORT = new Date(Date.UTC(EVENT.year, EVENT.month - 1, EVENT.day)).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
 
 /* the account sheet, opened by the cell */
 export function AccountSheet({ here, done }: { here?: string; done: () => void }) {
@@ -128,21 +126,21 @@ function AccountLive({ here, outRef }: { here?: string; outRef: RefObject<boolea
 export type Moved = { cityName: string; replaced?: string | null };
 
 /* the body, from a person: the lab draws it with a made-up one */
-export function AccountBody({ me, email, here, onSignOut, onSignIn, claimLook, teamLook, moved, onClaimed }: { me: Me | null; email?: string | null; here?: string; onSignOut: () => void; onSignIn?: () => void; claimLook?: 'closed' | 'email' | 'code' | 'done'; teamLook?: TeamLook; moved?: Moved | null; onClaimed?: (m: Moved) => void }) {
+export function AccountBody({ me, email, here, onSignOut, onSignIn, claimLook, moved, onClaimed }: { me: Me | null; email?: string | null; here?: string; onSignOut: () => void; onSignIn?: () => void; claimLook?: 'closed' | 'email' | 'code' | 'done'; moved?: Moved | null; onClaimed?: (m: Moved) => void }) {
   const id = useId().replace(/[^a-z0-9]/gi, ''), sid = useSheetId(), hid = sid ? sid + '-h' : id + '-h';
   /* the claim swaps the body for the place's: focus goes to its heading, which the status line follows */
   const head = useRef<HTMLHeadingElement>(null), was = useRef(moved), city = me?.pass?.city;
   useEffect(() => { if (moved && moved !== was.current && city) head.current?.focus(); was.current = moved; }, [moved, city]);
   const who = me?.email || email || '';
   const p = me?.pass || null, desk = !!me?.roles?.length;
-  const Out = <div className="ac-foot"><p className={FM_NOTE}>Signed in as <b className="font-medium text-ink">{who}</b></p><button className={FM_T} type="button" onClick={onSignOut}>Not you? Sign out</button></div>;
-  if (!me && !who) return <><h2 id={hid} className={FM_H} tabIndex={-1}>Signed out</h2><p className={FM_P}>Sign in with the email you registered with on Luma.</p>{onSignIn ? <div className={FM_FORM}><button className="fm-b g w-full" type="button" onClick={onSignIn}>Sign in</button></div> : null}</>;
+  const Out = <div className="ac-foot"><p className={FM_NOTE}>Signed in with Supabase as <b className="font-medium text-ink">{who}</b></p><button className={FM_T} type="button" onClick={onSignOut}>Sign out here</button></div>;
+  if (!me && !who) return <><h2 id={hid} className={FM_H} tabIndex={-1}>Signed out</h2><p className={FM_P}>Sign in with your Supabase account.</p>{onSignIn ? <div className={FM_FORM}><button className="fm-b g w-full" type="button" onClick={onSignIn}>Sign in</button></div> : null}</>;
 
   if (!p) return (
     <>
       <h2 id={hid} className={FM_H} tabIndex={-1}>You’re signed in</h2>
-      <p className={FM_P}>This email has no place on a city’s list yet, so you can vote on the day but not submit.</p>
-      <p className={FM_P}>Registered on Luma and still pending or on the waitlist? Your place comes when Luma approves you, and we email you then.</p>
+      <p className={FM_P}>This account has no place on a city’s list yet, so you can vote on the day but not submit.</p>
+      <p className={FM_P}>Registered on Luma and still pending or on the waitlist? Your place shows here once Luma approves you.</p>
       {store.isLive() || claimLook ? <Claim look={claimLook} onClaimed={onClaimed} /> : <p className={FM_NOTE + ' mt-6'}>This site has no lists yet, so there is no place to find.</p>}
       {LUMA_LIVE ? <p className={FM_P}><a className="underline-link" href={lumaHref()} {...away(lumaHref())}>Register for your city on Luma</a></p> : null}
       {desk ? <Desk /> : null}
@@ -154,12 +152,11 @@ export function AccountBody({ me, email, here, onSignOut, onSignIn, claimLook, t
   return (
     <>
       <h2 ref={head} id={hid} className={FM_H} tabIndex={-1} aria-describedby={moved ? id + '-mv' : undefined}>You’re on the list for {p.cityName}</h2>
-      {moved ? <p id={id + '-mv'} className={FM_P + ' mt-2'} role="status">Your place in <b>{moved.cityName}</b> moved to this account{moved.replaced ? <>, in place of {moved.replaced}</> : null}.</p> : null}
-      <p className={FM_P}>{DAY}{start ? <>. Building starts at <b>{start}</b>, {p.cityName} time.</> : '.'}{p.checkedIn ? ' You are checked in.' : ''}</p>
-      {p.listedAs ? <p className={FM_NOTE + ' mt-2'}>Listed under {p.listedAs}, moved to this email.</p> : null}
+      {moved ? <p id={id + '-mv'} className={FM_P + ' mt-2'} role="status">Your place in <b>{moved.cityName}</b> is on this account now{moved.replaced ? <>, in place of {moved.replaced}</> : null}.</p> : null}
+      <p className={FM_P}>{DAY}{start ? <>. Building starts at <b>{start}</b>, {p.cityName} time.</> : '.'}{p.checkedIn ? ' A host has checked you in.' : ' On the day, a host checks you in at the door.'}</p>
+      {p.listedAs ? <p className={FM_NOTE + ' mt-2'}>On Luma as {p.listedAs}, added to this account.</p> : null}
       {me?.open && (other || !here) ? <p className={FM_P}><a className="underline-link" href={at('/city/' + p.city)}>Go to {p.cityName}’s page</a></p> : null}
 
-      {me && me.teams?.on !== false && (store.isLive() || teamLook) ? <TeamPart me={me} look={teamLook} /> : null}
 
       <section className="ac-ed gr" aria-labelledby={id + '-ed'}>
         <h3 id={id + '-ed'} className="ac-k type-label">Your editor line</h3>
@@ -176,8 +173,8 @@ export function AccountBody({ me, email, here, onSignOut, onSignIn, claimLook, t
 
 const Desk = () => <p className={FM_P}><a className="underline-link" href={at('/desk')}>Open the desk</a></p>;
 
-/* "Registered with a different email?": the address on Luma gets six digits; typed here, the place moves to this
-   account. The same answer whether or not the address is on a list (rule 7). */
+/* "Registered on Luma with a different email?": the address on Luma gets six digits; typed here, that email's place
+   joins this Supabase account. The same answer whether or not the address is on a list (rule 7). */
 function Claim({ look, onClaimed }: { look?: 'closed' | 'email' | 'code' | 'done'; onClaimed?: (m: Moved) => void }) {
   const id = useId().replace(/[^a-z0-9]/gi, '');
   const [open, setOpen] = useState(!!look && look !== 'closed'), [step, setStep] = useState<'email' | 'code' | 'done'>(look && look !== 'closed' ? look : 'email');
@@ -211,7 +208,7 @@ function Claim({ look, onClaimed }: { look?: 'closed' | 'email' | 'code' | 'done
     });
   };
 
-  if (!open) return <p className="mt-6"><button className={FM_T} type="button" onClick={() => { setOpen(true); window.setTimeout(() => em.current?.focus(), 0); }}>Registered with a different email?</button></p>;
+  if (!open) return <p className="mt-6"><button className={FM_T} type="button" onClick={() => { setOpen(true); window.setTimeout(() => em.current?.focus(), 0); }}>Registered on Luma with a different email? Add it</button></p>;
   if (step === 'done') return <p className={FM_P + ' mt-6'} role="status">{said || <>Your place in <b>Berlin</b> is on this account now.</>}</p>;
   if (step === 'code') return (
     <form className={FM_FORM} onSubmit={verify} noValidate>
@@ -222,7 +219,7 @@ function Claim({ look, onClaimed }: { look?: 'closed' | 'email' | 'code' | 'done
         <ErrBox id={id + '-e'} msg={err} live />
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <button className="fm-b g" type="submit" disabled={busy} aria-busy={busy || undefined}>{busy ? 'Checking…' : 'Move my place here'}</button>
+        <button className="fm-b g" type="submit" disabled={busy} aria-busy={busy || undefined}>{busy ? 'Checking…' : 'Add this email'}</button>
         <button className={FM_T} type="button" onClick={() => { setStep('email'); setErr(''); window.setTimeout(() => em.current?.focus(), 0); }}>Use a different email</button>
       </div>
     </form>
@@ -233,7 +230,7 @@ function Claim({ look, onClaimed }: { look?: 'closed' | 'email' | 'code' | 'done
         <label className={FM_L} htmlFor={id + '-m'}>The email you registered with on Luma</label>
         <input ref={em} className="fm-i" id={id + '-m'} name="email" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} enterKeyHint="send" value={email} aria-invalid={!!err || undefined} aria-describedby={id + '-e'} onChange={(e) => { setEmail(e.target.value); if (err) setErr(''); }} />
         <ErrBox id={id + '-e'} msg={err} />
-        <p className={FM_NOTE}>We send a code there. Typing it moves the place to the email you are signed in with.</p>
+        <p className={FM_NOTE}>We send a code there. Typing it adds that email’s place to your Supabase account.</p>
       </div>
       <div><button className="fm-b g" type="submit" disabled={busy} aria-busy={busy || undefined}>{busy ? 'Sending code…' : 'Send a code'}</button></div>
     </form>

@@ -11,6 +11,7 @@ import { loadStage, placeName, stageRights, wallEventFor } from '@/lib/stage/ser
 import { StageLive, type WallStart } from '@/components/stage/stage-live';
 import '@/components/stage/stage.css';
 import { at } from '@/lib/routes';
+import { siteUrl } from '@/lib/server/env';
 
 export const dynamic = 'force-dynamic';
 type P = { params: Promise<{ city: string }> };
@@ -32,10 +33,11 @@ export default async function Page({ params }: P) {
   const host = h.get('x-forwarded-host') || h.get('host') || 'localhost:4320', proto = h.get('x-forwarded-proto') || (host.startsWith('localhost') ? 'http' : 'https');
   const cfg = clampStage(saved as Partial<StageCfg>), first = serverNow();
   const who = await stageRights(city);
-  const [stage, event] = await Promise.all([loadStage(city, { hidden: false, code: who.drive }), wallEventFor(city)]);
+  const [stage, event] = await Promise.all([loadStage(city, { hidden: false }), wallEventFor(city)]);
   /* the address on the wall's QR: the city page, which only Builder Day has. Another event's places have no page to
-     sign in and submit on yet, so their wall shows the room code alone (builders use it from their editor). */
-  const url = event.bd ? proto + '://' + host + at('/city/' + city) : '';
+     sign in and submit on yet, so their wall shows no QR (builders submit from their editor once a host checks them in). */
+  /* the site's own address when it is set (behind supabase.com the request's host is the Vercel one), else this request's */
+  const url = !event.bd ? '' : process.env.SITE_URL ? siteUrl() + '/city/' + city : proto + '://' + host + at('/city/' + city);
   const base = { city, name, url, cfg, first, seed: Number((day as { seed?: number }).seed) || 17, event };
   let start: WallStart;
   if (stage) {

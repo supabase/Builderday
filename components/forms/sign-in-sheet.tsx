@@ -1,39 +1,146 @@
 'use client';
 import { useEffect, useRef, useState, type ClipboardEvent, type FormEvent, type KeyboardEvent } from 'react';
 import { RESEND_S, emailOK } from '@/lib/forms';
-import { emit, store, type Session } from './store';
+import { emit, followAgain, store, type Session } from './store';
 import { FM_ACT, FM_F, FM_FORM, FM_H, FM_L, FM_NOTE, FM_P, FM_T, ErrBox, Sheet, useSheet } from './sheet';
-import { roomCodeOK } from '@/lib/event/rule';
-import { EVENT } from '@/lib/day-data';
+import * as supa from './supabase';
+import { EMAIL_FALLBACK, SIGNIN_ELSEWHERE, SIGNIN_WHY, SIGNIN_WITH } from '@/lib/signin';
+import { DAY_SHORT, EVENT } from '@/lib/day-data';
 import type { ArtSubject } from './art-config';
 
-/* Sign-in: email, then six digits. Used on its own and as the email step before a first vote. On a site with the
-   backend, a city's sheet also takes the four characters on the stage ("Code on the screen"): typed, they sign in at
-   once with no email; left empty, the six digits are emailed. Submit shows that field from the start (builders are
-   in the room); Vote keeps it behind "In the room?". On a city's sheet, "Email my link again" sends a builder their
-   personal link. */
-export type SignInOpts = { label?: string; title?: string; reason?: string; verb?: string; city?: string; cityName?: string; room?: boolean };
+/* Sign-in: with a supabase.com account (owner, 2026-11-25). Used on its own and as the step before a first vote or a
+   submit. On supabase.com the page shares Supabase's own login (./supabase.ts): signed in there, the sheet offers
+   "Continue as …" (and the page has usually signed in already, see follow() in store.ts); signed out there, it opens
+   supabase.com's sign-in or sign-up in a new tab and carries on by itself the moment the login appears.
+   Elsewhere: a stand-in account on a dev server, the email and six-digit code only while its emergency switch is on,
+   and otherwise a line saying where signing in works. Labs and sites without a backend sign in a stand-in at once. */
+export type SignInOpts = { label?: string; title?: string; reason?: string; verb?: string; city?: string; cityName?: string };
 export type Who = { handle: string; email: string };
 
 /* the sheet's picture: what the sheet is for, in characters (SIGN IN, VOTE, SUBMIT), the globe on the city when there is one */
 export function signInArt(o: SignInOpts): ArtSubject {
   return { word: o.label || 'Sign in', city: o.city || null, lines: [EVENT.short, DAY_SHORT, o.cityName || 'Fourteen cities'] };
 }
-const DAY_SHORT = new Date(Date.UTC(EVENT.year, EVENT.month - 1, EVENT.day)).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+
+/* the email fallback applies only on a live site where the shared login cannot reach */
+const useEmail = () => store.isLive() && EMAIL_FALLBACK && supa.mode() === 'away';
 
 export function SignInSheet({ o, done }: { o: SignInOpts; done: (who: Who | null) => void }) {
   const result = useRef<Who | null>(null);
+  const [email] = useState(useEmail);
   /* a code sent in the last ten minutes picks up where the person left off */
   const [start] = useState(() => { const sent = store.codeSent(); return sent && Date.now() - sent.at < 600000 ? { step: 'code' as const, email: sent.email } : { step: 'email' as const, email: store.lastEmail() || '' }; });
-  const emRef = useRef<HTMLInputElement>(null), firstDigit = useRef<HTMLInputElement>(null);
+  const emRef = useRef<HTMLInputElement>(null), firstDigit = useRef<HTMLInputElement>(null), first = useRef<HTMLButtonElement | HTMLInputElement>(null);
+  const onSignedIn = (s: Session) => { result.current = { handle: s.handle, email: s.email }; };
   return (
-    <Sheet label={o.label || 'Sign in'} art={signInArt(o)} focusRef={start.step === 'code' ? firstDigit : emRef} onDone={() => done(result.current)}>
-      <SignInBody o={o} start={start} emRef={emRef} firstDigit={firstDigit} onSignedIn={(s) => { result.current = { handle: s.handle, email: s.email }; }} />
+    <Sheet label={o.label || 'Sign in'} art={signInArt(o)} focusRef={email ? (start.step === 'code' ? firstDigit : emRef) : first} onDone={() => done(result.current)}>
+      {email ? <EmailBody o={o} start={start} emRef={emRef} firstDigit={firstDigit} onSignedIn={onSignedIn} /> : <SignInBody o={o} firstRef={first} onSignedIn={onSignedIn} />}
     </Sheet>
   );
 }
 
-export function SignInBody({ o, start, emRef, firstDigit, onSignedIn }: { o: SignInOpts; start: { step: 'email' | 'code'; email: string }; emRef: React.RefObject<HTMLInputElement | null>; firstDigit: React.RefObject<HTMLInputElement | null>; onSignedIn: (s: Session) => void }) {
+/* the Supabase account: Continue as …, or Sign in / Create an account on supabase.com */
+export function SignInBody({ o, firstRef, onSignedIn }: { o: SignInOpts; firstRef?: React.RefObject<HTMLButtonElement | HTMLInputElement | null>; onSignedIn: (s: Session) => void }) {
+  const { id, close, busy: busyRef, open: openRef } = useSheet();
+  const live = store.isLive();
+  const [m] = useState<supa.Mode | 'standin'>(() => (live ? supa.mode() : 'standin'));
+  /* undefined while looking, null: nobody signed in on supabase.com */
+  const [acct, setAcct] = useState<supa.Account | null | undefined>(m === 'shared' || m === 'fake' ? undefined : null);
+  const [waiting, setWaiting] = useState(false), [busy, setBusy] = useState(false), [err, setErr] = useState('');
+  const [typed, setTyped] = useState(''), [typedErr, setTypedErr] = useState('');
+
+  useEffect(() => {
+    if (m !== 'shared' && m !== 'fake') return;
+    let on = true;
+    const look = () => { supa.current().then((a) => { if (on) setAcct(a); }); };
+    look();
+    const off = supa.watch(look);
+    return () => { on = false; off(); };
+  }, [m]);
+
+  const finish = (a: supa.Account) => {
+    if (busyRef.current) return;
+    busyRef.current = true; setBusy(true); setErr(''); followAgain();
+    store.supabaseIn(a).then((r) => {
+      busyRef.current = false; setBusy(false); if (!openRef.current) return;
+      if (!r.ok || !r.session) { setWaiting(false); setErr(r.error || 'Signing in did not go through. Try again.'); return; }
+      onSignedIn(r.session); emit(); close();
+    });
+  };
+  /* back from supabase.com's tab: the login is there, so finish without another press */
+  useEffect(() => { if (waiting && acct) finish(acct); });
+
+  const go = (kind: 'in' | 'up') => { setErr(''); supa.openSupabase(kind); setWaiting(true); };
+  const stand = (e: FormEvent) => {
+    e.preventDefault();
+    const t = typed.trim().toLowerCase();
+    if (!emailOK(t)) { setTypedErr('Check the email. It needs an @ and a domain.'); (firstRef?.current as HTMLInputElement | null)?.focus(); return; }
+    setTypedErr(''); supa.fakeSignIn(t); finish({ email: t, token: 'fake.' + t });
+  };
+  const lede = (o.reason ? o.reason + ' ' : '');
+  const setFirst = (el: HTMLButtonElement | HTMLInputElement | null) => { if (firstRef) firstRef.current = el; };
+
+  if (m === 'away') return (
+    <>
+      <h2 className={FM_H} id={id + '-h'} tabIndex={-1}>{o.title || SIGNIN_WITH}</h2>
+      <p className={FM_P} id={id + '-p'}>{lede}{SIGNIN_ELSEWHERE}</p>
+      <div className={FM_FORM}><div className={FM_ACT}><button ref={setFirst} className="fm-b w-full" type="button" onClick={close}>Close</button></div></div>
+    </>
+  );
+
+  if (m === 'standin') return (
+    <>
+      <h2 className={FM_H} id={id + '-h'} tabIndex={-1}>{o.title || SIGNIN_WITH}</h2>
+      <p className={FM_P} id={id + '-p'}>{lede}{SIGNIN_WHY}</p>
+      <div className={FM_FORM}>
+        <button ref={setFirst} className="fm-b g w-full" type="button" disabled={busy} aria-busy={busy || undefined} onClick={() => finish({ email: 'builder@example.com', token: '' })}>{busy ? 'Signing in…' : SIGNIN_WITH}</button>
+        <div className={FM_ACT}><button className={FM_T} type="button" onClick={() => finish({ email: 'builder@example.com', token: '' })}>No account? Create one on supabase.com</button></div>
+      </div>
+    </>
+  );
+
+  if (m === 'fake' && !acct) return (
+    <>
+      <h2 className={FM_H} id={id + '-h'} tabIndex={-1}>{o.title || SIGNIN_WITH}</h2>
+      <p className={FM_P} id={id + '-p'}>{lede}On the dev server a stand-in plays your Supabase account: type any email.</p>
+      <form className={FM_FORM} noValidate onSubmit={stand}>
+        <div className={FM_F}>
+          <label className={FM_L} htmlFor={id + '-fe'}>Stand-in Supabase email</label>
+          <input ref={setFirst} className="fm-i" id={id + '-fe'} type="email" inputMode="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="you@example.com"
+            aria-describedby={id + '-fee'} aria-invalid={typedErr ? true : undefined} value={typed} readOnly={busy} onChange={(e) => { setTyped(e.target.value); if (typedErr) setTypedErr(''); }} />
+          <ErrBox id={id + '-fee'} msg={typedErr || err} live />
+        </div>
+        <button className="fm-b g w-full" type="submit" disabled={busy} aria-busy={busy || undefined}>{busy ? 'Signing in…' : SIGNIN_WITH}</button>
+      </form>
+    </>
+  );
+
+  /* on supabase.com, or the stand-in with an account */
+  return (
+    <>
+      <h2 className={FM_H} id={id + '-h'} tabIndex={-1}>{o.title || SIGNIN_WITH}</h2>
+      <p className={FM_P} id={id + '-p'}>{lede}{acct ? <>You are signed in on supabase.com as <b>{acct.email}</b>.</> : SIGNIN_WHY}</p>
+      <div className={FM_FORM}>
+        {acct ? (
+          <>
+            <button ref={setFirst} className="fm-b g w-full" type="button" disabled={busy} aria-busy={busy || undefined} onClick={() => finish(acct)}>{busy ? 'Signing in…' : 'Continue as ' + acct.email}</button>
+            <p className={FM_NOTE}>Not you? Sign out on supabase.com, then sign in there with your own account.</p>
+          </>
+        ) : (
+          <>
+            <button ref={setFirst} className="fm-b g w-full" type="button" disabled={acct === undefined || busy} aria-busy={busy || undefined} onClick={() => go('in')}>{busy ? 'Signing in…' : SIGNIN_WITH}</button>
+            <div className={FM_ACT}><button className={FM_T} type="button" onClick={() => go('up')}>No account? Create one on supabase.com</button></div>
+          </>
+        )}
+        <ErrBox id={id + '-se'} msg={m === 'fake' ? '' : err} live />
+        <p className={FM_NOTE + (waiting && !acct ? '' : ' sr-only')} role="status">{waiting && !acct ? 'Finish on supabase.com in the new tab. This sheet carries on by itself once you are signed in.' : ''}</p>
+      </div>
+    </>
+  );
+}
+
+/* the emergency fallback (EMAIL_SIGNIN=on): an email, then six digits */
+function EmailBody({ o, start, emRef, firstDigit, onSignedIn }: { o: SignInOpts; start: { step: 'email' | 'code'; email: string }; emRef: React.RefObject<HTMLInputElement | null>; firstDigit: React.RefObject<HTMLInputElement | null>; onSignedIn: (s: Session) => void }) {
   const { id, close, busy: busyRef, open: openRef } = useSheet();
   const [step, setStep] = useState(start.step), [email, setEmail] = useState(start.email), [value, setValue] = useState(start.email);
   const [emErr, setEmErr] = useState(''), [sending, setSending] = useState(false);
@@ -41,10 +148,6 @@ export function SignInBody({ o, start, emRef, firstDigit, onSignedIn }: { o: Sig
   const [codeErr, setCodeErr] = useState(''), [checking, setChecking] = useState(false), [status, setStatus] = useState('');
   const [cool, setCool] = useState(0), [coolKey, setCoolKey] = useState(0);
   const ins = useRef<(HTMLInputElement | null)[]>([]);
-  /* the code on the screen, on a city's sheet when the site has a backend */
-  const canRoom = store.isLive() && !!o.city, [roomOpen, setRoomOpen] = useState(!!o.room), [room, setRoom] = useState(''), [roomErr, setRoomErr] = useState('');
-  const roomRef = useRef<HTMLInputElement>(null), [linkSent, setLinkSent] = useState(''), useRoom = canRoom && roomOpen && room.trim().length > 0;
-
   /* the resend countdown runs while the code step shows */
   useEffect(() => {
     if (step !== 'code') return;
@@ -61,16 +164,6 @@ export function SignInBody({ o, start, emRef, firstDigit, onSignedIn }: { o: Sig
     e.preventDefault(); if (busyRef.current) return;
     if (!checkEmail()) { emRef.current?.focus(); return; }
     const addr = value.trim(); setEmail(addr);
-    if (useRoom) {
-      if (!roomCodeOK(room)) { setRoomErr('The code on the screen is four letters and numbers.'); roomRef.current?.focus(); return; }
-      busyRef.current = true; setSending(true);
-      store.roomIn(addr, room.trim(), o.city!).then((r) => {
-        busyRef.current = false; setSending(false); if (!openRef.current) return;
-        if (!r.ok || !r.session) { if (r.field === 'email') { setEmErr(r.error || 'That email is not on the list.'); emRef.current?.focus(); } else { setRoomErr(r.error || 'That code did not work. Check the screen and try again.'); roomRef.current?.focus(); } return; }
-        onSignedIn(r.session); emit(); close();
-      });
-      return;
-    }
     busyRef.current = true; setSending(true);
     Promise.resolve(store.sendCode(addr)).then((r) => {
       busyRef.current = false; setSending(false); if (!openRef.current) return;
@@ -80,16 +173,6 @@ export function SignInBody({ o, start, emRef, firstDigit, onSignedIn }: { o: Sig
       if (res && res.ok === false) { setEmErr(res.error || 'We could not send a code. Try again.'); emRef.current?.focus(); return; }
       showCode(); requestFocus(0);
     });
-  };
-  /* a builder who lost the email: the same answer whether or not the address is on a list */
-  const [linkBusy, setLinkBusy] = useState(false);
-  const linkAgain = () => {
-    if (busyRef.current) return;
-    const t = value.trim();
-    if (!t) { setEmErr('Enter the email you used on Luma.'); emRef.current?.focus(); return; }
-    if (!checkEmail()) { emRef.current?.focus(); return; }
-    const addr = t; busyRef.current = true; setLinkBusy(true); setLinkSent('');
-    store.sendLinkAgain(addr).then((r) => { busyRef.current = false; setLinkBusy(false); if (!openRef.current) return; setLinkSent(r.ok ? 'If ' + addr + ' is on ' + (o.cityName ? o.cityName + '’s' : 'a city’s') + ' list, your link is on its way.' : (r.error || 'We could not send your link. Try again.')); });
   };
   /* focus after the step has rendered */
   const focusNext = useRef<number | null>(null);
@@ -141,29 +224,16 @@ export function SignInBody({ o, start, emRef, firstDigit, onSignedIn }: { o: Sig
   return (
     <>
       <h2 className={FM_H} id={id + '-h'} tabIndex={-1}>{step === 'email' ? (o.title || 'Sign in with your email') : 'Enter the code'}</h2>
-      <p className={FM_P} id={id + '-p'}>{step === 'email' ? (o.reason ? o.reason + ' ' : '') + (canRoom && roomOpen ? 'On the list and in the room? Your email and the code on the screen sign you in at once. No password.' : 'We email you a six-digit code. No password.') : <>We sent a six-digit code to <b>{email}</b>.</>}</p>
+      <p className={FM_P} id={id + '-p'}>{step === 'email' ? (o.reason ? o.reason + ' ' : '') + 'We email you a six-digit code. No password.' : <>We sent a six-digit code to <b>{email}</b>.</>}</p>
       <form className={FM_FORM} data-step="email" hidden={step !== 'email'} noValidate onSubmit={onEmail}>
         <div className={FM_F}>
           <label className={FM_L} htmlFor={id + '-em'}>Email</label>
           <input ref={emRef} className="fm-i" id={id + '-em'} name="email" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} enterKeyHint="send" placeholder="you@example.com" aria-describedby={id + '-ee'}
             value={value} readOnly={sending} aria-invalid={emErr ? true : undefined}
             onChange={(e) => { setValue(e.target.value); if (emErr) checkEmail(e.target.value); }} onBlur={() => { if (value.trim()) checkEmail(); }} />
-          <ErrBox id={id + '-ee'} msg={emErr} live={canRoom} />
+          <ErrBox id={id + '-ee'} msg={emErr} />
         </div>
-        {canRoom && roomOpen ? <div className={FM_F}>
-          <label className={FM_L} htmlFor={id + '-rc'}>Code on the screen</label>
-          <input ref={roomRef} className="fm-i fm-room" id={id + '-rc'} name="room" type="text" inputMode="text" autoComplete="off" autoCapitalize="characters" autoCorrect="off" spellCheck={false} maxLength={4} enterKeyHint="go"
-            data-1p-ignore data-lpignore="true" aria-describedby={id + '-rh ' + id + '-re'} aria-invalid={roomErr ? true : undefined} value={room} readOnly={sending}
-            onChange={(e) => { setRoom(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '')); if (roomErr) setRoomErr(''); }} />
-          <p className={FM_NOTE} id={id + '-rh'}>{'Four letters and numbers, beside the QR on the screen' + (o.cityName ? ' in ' + o.cityName : '') + '. Not in the room? Leave it empty and we email you a code.'}</p>
-          <ErrBox id={id + '-re'} msg={roomErr} live />
-        </div> : null}
-        <button className="fm-b g w-full" type="submit" disabled={sending} aria-busy={sending || undefined}>{sending ? (useRoom ? 'Signing in…' : 'Sending code…') : (useRoom ? 'Sign in' : 'Send code')}</button>
-        {canRoom ? <div className={FM_ACT}>
-          {!roomOpen ? <button className={FM_T} type="button" onClick={() => { setRoomOpen(true); window.setTimeout(() => roomRef.current?.focus(), 0); }}>In the room? Use the code on the screen</button> : null}
-          <button className={FM_T} type="button" disabled={linkBusy} aria-busy={linkBusy || undefined} onClick={linkAgain}>{linkBusy ? 'Sending link…' : 'Email my link again'}</button>
-        </div> : null}
-        {canRoom ? <p className={FM_NOTE + (linkSent ? '' : ' sr-only')} role="status">{linkSent}</p> : null}
+        <button className="fm-b g w-full" type="submit" disabled={sending} aria-busy={sending || undefined}>{sending ? 'Sending code…' : 'Send code'}</button>
       </form>
       <form className={FM_FORM} data-step="code" hidden={step !== 'code'} noValidate onSubmit={(e) => { e.preventDefault(); verify(digits); }}>
         <fieldset className="fm-code" id={id + '-cd'} aria-describedby={id + '-p ' + id + '-ce'} aria-busy={checking || undefined}>

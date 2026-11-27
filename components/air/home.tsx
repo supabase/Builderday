@@ -9,7 +9,7 @@ import { EPOCH, EVENT } from '@/lib/day-data';
 import { slugOf } from '@/lib/city';
 import { CODE, PLACE } from '@/lib/places';
 import { hhmm, ord } from '@/lib/format';
-import { routes, at } from '@/lib/routes';
+import { at, projectVia } from '@/lib/routes';
 import { Picture } from '@/components/pictures/picture';
 import { HowItWorks, PrizeBlock } from '@/components/day/explain';
 import { Ending, type EndCity } from '@/components/day/ending';
@@ -165,7 +165,7 @@ export function AirHome({ W, day, clock, first, bm, href, cfg, air, wheel, live,
 
   const sections: Record<string, ReactNode> = {
     cities: board && board.list === 'board' ? <div key="cities" id="cities" className="pf-part oa-part oa-db" data-part="cities">{board.table}</div> : <CitiesPart key="cities" W={W} views={views} href={href} zone={zone} you={you} chips={board ? day : null} />,
-    final: <FinalGrid key="final" W={W} />,
+    final: <FinalGrid key="final" W={W} href={href} />,
     how: <div key="how" className="pf-part" data-part="how"><HowItWorks f={day} id="how" day={cfg.how === 'real' ? dayFinalOf(W) : undefined} /></div>,
     questions: <DayQuestions key="questions" finalists={dayFinalOf(W).finalists} />,
     prizes: <div key="prizes" className="pf-part pf-prize" data-part="prizes"><PrizeBlock id="prizes" text={wheel.globe === 'ascii' ? wheel : undefined} day={dayFinalOf(W)} winner={W.picked ? W.final.p.name + ', ' + W.final.city.name : null} /></div>,
@@ -242,7 +242,7 @@ function MapKey({ line }: { line: number | null }) {
 function NowCell({ x, v, now, action, zone }: { x: HomeCity; v: ReturnType<typeof cityView>; now: number; action: { words: string; href: string }; zone: string }) {
   const lead = leadOf(x);
   const when = x.state === 'next' ? `Opens ${hhmm(x.start + x.city.offset)} local${zone ? ', ' + inZone(x.start, zone) + ' your time' : ''}`
-    : x.state === 'build' ? `${mmss(leftOf(x, now))} left to build${x.publicAt != null && now < x.publicAt ? ` · everyone votes from ${hhmm(x.publicAt + x.city.offset)}` : ''}` : x.state === 'vote' ? `${mmss(leftOf(x, now))} of votes left` : `Closed at ${hhmm(x.end + x.city.offset)} local`;
+    : x.state === 'build' ? `${mmss(leftOf(x, now))} left to build${x.publicAt != null && now < x.publicAt ? ` · voting opens at ${hhmm(x.publicAt + x.city.offset)}` : ''}` : x.state === 'vote' ? `${mmss(leftOf(x, now))} of votes left` : `Closed at ${hhmm(x.end + x.city.offset)} local`;
   return (
     <div className="oa-now" aria-live="polite" aria-atomic="true">
       <p className="oa-now-c"><span className="oa-code">{CODE[x.id]}</span> <span className="oa-now-n">{x.name}</span></p>
@@ -276,7 +276,7 @@ function CitiesPart({ W, views, href, zone, you }: { W: HomeWorld; views: Return
                   <th scope="row"><a href={at(href(x.id))}><span className="oa-code">{CODE[x.id]}</span> {x.name}</a></th>
                   <td className="oa-tab">{hhmm(x.start + x.city.offset)}<span className="oa-muted">{zone ? ' · ' + inZone(x.start, zone) + ' yours' : ''}</span></td>
                   <td><Chip s={v.s} word={v.word} />{live ? <span className="oa-muted oa-tab oa-left"> {mmss(leftOf(x, W.now))} left</span> : null}</td>
-                  <td className="oa-lead">{lead ? <a className="oa-lead-row" href={routes.project(x.id, slugOf(lead.p))}><Picture p={lead.p} cls="oa-pic oa-pic-s" /><span className="oa-lead-n">{lead.p.name}</span>{v.hidden ? null : <span className="oa-muted oa-tab oa-lead-v">· {lead.v}</span>}</a> : <span className="oa-muted">–</span>}</td>
+                  <td className="oa-lead">{lead ? <a className="oa-lead-row" href={projectVia(href(x.id), x.id, slugOf(lead.p))}><Picture p={lead.p} cls="oa-pic oa-pic-s" /><span className="oa-lead-n">{lead.p.name}</span>{v.hidden ? null : <span className="oa-muted oa-tab oa-lead-v">· {lead.v}</span>}</a> : <span className="oa-muted">–</span>}</td>
                   <td className="k-r oa-tab">{x.state === 'next' ? <span className="oa-muted">–</span> : entriesOf(x)}</td>
                 </tr>
               </Fragment>
@@ -289,8 +289,8 @@ function CitiesPart({ W, views, href, zone, you }: { W: HomeWorld; views: Return
 }
 
 /* The final: each closed city a row, its three finalists side by side at one picture size, each one opening its
-   project. Cities still to close are one line under them. Once Ant and Copple pick, the picked one is marked. */
-function FinalGrid({ W }: { W: HomeWorld }) {
+   project. Cities still to close are one line under them. Once the Supabase team picks, the picked one is marked. */
+function FinalGrid({ W, href }: { W: HomeWorld; href: (id: string) => string }) {
   const done = W.cs.filter((x) => x.state === 'done').sort((a, b) => (W.picked ? +(b.i === W.final.city.i) - +(a.i === W.final.city.i) : 0)), open = W.cs.filter((x) => x.state !== 'done');
   const total = finalCount(W).of, inN = W.finalists.length;
   return (
@@ -301,14 +301,14 @@ function FinalGrid({ W }: { W: HomeWorld }) {
         <ul className="oa-fin">
           {done.map((x) => (
             <li key={x.id} className="oa-fin-c">
-              <p className="oa-fin-h"><span className="oa-code">{CODE[x.id]}</span> <a href={routes.city(x.id)}>{x.name}</a> <span className="oa-muted">closed {hhmm(x.end + x.city.offset)} local</span></p>
+              <p className="oa-fin-h"><span className="oa-code">{CODE[x.id]}</span> <a href={at(href(x.id))}>{x.name}</a> <span className="oa-muted">closed {hhmm(x.end + x.city.offset)} local</span></p>
               {x.top.length ? (
                 <ol className="oa-fin-r">
                   {x.top.map((t) => {
                     const picked = W.picked && W.final.city.i === x.i && W.final.p.id === t.p.id;
                     return (
                       <li key={t.p.id} data-picked={picked ? '' : undefined}>
-                        <a href={routes.project(x.id, slugOf(t.p))}>
+                        <a href={projectVia(href(x.id), x.id, slugOf(t.p))}>
                           <Picture p={t.p} cls="oa-just-pic" />
                           <span className="oa-just-n">{picked ? <b className="oa-fin-pick">Picked · </b> : null}{t.p.name}</span>
                           <span className="oa-just-k">{ord(t.place)} · {t.v} votes · @{t.p.handle}</span>

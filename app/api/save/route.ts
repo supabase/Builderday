@@ -4,7 +4,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-const NAMES = ['team', 'day', 'city', 'seal', 'lab-home', 'lab-city', 'motion', 'wheel', 'screen', 'parts', 'day-home', 'day-city', 'explain', 'footer', 'neo', 'stage', 'fold', 'ending', 'sheet', 'email', 'family', 'hero'];
+const NAMES = ['day', 'city', 'seal', 'lab-home', 'motion', 'wheel', 'screen', 'parts', 'day-home', 'day-city', 'explain', 'footer', 'neo', 'stage', 'fold', 'ending', 'sheet', 'email', 'family', 'launch', 'prize-photo', 'hero', 'build', 'ways'];
 
 export async function POST(req: Request) {
   if (process.env.NODE_ENV === 'production') return Response.json({ error: 'Saving writes files, so it only works on the development server.' }, { status: 403 });

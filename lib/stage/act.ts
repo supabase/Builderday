@@ -75,6 +75,9 @@ export function act(deck: SceneRow[], row: StageRow, city: CityLive, a: StageAct
       const on = row.timer.ends_at && row.timer.ends_at > now;
       return out({ timer: { ...row.timer, ends_at: on ? null : now + talkMin * 60000, paused_left: null } });
     }
+    case 'view': return out({ timer: { ...row.timer, view: a.v } });
+    /* the showcase by hand: a press moves one project on or back (the wall wraps it round its list); 0 hands it back */
+    case 'show': return s?.kind === 'showcase' ? out({ timer: { ...row.timer, show: a.d === 0 ? null : (row.timer.show ?? (a.d > 0 ? -1 : 0)) + a.d } }) : null;
     case 'spin': return s?.kind === 'tombola' ? out({ step: 1, timer: { ...row.timer, spin: { at: now, seed: Math.floor((now * 7.31) % 1e9) } } }) : null;
   }
 }

@@ -2,13 +2,13 @@
    stateless: every POST carries one JSON-RPC message (or, in the older revisions, a batch) and gets JSON back; there is no session and no stream.
    Who is calling: the personal key, sent as "Authorization: Bearer <key>" by every editor that can send a header,
    and in the address (/api/mcp/<key>) only for an editor that cannot. It is the pass's editor key (editor_version),
-   so replacing it does not end the emailed link. It says who, nothing more: Submit still needs the room code.
+   so replacing it ends no sign-in. It says who, nothing more: Submit still needs a host's check-in at the door.
    Every call with a good key sets editor_seen_at ("editor connected").
    Both protocol eras (modelcontextprotocol.io/specification, read 2026-11-18): 2026-07-28 has no handshake (each
    request names its version in _meta or the MCP-Protocol-Version header, and server/discover says what we serve);
    2025-11-25 and earlier open with initialize. A dual-era server may serve both, which this one does.
-   Five tools: whoami, practice, check_in, submit, status. Before the day pages open only whoami and practice do
-   anything; check_in and submit say when they open. submit runs lib/server/entries.ts, the same submit as the form,
+   Four tools: whoami, practice, submit, status. Before the day pages open only whoami and practice do anything;
+   submit says when it opens. submit runs lib/server/entries.ts, the same submit as the form,
    so a refusal reads the same either way. */
 import { publicCity } from './snapshot';
 import { openKey, type Pass, type Person } from './people';
@@ -21,20 +21,18 @@ import { CHECKS, RULES, SERVER } from '@/lib/hackday-server';
 import { EVENT } from '@/lib/day-data';
 
 const EVENT_NAME = EVENT.name;
-import { checkInWithCode, nameOfCity } from './room';
+import { nameOfCity } from './room';
 import { eventById, eventOfCity } from './events';
 import { HOW_TO_SUBMIT } from '@/lib/event/rule';
 import { dayGate } from './gate';
 import { guardKey } from './repo-key';
 import { whenLocal } from './time';
-import { teamOf } from './teams';
-import { namesInWords } from '@/lib/team';
 
 const MODERN = '2026-07-28';
 const LEGACY = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05'];
 const INFO = { name: SERVER.name, title: EVENT_NAME, version: '1.1.0' };
 const HOW = 'Checks this builder’s setup before the day, and submits the project in the current folder to ' + EVENT_NAME + ' on the day. Call whoami first. '
-  + 'Before the day, practice runs the whole path and enters nothing. ' + HOW_TO_SUBMIT + ' If whoami says you are not checked in, ask for the four-character code on the screen and call check_in with it. '
+  + 'Before the day, practice runs the whole path and enters nothing. ' + HOW_TO_SUBMIT + ' If whoami says you are not checked in, ask a host at the door to check you in. '
   + 'Then submit with the project’s name, a one-line pitch, its public GitHub repository made today, and a demo link if there is one. The rules: ' + RULES.join(' ');
 
 type Rpc = { jsonrpc?: string; id?: string | number | null; method?: string; params?: Record<string, unknown> };
@@ -45,26 +43,17 @@ const str = { type: 'string' } as const;
 const TOOLS = [
   {
     name: 'whoami', title: 'Who am I',
-    description: 'Says who this editor is signed in as, which city they are in, whether they have checked in with the room code, and whether they already have an entry. Call it first.',
+    description: 'Says who this editor is signed in as, which city they are in, whether a host has checked them in at the door, and whether they already have an entry. Call it first.',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
     annotations: { readOnlyHint: true },
   },
   {
     name: 'practice', title: 'Practice run',
-    description: 'A dry run of the day, safe to call any time: says who you are, your city and when building starts there, whether building is open and whether you have checked in with the room code. With repo, it runs the checks the real submit runs and says what would be refused on the day. Nothing is entered.',
+    description: 'A dry run of the day, safe to call any time: says who you are, your city and when building starts there, whether building is open and whether a host has checked you in. With repo, it runs the checks the real submit runs and says what would be refused on the day. Nothing is entered.',
     inputSchema: { type: 'object', properties: {
       repo: { ...str, description: 'Optional: a public GitHub repository to try the checks on, https://github.com/owner/name' },
     }, additionalProperties: false },
     annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
-  },
-  {
-    name: 'check_in', title: 'Check in with the room code',
-    description: 'Checks you in with the four-character code on the screen in your city’s room. Needed once before submit. With repo, it also checks the repository is public and made today, so a problem shows before the end. Nothing is entered.',
-    inputSchema: { type: 'object', properties: {
-      code: { ...str, minLength: 4, maxLength: 4, description: 'The four letters and numbers on the screen in the room' },
-      repo: { ...str, description: 'Optional: the public GitHub repository, https://github.com/owner/name' },
-    }, required: ['code'], additionalProperties: false },
-    annotations: { readOnlyHint: false, idempotentHint: true },
   },
   {
     name: 'submit', title: 'Submit the project',
@@ -106,42 +95,22 @@ async function call(who: Who, name: string, a: Record<string, unknown>, req: Req
   /* the event of the person's key: Builder Day's day gate holds only there */
   const ev = await eventOfCity(who.pass.city), isDay = ev === EVENT.id, evRec = await eventById(ev);
   if (name === 'whoami') {
-    const [e, team] = await Promise.all([entryOf(who.person.id, ev), teamOf(who.person, ev, req)]);
+    const e = await entryOf(who.person.id, ev);
     const city = await nameOfCity(who.pass.city), inRoom = !!who.pass.checked_in_at;
-    const mates = team ? team.members.filter((m) => !m.you).map((m) => m.name) : [];
     return text((who.person.name ? who.person.name + ', you are' : 'You are') + ' signed in for ' + city + '. '
-      + (team ? (mates.length ? 'In team ' + team.code + ' with ' + namesInWords(mates) + ': one entry for the team, which any of you can submit or edit. ' : 'In team ' + team.code + ', on your own so far: teammates join with that code in their account on the site. ') : '')
-      + (inRoom ? 'Checked in with the room code. ' : 'Not checked in yet: call check_in with the four-character code on the screen in the room before you submit. ')
-      + (e ? (team ? 'Your team has an entry: ' : 'You have an entry: ') + e.name + ', ' + site + '/city/' + e.city + '/p/' + e.slug + '. Submitting again edits it.' : 'No entry yet.')
+      + (inRoom ? 'Checked in by a host. ' : 'Not checked in yet: a host checks you in at the door before you can submit. ')
+      + (e ? 'You have an entry: ' + e.name + ', ' + site + '/city/' + e.city + '/p/' + e.slug + '. Submitting again edits it.' : 'No entry yet.')
       + (who.person.name ? '' : ' Your city’s list has no name for you: pass by with your name when you submit.'),
-    false, { city: who.pass.city, cityName: city, name: who.person.name, checkedIn: inRoom, entry: e ? { name: e.name, url: site + '/city/' + e.city + '/p/' + e.slug } : null,
-      team: team ? { code: team.code, members: team.members.map((m) => m.name) } : null });
+    false, { city: who.pass.city, cityName: city, name: who.person.name, checkedIn: inRoom, entry: e ? { name: e.name, url: site + '/city/' + e.city + '/p/' + e.slug } : null });
   }
   if (name === 'practice') return practice(who, s('repo'), site);
-  if ((name === 'check_in' || name === 'submit') && isDay && !(await dayGate()).open) {
+  if (name === 'submit' && isDay && !(await dayGate()).open) {
     const c = await cityRow(who.pass.city);
-    return text((name === 'submit' ? 'Submitting' : 'Checking in') + ' opens on the day, in the room: building in ' + c.name + ' starts at ' + whenLocal(c.planned_start, c.offset_min) + ', local time. Until then, call practice to try the whole path; nothing is entered.', true, { early: true });
-  }
-  if (name === 'check_in') {
-    const r = await checkInWithCode(who.person, s('code'), ev);
-    if (!r.ok) return text(r.error + (r.field === 'code' ? ' Ask for the four-character code on the screen in the room, then call check_in again.' : ''), true, { checkedIn: false });
-    const inRoom = (r.already ? 'You are already checked in' : 'Checked in') + ' for ' + (await nameOfCity(r.pass.city)) + ': you can submit.';
-    const repo = s('repo');
-    if (!repo) return text(inRoom, false, { checkedIn: true });
-    const { data: c } = await admin().from('cities').select('build_start').eq('id', who.pass.city).maybeSingle();
-    const f = await repoFacts(repo, (c?.build_start as string) || null);
-    await admin().from('log').insert({ who: who.person.id, what: 'repository checked', city: who.pass.city, target: repo.slice(0, 200) });
-    const leak = await guardKey(who.pass, repo);
-    if (leak) return text(inRoom + ' But: ' + leak.say, true, { checkedIn: true, keyFound: leak.found });
-    if (!f) return text(inRoom + ' GitHub did not answer, so the repository is not checked yet. It is checked again when you submit.', false, { checkedIn: true });
-    const say = (id: string, v: Record<string, string>) => CHECKS.find((x) => x.id === id)!.say!(v);
-    if (!f.readable) return text(inRoom + ' But: ' + say('repo', { repo: repo || 'the repository' }), true, { checkedIn: true });
-    if (f.createdAt && f.dayStart && Date.parse(f.createdAt) < Date.parse(f.dayStart)) return text(inRoom + ' But: ' + say('age', { made: f.createdAt.slice(0, 10) }), true, { checkedIn: true });
-    return text(inRoom + ' ' + repo + ' is public and new.' + (f.fork ? ' It is a fork, which the hosts will see.' : ''), false, { checkedIn: true });
+    return text('Submitting opens on the day, in the room: building in ' + c.name + ' starts at ' + whenLocal(c.planned_start, c.offset_min) + ', local time. Until then, call practice to try the whole path; nothing is entered.', true, { early: true });
   }
   if (name === 'submit') {
     const r = await submitEntry(who.person, { name: s('name'), pitch: s('pitch'), repo: s('repo'), demo: s('link'), video: s('video'), by: s('by') }, { via: 'editor', keepPicture: true, event: ev });
-    if (!r.ok) return text(r.error + (r.field === 'room' ? ' Ask for the four-character code on the screen, call check_in with it, then submit again.' : ''), true, { refused: true, field: r.field || null });
+    if (!r.ok) return text(r.error + (r.field === 'room' ? ' Once a host has checked you in, submit again.' : ''), true, { refused: true, field: r.field || null });
     const url = site + '/city/' + r.entry.city + '/p/' + r.entry.slug;
     const notes = [r.verdict.replaces ? 'Your entry is updated.' : 'You are in.', 'Your project: ' + url];
     if (r.entry.handle && r.entry.handle !== who.person.name) notes.push('Built by ' + r.entry.handle + '.');
@@ -156,24 +125,24 @@ async function call(who: Who, name: string, a: Record<string, unknown>, req: Req
     if (!snap) return text('The ranking cannot be read right now. Try again in a minute.', true);
     const build = left(snap.city.buildEnd, now), vote = left(snap.city.voteEnd, now);
     const clock = !snap.city.buildStart ? 'Building has not started in ' + snap.city.name + '.' : build ? 'Building ends in ' + build + '.' : vote ? 'Building has ended; voting closes in ' + vote + '.' : 'Voting has closed in ' + snap.city.name + '.';
-    const inRoom = who.pass.checked_in_at ? '' : ' Not checked in yet: call check_in with the code on the screen in the room before you submit.';
+    const inRoom = who.pass.checked_in_at ? '' : ' Not checked in yet: a host checks you in at the door before you can submit.';
     if (!e) return text('No entry yet. ' + clock + inRoom, false, { checkedIn: !inRoom });
     const order = snap.entries.slice().sort(rankOrder), i = order.findIndex((x) => x.no === e.no), me = order[i];
     if (!me) return text('Your entry, ' + e.name + ', is hidden from the ranking for now: the hosts are looking at it. ' + clock, false, { place: null });
     /* while the counts are hidden the editor knows no more than the page: the entry is in, nothing about its count */
-    if (snap.hidden) return text(e.name + ' is in the list in ' + snap.city.name + '. Votes are hidden until voting closes; then every count appears. ' + clock, false, { place: null, of: order.length, votes: null, hidden: true });
+    if (snap.hidden) return text(e.name + ' is in the list in ' + snap.city.name + '. Votes are hidden until ' + (snap.city.showAt ?? 0) + ' minutes in; then every count appears and stays live. ' + clock, false, { place: null, of: order.length, votes: null, hidden: true });
     return text(e.name + ' is ' + ord(i + 1) + ' of ' + order.length + ' in ' + snap.city.name + ' with ' + me.votes + (me.votes === 1 ? ' vote' : ' votes') + '.' + (evRec?.f.finalOn === false ? ' ' : ' The top ' + (evRec?.f.finalists ?? 3) + ' go to the final. ') + clock,
       false, { place: i + 1, of: order.length, votes: me.votes });
   }
   return null;
 }
-type CityRow = { name: string; planned_start: string; offset_min: number; build_start: string | null; build_end: string | null; room_code: string | null };
+type CityRow = { name: string; planned_start: string; offset_min: number; build_start: string | null; build_end: string | null };
 async function cityRow(id: string): Promise<CityRow> {
-  const { data } = await admin().from('cities').select('name, planned_start, offset_min, build_start, build_end, room_code').eq('id', id).single();
+  const { data } = await admin().from('cities').select('name, planned_start, offset_min, build_start, build_end').eq('id', id).single();
   return data as CityRow;
 }
 
-/* the dry run: who, where, when, the room code, and with a repository the checks the real submit
+/* the dry run: who, where, when, the check-in, and with a repository the checks the real submit
    runs, said as what would happen on the day. The made-today rule does not block here; it is said as advice. */
 async function practice(who: Who, repo: string, site: string) {
   const c = await cityRow(who.pass.city), now = Date.now();
@@ -182,7 +151,7 @@ async function practice(who: Who, repo: string, site: string) {
     'Practice run: nothing is entered.',
     (who.person.name ? who.person.name + ', you' : 'You') + ' are on the list for ' + c.name + '. Building starts at ' + whenLocal(c.planned_start, c.offset_min) + ', local time.',
     open ? 'Building is open in ' + c.name + ' now.' : c.build_end && now >= Date.parse(c.build_end) ? 'Building has ended in ' + c.name + '.' : 'Building is not open yet.',
-    who.pass.checked_in_at ? 'You have checked in with the room code.' : 'On the day: ask for the four-character code on the screen in the room, and call check_in with it once.',
+    who.pass.checked_in_at ? 'A host has checked you in.' : 'On the day: a host checks you in at the door, then you can submit.',
   ];
   if (repo) {
     const leak = await guardKey(who.pass, repo);

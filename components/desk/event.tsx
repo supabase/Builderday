@@ -282,7 +282,7 @@ export function FormatTab({ s, act, ask }: { s: DeskState; act: DeskAct; ask: (a
                 <label><input type="radio" name="dk-finalby" checked={f.finalBy === 'judges'} onChange={() => set('finalBy', 'judges')} />The event’s judges</label>
               </fieldset>
               {f.finalBy === 'pickers' ? <div className="dk-two" style={{ marginTop: 'var(--s-4)' }}>
-                <div className="dk-f"><label className="dk-l" htmlFor="dk-f-pk">Who picks the winner</label><input id="dk-f-pk" className="fm-i" maxLength={80} placeholder="Ant and Copple" value={f.pickers} onChange={(e) => set('pickers', e.target.value)} /></div>
+                <div className="dk-f"><label className="dk-l" htmlFor="dk-f-pk">Who picks the winner</label><input id="dk-f-pk" className="fm-i" maxLength={80} placeholder="the Supabase team" value={f.pickers} onChange={(e) => set('pickers', e.target.value)} /></div>
               </div> : null}
             </>
           ) : null}
@@ -294,17 +294,22 @@ export function FormatTab({ s, act, ask }: { s: DeskState; act: DeskAct; ask: (a
           {f.decide !== 'judges' ? <div className="dk-f"><label className="dk-l" htmlFor="dk-f-v">Voting runs on after{' '}<small>Minutes after building ends</small></label><NumIn id="dk-f-v" min={0} max={240} value={f.voteAfter} onNum={(v) => set('voteAfter', v)} /></div>
             : <div className="dk-f"><label className="dk-l" htmlFor="dk-f-v">Judging runs on after{' '}<small>Minutes after building ends</small></label><NumIn id="dk-f-v" min={0} max={240} value={f.voteAfter} onNum={(v) => set('voteAfter', v)} /></div>}
         </div>
+        {f.decide !== 'judges' ? (
+          <div className="dk-two">
+            <div className="dk-f"><label className="dk-l" htmlFor="dk-f-po">Voting opens{' '}<small>Minutes after the start, for everyone</small></label><NumIn id="dk-f-po" min={0} max={600} value={f.publicAt ?? 0} onNum={(v) => set('publicAt', v)} /></div>
+            <div className="dk-f"><label className="dk-l" htmlFor="dk-f-sh">Counts shown from{' '}<small>Minutes after the start; hidden before</small></label><NumIn id="dk-f-sh" min={0} max={600} value={f.showAt ?? 0} onNum={(v) => set('showAt', v)} /></div>
+            {f.decide !== 'votes' ? <div className="dk-f"><label className="dk-l" htmlFor="dk-f-ja">Judges vote from{' '}<small>Minutes after the start</small></label><NumIn id="dk-f-ja" min={0} max={600} value={f.judgeAt ?? f.publicAt ?? 0} onNum={(v) => set('judgeAt', v)} /></div> : null}
+          </div>
+        ) : null}
         <p className="dk-note">Each place’s own times are on its Place tab; the host starts building from the stage.</p>
       </Sec>
       <Sec title="Entries" id="dk-f-rules">
         <div className="dk-checks">
-          <label className="fm-chk"><input type="checkbox" checked={f.roomCode} onChange={(e) => set('roomCode', e.target.checked)} /><span><b>The room code</b> Only people on the list who typed the code on the wall can submit.</span></label>
+          <label className="fm-chk"><input type="checkbox" checked={f.roomCode} onChange={(e) => set('roomCode', e.target.checked)} /><span><b>Check-in at the door</b> Only people on the list whom a host has checked in can submit.</span></label>
           <label className="fm-chk"><input type="checkbox" checked={f.repoRequired} onChange={(e) => set('repoRequired', e.target.checked)} /><span><b>A public repository</b> Every entry links one GitHub repository we can read.</span></label>
           <label className={'fm-chk' + (f.repoRequired ? '' : ' is-off')}><input type="checkbox" disabled={!f.repoRequired} checked={f.repoNew && f.repoRequired} onChange={(e) => set('repoNew', e.target.checked)} /><span><b>Made on the day</b> A repository made before building starts is refused. Off, it is only flagged.</span></label>
           <label className="fm-chk"><input type="checkbox" checked={f.demoRequired} onChange={(e) => set('demoRequired', e.target.checked)} /><span><b>A demo link</b> Every entry links a page the judges can try.</span></label>
-          <label className="fm-chk"><input type="checkbox" checked={f.teams} onChange={(e) => set('teams', e.target.checked)} /><span><b>Teams</b> Builders on the same list make a team in their account and share one entry.</span></label>
         </div>
-        {f.teams ? <div className="dk-f"><label className="dk-l" htmlFor="dk-f-tm">People in a team at most</label><NumIn id="dk-f-tm" min={2} max={10} value={f.teamMax} onNum={(v) => set('teamMax', v)} /></div> : null}
       </Sec>
       <Sec title="Prizes" id="dk-f-prize">
         <div className="dk-two">

@@ -81,7 +81,7 @@ export function Hero({ W, day, clock, first, href, segSecs, globe, mine, childre
             {W.allDone ? <PickSegment clock={clock} first={first} at={W.S.pickAt} /> : <LiveSegment clock={clock} first={first} x={fx} withSecs={segSecs} name={fx.name} />}
             {W.allDone ? <p className="dh-go"><a className="dh-btn" href="#final">See the {W.finalists.length} finalists<span aria-hidden="true">→</span></a></p> : (
               <p className="dh-go"><Link className="dh-btn" href={href(fx.id)}>{fx.state === 'next' ? 'See ' + fx.name : early ? 'Watch ' + fx.name : 'Vote in ' + fx.name}<span aria-hidden="true">→</span></Link>
-                {early ? <span className="bd-k">Everyone votes from {hhmm(fx.publicAt! + fx.city.offset)} local</span> : null}
+                {early ? <span className="bd-k">Voting opens at {hhmm(fx.publicAt! + fx.city.offset)} local</span> : null}
                 {W.live.length > 1 ? <span className="bd-k">{W.live.length} cities are live</span> : null}</p>
             )}
           </div>

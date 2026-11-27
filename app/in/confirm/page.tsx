@@ -11,7 +11,7 @@ type Q = Record<string, string | string[] | undefined>;
 export default async function Confirm({ searchParams }: { searchParams: Promise<Q> }) {
   const q = await searchParams, th = String(q.th || ''), next = String(q.next || '/');
   return (
-    <InCard title={'Sign in to ' + EVENT.name} text={th ? 'Press the button to finish signing in on this device.' : 'This link is missing its code. Open the newest email we sent, or ask for a new code.'}>
+    <InCard title={'Sign in to ' + EVENT.short} text={th ? 'Press Sign in to finish signing in on this device.' : 'This link is missing its code. Open the newest email we sent, or ask for a new code.'}>
       {th ? <form method="post" action={at('/api/auth/confirm')}>
         <input type="hidden" name="th" value={th} />
         <input type="hidden" name="next" value={next.startsWith('/') ? next : '/'} />

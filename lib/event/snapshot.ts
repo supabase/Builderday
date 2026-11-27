@@ -8,11 +8,12 @@ export type SnapCity = {
   /* the live times, set when the host starts the clock; null before */
   buildStart: number | null; buildEnd: number | null; voteEnd: number | null;
   submissionsPaused: boolean; votingPaused: boolean;
-  /* minutes after the start of building when the counts and order freeze until voting closes; null: never */
-  hideAt: number | null;
-  /* minutes after the start of building when anyone may vote, and the judges; before it only builders on the city's
-     list. null: everyone from the start */
+  /* the counts are hidden from the start of building until this many minutes in, then shown live; null: never hidden */
+  showAt: number | null;
+  /* minutes after the start of building when voting opens, for everyone; null: from the start */
   publicAt: number | null;
+  /* minutes after the start when judges may vote; null: with everyone */
+  judgeAt: number | null;
   /* what one judge's vote counts; votes and judge below, and the steps, are already counted at it */
   judgeWeight: number;
 };
@@ -26,18 +27,16 @@ export type SnapEntry = {
 /* every vote that counts, oldest first: [entry no, ms, n, 1 when a judge's] (n is 1 for a public vote; a judge's press, at the judge weight,
    may be several, or negative when taken back) */
 export type SnapStep = [no: number, at: number, n: number, judge: 0 | 1];
-/* hidden: set while the city's counts are hidden (public answers only): every entry's votes, judge and reached are as
-   they stood at `from`, the steps stop there, and an entry that came in after it has none; until: when voting closes
-   and the real counts come back */
+/* hidden: set while the city's counts are hidden (public answers only): from the start of building (`from`) no count
+   leaves the server, so every entry's votes and judge are 0 and the order is the order entries came in; until: when
+   the counts are shown */
 export type CitySnap = { at: number; stale?: boolean; city: SnapCity; entries: SnapEntry[]; steps: SnapStep[]; hidden?: { from: number; until: number } | null };
-/* the pick, once a super admin has entered Ant and Copple's choice */
+/* the pick, once a super admin has entered the Supabase team's choice */
 export type DaySnap = { at: number; stale?: boolean; cities: CitySnap[]; pick: { city: string; no: number } | null };
 
 /* the ranking rule: most votes, then the host's order in a tie, then who reached that count first, then who arrived
    first */
 export function rankOrder(a: SnapEntry, b: SnapEntry): number { return b.votes - a.votes || tieOrder(a.tie, b.tie) || a.reached - b.reached || a.created - b.created; }
-/* when anyone may vote in the city (ms), and the judges; null before the clock starts. Before it only its builders. */
-export function publicFrom(c: SnapCity): number | null { return c.buildStart == null ? null : c.buildStart + (c.publicAt ?? 0) * 60000; }
 
 /* the phase at a moment, from the live times (planned times before the clock starts are never a phase) */
 export function phaseAt(c: SnapCity, ms: number): 'next' | 'build' | 'vote' | 'done' {
@@ -47,19 +46,18 @@ export function phaseAt(c: SnapCity, ms: number): 'next' | 'build' | 'vote' | 'd
   return 'done';
 }
 
-/* the stretch a city's counts are hidden, in ms: from hideAt minutes after building starts until voting closes; null
-   when it never hides or the clock has not started */
+/* the stretch a city's counts are hidden, in ms: from the start of building until showAt minutes in (or the close, if
+   that is sooner); null when it never hides or the clock has not started */
 export function hiddenSpan(c: SnapCity): { from: number; until: number } | null {
-  if (c.hideAt == null || c.buildStart == null || c.voteEnd == null) return null;
-  const from = c.buildStart + c.hideAt * 60000;
-  return from < c.voteEnd ? { from, until: c.voteEnd } : null;
+  if (c.showAt == null || c.buildStart == null) return null;
+  const from = c.buildStart, until = Math.min(c.buildStart + c.showAt * 60000, c.voteEnd ?? Infinity);
+  return from < until ? { from, until } : null;
 }
 export function hiddenNow(c: SnapCity, ms: number): boolean { const h = hiddenSpan(c); return !!h && ms >= h.from && ms < h.until; }
 
-/* What the public may see of a city at a moment. While its counts are hidden: each entry's votes and judges' votes as
-   they stood at the freeze (from the steps up to it), its tie-break time then, the steps cut there, and none for an
-   entry that came in after it; so the order the counts give is the frozen one, with the late ones under it in the
-   order they came. Outside the stretch, the snapshot as it is. Idempotent: an answer already marked hidden is kept.
+/* What the public may see of a city at a moment. While its counts are hidden: the steps cut at the start of the
+   stretch (none), so every count is 0 and each entry's tie-break time is its arrival: the order is the order they
+   came. Outside the stretch, the snapshot as it is. Idempotent: an answer already marked hidden is kept.
    The steps must be the full list (the server's own read); a snapshot without them is frozen with nothing counted. */
 export function publicSnap(s: CitySnap, ms: number): CitySnap {
   if (s.hidden || !hiddenNow(s.city, ms)) return s;

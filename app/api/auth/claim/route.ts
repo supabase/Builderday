@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   const off = offline(); if (off) return off;
   const u = await authUser();
-  if (!u) return no('Sign in first, with any email.', 401);
+  if (!u) return no('Sign in with your Supabase account first.', 401);
   const email = str((await body(req))?.email, 200);
   if (!emailOK(email)) return no('Check the email. It needs an @ and a domain.');
   const p = (await personByAuth(u.id)) || (await ensurePerson(u.email));

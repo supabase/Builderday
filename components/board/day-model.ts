@@ -8,7 +8,7 @@ import { EVENT as EV, all, hiddenAt, inAt, leader, top3, votesAtMin, type CitySc
 import { fmtN } from '@/lib/format';
 import type { WireEvent, WireKind } from '@/lib/wire';
 import { hhmm } from '@/lib/format';
-import { CODE, PLACE, cityPage } from '@/lib/places';
+import { CODE, PLACE } from '@/lib/places';
 import type { StateWord } from '@/components/screen/chip';
 import type { Item } from './announce';
 import type { GlobeLight } from './day-globe';
@@ -22,9 +22,6 @@ export function homeAt(d: Day, minute: number): HomeWorld {
 export function cityAt(d: Day, id: string, minute: number, voted: Votes = {}, extra?: Partial<CityCfg>): CityWorld {
   return cityWorld({ ...CITY_DEF, ...extra, ...d, city: id, now: minute } as CityCfg, voted);
 }
-
-/* the last minutes of voting: the wheel's "last" rule, a tenth of the vote time and at least three minutes */
-export function lastMinutes(d: Day): number { return Math.max(3, Math.round(d.voteAfter * 0.1)); }
 
 /* a city's state as one of the six words. Entries close, votes run on: the six words have no other word for the time
    between, so "Last votes" is that whole stretch (the plan's words, read so there is no gap) */
@@ -50,7 +47,7 @@ export function dayWord(W: HomeWorld, d: Day): StateWord {
 const LEAD_MIN = 10, LEAD_HOLD = 2, ENTRY_MARKS = [50, 100, 150], VOTE_MARKS = [1000, 2000, 5000];
 const EVENTS = new Map<string, WireEvent[]>();
 function eventsOf(sd: SeedCity, x: CitySched): WireEvent[] {
-  const key = [sd.seed, sd.i, sd.entries, sd.list.map((r) => r.p.name).join('|'), x.start, x.buildEnd, x.end, String(x.hide)].join(':');
+  const key = [sd.seed, sd.i, sd.entries, sd.list.map((r) => r.p.name).join('|'), x.start, x.buildEnd, x.end, String(x.show)].join(':');
   const hit = EVENTS.get(key); if (hit) return hit;
   const nm = x.city.name, i = sd.i, N = sd.entries, ev: WireEvent[] = [];
   ev.push({ m: x.start, city: i, kind: 'open', text: nm + ' opens. Building and voting start now.' });
@@ -115,4 +112,4 @@ export function focusCity(W: HomeWorld): HomeCity {
     || W.cs[W.final.city.i];
 }
 
-export { CODE, PLACE, cityPage, EVENT };
+export { CODE, PLACE, EVENT };

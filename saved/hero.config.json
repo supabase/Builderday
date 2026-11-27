@@ -3,9 +3,11 @@
   "words": "tight",
   "weekday": true,
   "rsvp": false,
+  "sub": "off",
   "hand": "roll",
   "width": "fixed",
   "reach": "row",
+  "dock": "foot",
   "screen": "wheel",
   "state": "ink",
   "zone": "local",
@@ -18,8 +20,11 @@
   "min": 24,
   "grow": 1.15,
   "tall": 0.05,
+  "stubPhone": 100,
+  "namePhone": 20,
   "widthMs": 220,
   "perf": 6,
   "notch": 10,
+  "paper": 0.35,
   "seed": 4217
 }

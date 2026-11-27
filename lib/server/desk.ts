@@ -2,28 +2,25 @@
    The guest list holds emails, so it is only ever read here, by the server, after the role check. */
 import { admin, asUser } from './supabase';
 import { allowed, type Desk, type Need } from './roles';
-import { EVENT_ID, ensurePass, ensurePerson, linkFor, norm, passOf } from './people';
+import { EVENT_ID, ensurePass, ensurePerson, norm, passOf } from './people';
 import { checkIn, uncheck } from './room';
 import { send } from './mail';
 import { forget } from './snapshot';
 import { refreshPicture } from './entries';
-import { whenLocal } from './time';
 import { parseGuests, type Parsed } from '@/lib/luma';
 import { approvedGuests, lumaOn } from './luma';
 import { emailOK, slugOf } from '@/lib/forms';
 import { mailDriver } from './mail';
-import { devMail, mailAllowList, mailHeld } from './env';
+import { devMail, mailAllowList, mailHeld, siteUrl } from './env';
 import { dayGate, forgetGate } from './gate';
 import { replaceEditorKey } from './repo-key';
 import { applyGuest, type CityLite } from './registrations';
 import type { DeskState, DeskGuest, DeskEntry, DeskCity, DeskPerson, DeskOutbox, DeskLog, DeskScene, DeskEvent } from '@/lib/event/desk';
 import { events, eventById, forgetEvents } from './events';
-import { makeEvent, makePlace, removePlace, offsetIn, roomCode, zoneOK } from './places';
+import { makeEvent, makePlace, removePlace, offsetIn, zoneOK } from './places';
 import { calendarEvents } from './luma';
-import { teamCode } from '@/lib/team';
 import { formatProblem, formatRow, publicVotes, rankValue, ranked, PRESETS, type Format } from '@/lib/event/format';
 import { EVENT } from '@/lib/day-data';
-import { BASE } from '@/lib/routes';
 const EVENT_DAY = EVENT.year + '-12-' + String(EVENT.day).padStart(2, '0');
 
 type Row = Record<string, unknown>;
@@ -40,7 +37,7 @@ function cityOf(r: Row): DeskCity {
     id: r.id as string, event: r.event as string, prize: (r.prize as string) || '', name: r.name as string, offset: r.offset_min as number, zone: r.zone as string, venue: (r.venue as string) || '', luma: (r.luma_url as string) || '', lumaEvent: (r.luma_event_id as string) || '', editor: (r.editor_name as string) || '',
     planned: ms(r.planned_start)!, buildMin: r.build_min as number, voteAfter: r.vote_after as number,
     buildStart: ms(r.build_start), buildEnd: ms(r.build_end), voteEnd: ms(r.vote_end),
-    roomCode: (r.room_code as string) || '', submissionsPaused: !!r.submissions_paused, votingPaused: !!r.voting_paused,
+    submissionsPaused: !!r.submissions_paused, votingPaused: !!r.voting_paused,
   };
 }
 
@@ -176,8 +173,7 @@ export async function deskState(d: Desk, want: { event?: string | null; city?: s
     const signedIn = await db.from('passes').select('people!inner(auth_user)', { count: 'exact', head: true }).eq('city', cur).not('people.auth_user', 'is', null);
     const inRoom = await db.from('passes').select('id', { count: 'exact', head: true }).eq('city', cur).not('checked_in_at', 'is', null);
     const editors = await db.from('passes').select('id', { count: 'exact', head: true }).eq('city', cur).not('editor_seen_at', 'is', null);
-    const unsent = await db.from('passes').select('id', { count: 'exact', head: true }).eq('city', cur).is('sent_at', null);
-    state.counts = { listed: listed || 0, opened: opened || 0, signedIn: signedIn.count || 0, inRoom: inRoom.count || 0, entries: state.entries.filter((e) => !e.hidden).length, votes: state.entries.reduce((a, e) => a + publicVotes(e), 0), editors: editors.count || 0, unsent: unsent.count || 0 };
+    state.counts = { listed: listed || 0, opened: opened || 0, signedIn: signedIn.count || 0, inRoom: inRoom.count || 0, entries: state.entries.filter((e) => !e.hidden).length, votes: state.entries.reduce((a, e) => a + publicVotes(e), 0), editors: editors.count || 0 };
   }
   if (judge) {
     if (ev.f.judging === 'scores') {
@@ -192,19 +188,15 @@ export async function deskState(d: Desk, want: { event?: string | null; city?: s
     }
   }
   if (host) {
-    const [{ data: guests }, { data: scenes }, { data: crews }] = await Promise.all([
+    const [{ data: guests }, { data: scenes }] = await Promise.all([
       db.from('passes').select('id, source, sent_at, opened_at, created_at, checked_in_at, checked_in_how, list_email, editor_seen_at, people!passes_person_fkey(id, email, name, auth_user, entries!entries_owner_fkey(no, event))').eq('city', cur).order('created_at', { ascending: false }).limit(5000),
       db.from('scenes').select('id, position, kind, title, data, notes, hidden, event').eq('city', cur).order('position'),
-      /* who is in which team here, and whether the team has an entry */
-      db.from('team_members').select('person, teams!inner(code, city, entries(id))').eq('teams.city', cur).limit(5000),
     ]);
-    const crew = new Map<string, { code: string; entry: boolean }>();
-    (crews || []).forEach((m: Row) => { const t = m.teams as Row; crew.set(m.person as string, { code: teamCode(t.code as string), entry: ([] as Row[]).concat((t.entries as Row[] | Row | null) || []).length > 0 }); });
     state.guests = (guests || []).map((g: Row): DeskGuest => {
       const p = g.people as Row, en = ([] as Row[]).concat((p.entries as Row[] | Row | null) || []).filter((x) => x.event === ev.id);
       const listed = String(g.list_email || '');
-      return { person: p.id as string, email: p.email as string, name: (p.name as string) || '', source: g.source as DeskGuest['source'], sent: ms(g.sent_at), opened: ms(g.opened_at), signedIn: !!p.auth_user, inRoom: ms(g.checked_in_at), inRoomHow: (g.checked_in_how as DeskGuest['inRoomHow']) || null, entry: en.length > 0 || !!crew.get(p.id as string)?.entry,
-        listedAs: listed && listed !== p.email ? listed : null, editor: ms(g.editor_seen_at), team: crew.get(p.id as string)?.code || null };
+      return { person: p.id as string, email: p.email as string, name: (p.name as string) || '', source: g.source as DeskGuest['source'], sent: ms(g.sent_at), opened: ms(g.opened_at), signedIn: !!p.auth_user, inRoom: ms(g.checked_in_at), inRoomHow: (g.checked_in_how as DeskGuest['inRoomHow']) || null, entry: en.length > 0,
+        listedAs: listed && listed !== p.email ? listed : null, editor: ms(g.editor_seen_at) };
     });
     state.scenes = (scenes || []) as DeskScene[];
     if (!isAdmin) {
@@ -227,9 +219,9 @@ const outOf = (codes: boolean) => (o: Row): DeskOutbox => ({ id: o.id as string,
 type Act = { action: string; city?: string | null; [k: string]: unknown };
 export type ActResult = { ok: true; [k: string]: unknown } | { ok: false; error: string; status?: number };
 const NEEDS: Record<string, Need> = {
-  'import.preview': 'host', 'import.commit': 'host', 'guest.add': 'host', 'guest.again': 'host', 'guest.link': 'host', 'guest.remove': 'host', 'guest.in': 'host', 'guest.out': 'host',
-  'guest.editor': 'host', 'guest.unsent': 'host',
-  'entry.hide': 'host', 'entry.show': 'host', 'tie.settle': 'host', 'tie.clear': 'host', 'entry.picture': 'host', 'door.code': 'host', 'clock.add': 'host', 'clock.start': 'host',
+  'import.preview': 'host', 'import.commit': 'host', 'guest.add': 'host', 'guest.remove': 'host', 'guest.in': 'host', 'guest.out': 'host',
+  'guest.editor': 'host',
+  'entry.hide': 'host', 'entry.show': 'host', 'tie.settle': 'host', 'tie.clear': 'host', 'entry.picture': 'host', 'clock.add': 'host', 'clock.start': 'host',
   'scene.add': 'host', 'scene.update': 'host', 'scene.move': 'host', 'scene.remove': 'host',
   'judge.vote': 'judge-or-host', 'judge.score': 'judge-or-host',
   'import.all': 'admin', 'clock.end': 'admin', 'city.update': 'admin', 'role.add': 'admin', 'role.remove': 'admin', 'role.again': 'admin', 'switch': 'admin',
@@ -237,12 +229,6 @@ const NEEDS: Record<string, Need> = {
   'gate.set': 'super', 'event.create': 'super', 'event.archive': 'super',
 };
 
-async function passLink(person: string, req: Request, event: string): Promise<{ link: string; email: string; name: string | null; city: string } | null> {
-  const { data } = await admin().from('passes').select('id, key_version, city, people!passes_person_fkey(email, name)').eq('event', event).eq('person', person).maybeSingle();
-  if (!data) return null;
-  const p = data.people as unknown as Row;
-  return { link: linkFor(data as { id: string; key_version: number }, req), email: p.email as string, name: (p.name as string) || null, city: data.city as string };
-}
 async function cityRow(id: string): Promise<Row | null> { const { data } = await admin().from('cities').select('*').eq('id', id).maybeSingle(); return data as Row | null; }
 
 export async function deskAct(d: Desk, a: Act, req: Request): Promise<ActResult> {
@@ -296,22 +282,17 @@ export async function deskAct(d: Desk, a: Act, req: Request): Promise<ActResult>
       const fresh = parsed.guests.filter((g) => !here.has(g.email));
       const preview = { fresh: fresh.length, already: here.size, elsewhere: fresh.filter((g) => elsewhere.has(g.email)).length, bad: parsed.bad.length, badList: parsed.bad.slice(0, 5), skipped: parsed.skipped, repeats: parsed.repeats };
       if (a.action === 'import.preview') return { ok: true, preview };
-      const c = await cityRow(city!), sendNow = a.send === true;
-      let added = 0, sent = 0;
+      let added = 0;
       for (const g of fresh) {
         /* on another city's list: a CSV never moves it; a Luma sync moves it only when this registration is the later one */
         if (elsewhere.has(g.email) && !(a.from === 'luma' && g.registeredAt)) continue;
         const p = await ensurePerson(g.email, g.name);
-        const { pass, made, kept } = await ensurePass(p, city!, 'luma', d.person.id, { status: 'approved', guestId: g.id, registeredAt: g.registeredAt });
+        const { made, kept } = await ensurePass(p, city!, 'luma', d.person.id, { status: 'approved', guestId: g.id, registeredAt: g.registeredAt });
         if (kept === 'held') await log(d, 'second registration under another email; place kept', city, p.id);
         if (made) added++;
-        if (sendNow && made) {
-          const s = await send(p.email, 'link', { city: c?.name as string, when: whenLocal(c?.planned_start as string, c?.offset_min as number), link: linkFor(pass, req), name: p.name || undefined }, city);
-          if (s.status === 'sent') { await db.from('passes').update({ sent_at: new Date().toISOString() }).eq('id', pass.id); sent++; }
-        }
       }
-      await log(d, 'import guests', city, null, { added, sent, ...preview });
-      return { ok: true, added, sent, preview };
+      await log(d, 'import guests', city, null, { added, ...preview });
+      return { ok: true, added, preview };
     }
     case 'guest.add': {
       const email = norm(String(a.email || '')), name = String(a.name || '').trim().slice(0, 60) || null;
@@ -320,31 +301,11 @@ export async function deskAct(d: Desk, a: Act, req: Request): Promise<ActResult>
       const { pass, moved, kept } = await ensurePass(p, city!, 'host', d.person.id);
       if (kept === 'held') return { ok: false, error: email + ' already holds a place listed under another email (in ' + ((await cityRow(pass.city))?.name || pass.city) + '). Remove that one first.' };
       if (kept === 'checked-in') return { ok: false, error: email + ' is already checked in at ' + ((await cityRow(pass.city))?.name || pass.city) + ', so the place was not moved.' };
-      const c = await cityRow(city!);
-      if (a.send !== false) {
-        const s = await send(p.email, 'link', { city: c?.name as string, when: whenLocal(c?.planned_start as string, c?.offset_min as number), link: linkFor(pass, req), name: p.name || undefined }, city);
-        if (s.status === 'sent') await db.from('passes').update({ sent_at: new Date().toISOString() }).eq('id', pass.id);
-      }
       await log(d, 'add guest', city, p.id, { moved });
       return { ok: true, moved };
     }
-    case 'guest.again': {
-      const l = await passLink(String(a.person || ''), req, event!);
-      if (!l || l.city !== city) return { ok: false, error: 'That person is not on this city’s list.', status: 404 };
-      const c = await cityRow(city!);
-      const s = await send(l.email, 'again', { city: c?.name as string, link: l.link, name: l.name || undefined }, city);
-      if (s.status === 'sent') await db.from('passes').update({ sent_at: new Date().toISOString() }).eq('event', event!).eq('person', String(a.person));
-      await log(d, 'send link again', city, String(a.person));
-      return { ok: true, status: s.status };
-    }
-    case 'guest.link': {
-      const l = await passLink(String(a.person || ''), req, event!);
-      if (!l || l.city !== city) return { ok: false, error: 'That person is not on this city’s list.', status: 404 };
-      await log(d, 'copy link', city, String(a.person));
-      return { ok: true, link: l.link };
-    }
-    /* a host marks a guest as in the room by hand (a phone that will not load must not lock a builder out), or takes
-       the mark back; both go in the log (lib/server/room.ts) */
+    /* the door: a host checks a guest in (the only way in now; owner, 2026-11-25), or takes it back; both go in the
+       log (lib/server/room.ts) */
     case 'guest.in':
     case 'guest.out': {
       const pass = await passOf(String(a.person || ''), event!);
@@ -357,31 +318,17 @@ export async function deskAct(d: Desk, a: Act, req: Request): Promise<ActResult>
       const person = String(a.person || '');
       const { data: pass } = await db.from('passes').select('id, city').eq('event', event!).eq('person', person).maybeSingle();
       if (!pass || pass.city !== city) return { ok: false, error: 'That person is not on this city’s list.', status: 404 };
-      /* off the list, and their links end; their entry (if any) stays for the host to hide */
+      /* off the list, and their editor line ends; their entry (if any) stays for the host to hide */
       await db.from('passes').delete().eq('id', pass.id);
       await log(d, 'remove guest', city, person);
       return { ok: true };
     }
-    /* a host ends one person's editor line (a lost laptop, a line posted somewhere); their emailed link still works */
+    /* a host ends one person's editor line (a lost laptop, a line posted somewhere); they copy a new one from their account */
     case 'guest.editor': {
       const pass = await passOf(String(a.person || ''), event!);
       if (!pass || pass.city !== city) return { ok: false, error: 'That person is not on this city’s list.', status: 404 };
       await replaceEditorKey(pass, 'editor line ended at the desk', d.person.id);
       return { ok: true };
-    }
-    /* the places whose link has not gone out yet: send each its email now */
-    case 'guest.unsent': {
-      const c = await cityRow(city!);
-      const { data: rows } = await db.from('passes').select('id, key_version, list_email, people!passes_person_fkey(name, email)').eq('city', city!).eq('event', event!).is('sent_at', null).limit(2000);
-      let sent = 0;
-      for (const r of (rows || []) as Row[]) {
-        const p = r.people as Row | null;
-        /* to the account holding the place: its link signs in as that account */
-        const s = await send(String(p?.email || r.list_email), 'link', { city: c?.name as string, when: whenLocal(c?.planned_start as string, c?.offset_min as number), link: linkFor(r as { id: string; key_version: number }, req), name: (p?.name as string) || undefined }, city);
-        if (s.status === 'sent') { await db.from('passes').update({ sent_at: new Date().toISOString() }).eq('id', r.id); sent++; }
-      }
-      await log(d, 'send unsent links', city, null, { sent });
-      return { ok: true, sent };
     }
     /* every city with a Luma event, synced at once: the same rules as the webhook (the later registration wins) */
     case 'import.all': {
@@ -394,9 +341,8 @@ export async function deskAct(d: Desk, a: Act, req: Request): Promise<ActResult>
           let added = 0;
           for (const g of guests) {
             if (!emailOK(g.email)) continue;
-            const r = await applyGuest(cr, { email: g.email, name: g.name, id: g.id, status: 'approved', registeredAt: g.registeredAt }, 'sync', { by: d.person.id, mail: a.send === true, base: new URL(req.url).origin });
+            const r = await applyGuest(cr, { email: g.email, name: g.name, id: g.id, status: 'approved', registeredAt: g.registeredAt }, 'sync', { by: d.person.id });
             if (r.result === 'made' || r.result === 'moved') added++;
-            if (r.mail) await r.mail();
           }
           per.push({ city: cr.name, added });
         } catch (e) { per.push({ city: cr.name, added: 0, error: e instanceof Error ? e.message : 'Luma did not answer.' }); }
@@ -429,13 +375,6 @@ export async function deskAct(d: Desk, a: Act, req: Request): Promise<ActResult>
       if (!r.ok) return { ok: false, error: r.error, status: 422 };
       await log(d, 'refresh picture', city, data.id);
       return { ok: true };
-    }
-    case 'door.code': {
-      const c = await cityRow(city!); let code = roomCode();
-      while (code === c?.room_code) code = roomCode();
-      await db.from('cities').update({ room_code: code, room_code_prev: c?.room_code || null, room_code_at: new Date().toISOString() }).eq('id', city!);
-      await log(d, 'new room code', city);
-      return { ok: true, code };
     }
     case 'clock.start':
     case 'clock.add':
@@ -517,7 +456,7 @@ export async function deskAct(d: Desk, a: Act, req: Request): Promise<ActResult>
       const budget = kind === 'judge' ? Math.max(1, Math.min(1000, Math.trunc(Number(a.budget) || evRec?.f.judgeBudget || 50))) : 50;
       const { error } = await db.from('roles').insert({ person: p.id, role: kind, event: kind === 'super' ? null : event, city: rc, budget, added_by: d.person.id });
       if (error) return { ok: false, error: error.code === '23505' ? email + ' already has that role.' : 'The role was not added. Try again.' };
-      const cn = rc ? ((await cityRow(rc))?.name as string) : undefined, base = new URL(req.url).origin + BASE;
+      const cn = rc ? ((await cityRow(rc))?.name as string) : undefined, base = siteUrl(req);
       const link = base + '/desk' + (kind === 'super' ? '' : '?event=' + event + (rc ? '&city=' + rc : ''));
       await send(p.email, 'role', { role: (kind === 'admin' ? 'host' : kind) as 'host' | 'judge' | 'super', city: cn || (kind === 'super' ? undefined : evRec?.short), name: p.name || undefined, link }, rc);
       await log(d, 'add ' + kind, rc, p.id, {}, kind === 'super' ? null : event);
@@ -534,7 +473,7 @@ export async function deskAct(d: Desk, a: Act, req: Request): Promise<ActResult>
     case 'role.again': {
       const { data } = await db.from('roles').select('role, event, city, people!roles_person_fkey(email, name)').eq('id', String(a.id)).maybeSingle();
       if (!data) return { ok: false, error: 'That role is gone.', status: 404 };
-      const p = data.people as unknown as Row, rc = data.city as string | null, base = new URL(req.url).origin + BASE;
+      const p = data.people as unknown as Row, rc = data.city as string | null, base = siteUrl(req);
       const link = base + '/desk' + (data.event ? '?event=' + data.event + (rc ? '&city=' + rc : '') : '');
       await send(p.email as string, 'role', { role: (data.role === 'admin' ? 'host' : data.role) as 'host', city: rc ? ((await cityRow(rc))?.name as string) : evRec?.short, name: (p.name as string) || undefined, link }, rc);
       return { ok: true };
@@ -658,7 +597,7 @@ export async function deskAct(d: Desk, a: Act, req: Request): Promise<ActResult>
     case 'outbox.retry': {
       const { data: o } = await db.from('outbox').select('to_email, template, city, data').eq('id', String(a.id)).maybeSingle();
       if (!o) return { ok: false, error: 'That email is gone.', status: 404 };
-      const s = await send(o.to_email as string, o.template as 'link', o.data as Record<string, string>, o.city as string | null);
+      const s = await send(o.to_email as string, o.template as 'code', o.data as Record<string, string>, o.city as string | null);
       return { ok: true, status: s.status };
     }
   }

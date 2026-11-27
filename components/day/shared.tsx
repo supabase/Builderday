@@ -9,7 +9,7 @@ import { countdown } from '@/components/board/day-model';
 export { dayOf } from './day';
 import { usePref } from '@/components/board/prefs';
 
-/* What the day pages and their labs share: the day (day.ts), the clock, the screen kit as saved in /lab/screen
+/* What the day pages share: the day (day.ts), the clock, the screen kit as saved in saved/screen.config.json
    (with the visitor's Screen switch), and the segment countdown that ticks on the clock's own step. */
 
 /* the clock: it starts at the minute asked for and, when live, runs at `speed` seconds a second */

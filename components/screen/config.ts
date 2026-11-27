@@ -1,4 +1,4 @@
-/* The screen kit's numbers, tuned in /lab/screen and saved to saved/screen.config.json. Depth is the open question
+/* The screen kit's numbers and saved to saved/screen.config.json. Depth is the open question
    of the round: which text sits under the screen lines.
    - big: the lines, the grain and the dark corners are on the ground; only big type (city names, headlines) is under
      the lines too, with the red and blue edges. Rows, counts, times and buttons stay crisp, over the lines.
@@ -36,9 +36,6 @@ export function clampScreen(c: Partial<ScreenCfg> | Record<string, unknown>): Sc
   }
   return o as ScreenCfg;
 }
-
-/* the wheel's ground and the site's, as sRGB */
-export const WHEEL_GROUND = '#0c0d0d';
 
 /* the values as custom properties, for <html> */
 export function screenVars(c: ScreenCfg): Record<string, string> {

@@ -2,12 +2,10 @@
    event on the calendar; a new guest fires both, and a delivery can come twice, so everything here is safe to run
    again. Read 2026-11-18 (help.luma.com/p/webhooks): the header Webhook-Signature is "t=<unix seconds>,v1=<hex>", the
    hex is HMAC-SHA256 over "<t>.<raw body>" with the webhook's secret as given (whsec_…), Webhook-Id names the
-   delivery, and Luma wants an answer inside five seconds. So: check the signature and the time, write the rows,
-   answer, and send the email after the answer (it is already a row in the outbox if the send fails). */
-import { after } from 'next/server';
+   delivery, and Luma wants an answer inside five seconds. So: check the signature and the time, write the rows, answer.
+   No email goes out: the person signs in with Supabase and finds their place. */
 import { offline } from '@/lib/server/http';
 import { admin } from '@/lib/server/supabase';
-import { siteUrl } from '@/lib/server/env';
 import { applyGuest, cityByLumaEvent } from '@/lib/server/registrations';
 import { emailOf, nameOf, verifyHook, type LumaGuest } from '@/lib/server/luma';
 
@@ -35,8 +33,7 @@ export async function POST(req: Request) {
   }
   const g = msg.data || {}, eventId = String(g.event?.id || g.event?.api_id || g.event_id || '');
   const city = eventId ? await cityByLumaEvent(eventId) : null;
-  const a = city ? await applyGuest(city, { email: emailOf(g), name: nameOf(g), id: g.id || g.api_id || null, status: String(g.approval_status || ''), registeredAt: g.registered_at || null }, 'hook', { base: siteUrl(req) }) : null;
+  if (city) await applyGuest(city, { email: emailOf(g), name: nameOf(g), id: g.id || g.api_id || null, status: String(g.approval_status || ''), registeredAt: g.registered_at || null }, 'hook');
   await db.from('log').insert({ what: 'luma hook', city: city?.id || null, target: hookId, data: { type: msg.type, event: eventId.slice(0, 80), status: g.approval_status || null, known: !!city } });
-  if (a?.mail) after(a.mail);
   return plain(200);
 }

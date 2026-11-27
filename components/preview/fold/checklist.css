@@ -1,0 +1,187 @@
+/* Get ready as a checklist (checklist.tsx). Class prefix rd-. The fold's tokens (pf-*), the wheel's faces; green means
+   signed in, connected, ready. */
+.rd { --rd-green: #3ecf8e; --rd-panel: #101111; --rd-ground: var(--pf-ground, var(--pf-paper, #0b0c0c)); display: grid; gap: 0; }
+.rd > .pf-h { margin-bottom: 20px; }
+/* the lede as every section's (fold.css .pf-lede) */
+.rd h3 { margin: 0; font: 500 clamp(22px, 2vw, 28px)/1.1 var(--wh-sans); letter-spacing: -0.03em; color: var(--pf-ink); text-wrap: balance; transition: color var(--dur-slide, 220ms) var(--ease-out, ease-out); }
+.rd h4 { margin: 0; font: 500 18px/1.2 var(--wh-sans); letter-spacing: -0.02em; color: var(--pf-ink); }
+.rd p { margin: 0; font: 400 16px/1.5 var(--wh-sans); color: var(--pf-soft); text-wrap: pretty; max-width: 62ch; }
+.rd b { font-weight: 500; color: var(--pf-ink); }
+.rd q { color: var(--pf-ink); quotes: '“' '”'; }
+.rd .rd-lede { padding-bottom: var(--pf-lede-gap, 48px); max-width: 56ch; font-size: 19px; line-height: 1.45; color: var(--pf-soft); }
+@media (max-width: 560px) { .rd .rd-lede { font-size: 17px; } }
+.rd-vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* the steps: a hairline between each, the tick in its own column */
+.rd-steps { list-style: none; margin: 0; padding: 0; display: grid; border-top: 1px solid var(--pf-hair); }
+.rd-steps > li { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 16px; padding: 24px 0 28px; border-bottom: 1px solid var(--pf-hair); }
+.rd-step { display: grid; gap: 12px; min-width: 0; }
+/* the tick: an empty square, a ring while it is the next thing to do, filled green when done (over a short fade,
+   the moment the step is done: signing in, or the editor's first call) */
+.rd-tick { width: 14px; height: 14px; margin-top: 6px; box-sizing: border-box; border: 1px solid var(--pf-rule);
+  transition: background-color var(--dur-slide, 220ms) var(--ease-out, ease-out), border-color var(--dur-slide, 220ms) var(--ease-out, ease-out); }
+.rd-steps li[data-s='now'] .rd-tick { border-color: var(--pf-ink); }
+.rd-steps li[data-s='done'] .rd-tick { border-color: var(--rd-green); background: var(--rd-green); box-shadow: inset 0 0 0 3px var(--rd-ground); }
+.rd-steps li[data-s='later'] h3 { color: var(--pf-soft); }
+
+/* Continue with Supabase: the site's square key, the mark in the brand greens */
+.rd-sb { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 18px; border: 1px solid #f4f4f2; background: #f4f4f2; color: #0b0c0c; font: 500 15px/1 var(--wh-sans); letter-spacing: -0.01em; cursor: pointer; justify-self: start; transition: background-color var(--dur-hover, 140ms) var(--ease-out, ease-out), scale var(--dur-hover, 140ms) var(--ease-out, ease-out); }
+.rd-sb:active { scale: 0.97; }
+.rd-sb:focus-visible { outline: 2px solid var(--rd-green); outline-offset: 3px; }
+@media (hover: hover) and (pointer: fine) { .rd-sb:hover { background: #fff; } }
+.rd-sb-mark { display: inline-grid; width: 16px; height: 17px; }
+.rd-sb-mark svg { width: 16px; height: 17px; }
+.rd-sb-mark svg path { fill: #249361; } .rd-sb-mark svg path + path { fill: #3ecf8e; }
+
+.rd .rd-who { max-width: none; }
+.rd-who b { overflow-wrap: anywhere; }
+.rd .rd-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; }
+/* the page's Register is always the light key (the hero's ticket, the ending's band): the one thing to do here too */
+.rd-key { display: inline-flex; align-items: center; min-height: 48px; padding: 0 18px; border: 1px solid #f4f4f2; background: #f4f4f2; color: #0b0c0c; font: 500 15px/1 var(--wh-sans); text-decoration: none; transition: background-color var(--dur-hover, 140ms) var(--ease-out, ease-out), scale var(--dur-hover, 140ms) var(--ease-out, ease-out); }
+@media (hover: hover) and (pointer: fine) { .rd-key:hover { background: #fff; } }
+.rd-key:active { scale: 0.97; }
+.rd-key:focus-visible { outline: 2px solid var(--pf-soft); outline-offset: 2px; }
+.rd-link { padding: 6px 0; min-height: 32px; border: 0; background: none; color: var(--pf-muted); font: 400 15px/1 var(--wh-sans); text-decoration: underline; text-decoration-color: var(--pf-rule); text-underline-offset: 3px; cursor: pointer; transition: color var(--dur-hover, 140ms) var(--ease-out, ease-out); }
+.rd-who .rd-link { padding: 0; min-height: 0; margin-left: 4px; font: inherit; }
+.rd-link:focus-visible { outline: 2px solid var(--pf-soft); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) { .rd-link:hover { color: var(--pf-ink); } }
+
+/* the two ways, at equal weight */
+.rd-ways { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 6px; align-items: stretch; }
+/* a column, so the browser's form sits at the foot of its card, level with the editor's live panel */
+.rd-way { display: flex; flex-direction: column; gap: 12px; padding: 18px; border: 1px solid var(--pf-hair); min-width: 0; transition: border-color var(--dur-slide, 220ms) var(--ease-out, ease-out); }
+.rd-way header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.rd-state { font: 500 11px/1 var(--wh-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--pf-muted); white-space: nowrap; transition: color var(--dur-slide, 220ms) var(--ease-out, ease-out); }
+.rd-way[data-ready] .rd-state { color: var(--rd-green); }
+@media (max-width: 860px) { .rd-ways { grid-template-columns: minmax(0, 1fr); } }
+/* the browser's form in small: label, then a placeholder on a dotted line, then the square key */
+.rd-form { margin-top: auto; display: grid; border: 1px solid var(--pf-hair); background: var(--rd-panel); font: 400 13px/1.3 var(--wh-mono); color: var(--pf-muted); user-select: none; }
+.rd-form > span { display: grid; grid-template-columns: 52px minmax(0, 1fr); align-items: baseline; gap: 12px; padding: 11px 16px; border-bottom: 1px dashed var(--pf-hair); }
+.rd-form b { font-weight: 400; color: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rd-form i { font-style: normal; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--pf-soft); }
+.rd-form > .rd-form-k { display: block; justify-self: end; margin: 8px; padding: 10px 14px; border: 0; background: #f4f4f2; color: #0b0c0c; font: 500 12px/1 var(--wh-mono); letter-spacing: 0.02em; }
+/* no line yet: a dashed cell where it will be */
+.rd .rd-off { padding: 14px 16px; border: 1px dashed var(--pf-rule); font-size: 14px; color: var(--pf-muted); max-width: none; }
+
+/* the editor line */
+.rd-line { display: grid; gap: 10px; min-width: 0; }
+.rd-eds { display: flex; flex-wrap: wrap; gap: 1px; border: 1px solid var(--pf-hair); background: var(--pf-hair); justify-self: start; max-width: 100%; }
+.rd-ed { position: relative; flex: 1 1 auto; justify-content: center; min-height: 36px; padding: 0 12px; border: 0; background: var(--rd-ground); color: var(--pf-muted); font: 500 12px/1 var(--wh-mono); letter-spacing: 0.02em; cursor: pointer; display: inline-flex; align-items: center; transition: color var(--dur-hover, 140ms) var(--ease-out, ease-out), background-color var(--dur-hover, 140ms) var(--ease-out, ease-out); }
+.rd-ed[aria-pressed='true'], .rd-ed-more[data-on] { background: #1b1c1c; color: var(--pf-ink); }
+.rd-ed:focus-visible, .rd-ed-more:has(select:focus-visible) { outline: 2px solid var(--pf-soft); outline-offset: -2px; }
+@media (hover: hover) and (pointer: fine) { .rd-ed:hover { color: var(--pf-ink); } }
+.rd-ed-more { padding: 0; }
+.rd-ed-more select { appearance: none; align-self: stretch; height: 100%; border: 0; background: none; color: inherit; font: inherit; padding: 0 26px 0 12px; cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%); background-size: 4px 4px; background-position: right 16px top 55%, right 12px top 55%; background-repeat: no-repeat; }
+.rd-ed-more select option { background: #0b0c0c; color: #f4f4f2; }
+.rd .rd-where { font-size: 14px; color: var(--pf-muted); }
+.rd-code { border: 1px solid var(--pf-hair); background: var(--rd-panel); min-width: 0; }
+.rd-code pre { margin: 0; padding: 14px 16px; overflow-x: auto; font: 400 13px/1.6 var(--wh-mono); color: var(--pf-soft); white-space: pre-wrap; overflow-wrap: anywhere; }
+.rd-tok { white-space: pre; }
+.rd-code-k { display: flex; justify-content: flex-end; align-items: center; gap: 16px; padding: 0 8px 8px 16px; }
+.rd-priv { margin-right: auto; font: 400 12px/1.3 var(--wh-mono); color: var(--pf-muted); }
+.rd-copy { display: inline-grid; place-items: center; min-height: 36px; padding: 0 14px; border: 1px solid var(--pf-rule); background: none; color: var(--pf-ink); font: 500 12px/1 var(--wh-mono); letter-spacing: 0.02em; cursor: pointer; transition: border-color var(--dur-hover, 140ms) var(--ease-out, ease-out), scale var(--dur-hover, 140ms) var(--ease-out, ease-out); }
+.rd-copy > span { grid-area: 1 / 1; visibility: hidden; text-align: center; }
+.rd-copy > span[data-on] { visibility: visible; }
+.rd-copy:active { scale: 0.97; }
+.rd-copy:focus-visible { outline: 2px solid var(--pf-soft); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) { .rd-copy:hover { border-color: var(--pf-ink); } }
+
+/* the practice call, live: its three states share one cell, the tallest holding the height, so nothing under it moves */
+.rd-live-t { display: grid; }
+.rd-live-t > span { grid-area: 1 / 1; visibility: hidden; }
+.rd-live-t > span[data-on] { visibility: visible; }
+.rd-live { display: grid; grid-template-columns: 8px minmax(0, 1fr); align-items: start; gap: 4px 10px; box-sizing: border-box; padding: 12px 14px; border: 1px solid var(--pf-hair); font: 400 14px/1.5 var(--wh-sans); color: var(--pf-soft); transition: border-color var(--dur-slide, 220ms) var(--ease-out, ease-out); }
+.rd-live[data-s='on'] { border-color: color-mix(in oklch, var(--rd-green) 50%, transparent); }
+.rd-dot { width: 8px; height: 8px; margin-top: 7px; border-radius: 50%; background: var(--pf-rule); }
+.rd-live[data-s='wait'] .rd-dot { background: var(--pf-ink); }
+.rd-live[data-s='on'] .rd-dot { background: var(--rd-green); border-radius: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .rd-live[data-s='wait'] .rd-dot { animation: rd-wait 1.4s ease-in-out infinite; }
+  @keyframes rd-wait { 50% { opacity: 0.25; } }
+}
+
+.rd-rules { list-style: none; margin: 0; padding: 0; display: grid; }
+.rd-rules li { position: relative; padding: 10px 0 10px 22px; border-top: 1px solid var(--pf-hair); font: 400 16px/1.4 var(--wh-sans); color: var(--pf-soft); }
+.rd-rules li::before { content: ''; position: absolute; left: 2px; top: 21px; width: 8px; height: 1px; background: var(--pf-rule); }
+
+/* touch: every control a 44px target, no double-tap zoom */
+.rd button, .rd select, .rd a { touch-action: manipulation; }
+@media (pointer: coarse) {
+  .rd-link { min-height: 44px; display: inline-flex; align-items: center; }
+  .rd-ed, .rd-copy { min-height: 44px; }
+  .rd-ed-more select { font-size: 16px; }
+  .rd-who .rd-link { padding: 12px 0; margin: -12px 0 -12px 4px; }
+}
+/* on a phone: the tick beside the heading, the body the full width */
+@media (max-width: 600px) {
+  .rd-steps > li { grid-template-columns: minmax(0, 1fr); position: relative; }
+  .rd-steps .rd-tick { position: absolute; left: 0; top: 24px; }
+  .rd-step h3 { padding-left: 26px; }
+  .rd-way { padding: 16px; }
+  .rd-code-k { flex-wrap: wrap; }
+}
+@media (prefers-reduced-motion: reduce) { .rd-tick, .rd h3, .rd-state, .rd-way, .rd-live { transition: none; } }
+/* the dashed cell fills the slot the line will take, so the card keeps its height across states */
+.rd-way > .rd-off { flex: 1; display: grid; place-content: center; text-align: center; min-height: 120px; }
+
+/* the tools to have ready: framed cells two across, the open key and the tick on one row at the foot of each */
+.rd-tools { list-style: none; margin: 6px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.rd-tool { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 18px; border: 1px solid var(--pf-hair); transition: border-color var(--dur-slide, 220ms) var(--ease-out, ease-out); }
+.rd-tool > p { font-size: 15px; }
+.rd-tool[data-done] { border-color: color-mix(in oklch, var(--rd-green) 50%, transparent); }
+.rd-tool-k { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-top: auto; padding-top: 6px; }
+.rd-mark { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 4px; border: 0; background: none; color: var(--pf-muted); font: 400 15px/1 var(--wh-sans); cursor: pointer; transition: color var(--dur-hover, 140ms) var(--ease-out, ease-out); touch-action: manipulation; }
+.rd-mark-b { width: 14px; height: 14px; box-sizing: border-box; border: 1px solid var(--pf-rule); transition: background-color var(--dur-slide, 220ms) var(--ease-out, ease-out), border-color var(--dur-slide, 220ms) var(--ease-out, ease-out); }
+.rd-mark[aria-pressed='true'] { color: var(--pf-ink); }
+.rd-mark[aria-pressed='true'] .rd-mark-b { border-color: var(--rd-green); background: var(--rd-green); box-shadow: inset 0 0 0 3px var(--rd-ground); }
+.rd-mark:focus-visible { outline: 2px solid var(--pf-soft); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) { .rd-mark:hover { color: var(--pf-ink); } }
+@media (max-width: 860px) { .rd-tools { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 600px) { .rd-tool { padding: 16px; } }
+/* "Bring" under the day's rules: the same mono label as the other small labels */
+.rd .rd-ex-k { margin-top: 8px; font: 500 12px/1.2 var(--wh-mono); letter-spacing: 0.02em; color: var(--pf-muted); }
+@media (prefers-reduced-motion: reduce) { .rd-tool, .rd-mark, .rd-mark-b { transition: none; } }
+
+/* Get ready, short (short.tsx): two steps, then the head start folded under one row. */
+.rd-short .rd-steps > li { padding: 22px 0 24px; }
+.rd-more { border-bottom: 1px solid var(--pf-hair); }
+.rd-more > summary { display: grid; grid-template-columns: 28px auto 1fr 16px; align-items: center; gap: 16px; min-height: 64px; cursor: pointer; list-style: none; color: var(--pf-soft); transition: color var(--dur-hover, 140ms) var(--ease-out, ease-out); }
+.rd-more > summary::-webkit-details-marker { display: none; }
+.rd-more > summary:focus-visible { outline: 2px solid var(--pf-soft); outline-offset: -2px; }
+.rd-more-t { grid-column: 2; font: 500 clamp(18px, 1.6vw, 22px)/1.1 var(--wh-sans); letter-spacing: -0.02em; }
+.rd-more-k { font: 500 11px/1 var(--wh-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--pf-muted); }
+/* a plus that loses its upright when open */
+.rd-more-x { position: relative; width: 12px; height: 12px; justify-self: end; }
+.rd-more-x::before, .rd-more-x::after { content: ''; position: absolute; left: 0; top: 50%; width: 12px; height: 1px; background: currentColor; }
+.rd-more-x::after { rotate: 90deg; transition: rotate var(--dur-panel, 280ms) var(--ease-out, ease-out); }
+.rd-more[open]:not([data-closing]) .rd-more-x::after { rotate: 0deg; }
+/* the body clips only while its height eases (script), so focus rings show at rest */
+.rd-more-b[data-moving] { overflow: hidden; }
+@media (hover: hover) and (pointer: fine) { .rd-more > summary:hover { color: var(--pf-ink); } }
+.rd-extra { list-style: none; margin: 0; padding: 0 0 12px 44px; display: grid; }
+.rd-extra > li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px 32px; padding: 18px 0; border-top: 1px dashed var(--pf-hair); }
+.rd-extra > li > div:first-child { display: grid; gap: 4px; min-width: 0; }
+.rd-extra p { font-size: 15px; }
+.rd-extra .rd-sb { min-height: 44px; background: none; border-color: var(--pf-rule); color: var(--pf-ink); transition: border-color var(--dur-hover, 140ms) var(--ease-out, ease-out), scale var(--dur-hover, 140ms) var(--ease-out, ease-out); }
+@media (hover: hover) and (pointer: fine) { .rd-extra .rd-sb:hover { background: none; border-color: var(--pf-ink); } }
+.rd .rd-links { display: flex; flex-wrap: wrap; gap: 4px 20px; }
+.rd-links a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: var(--pf-ink); font: 500 15px/1 var(--wh-sans); text-decoration: none; }
+/* only the name is underlined; the arrow stands clear of the line */
+.rd-links-t { text-decoration: underline; text-decoration-thickness: 1px; text-decoration-color: var(--pf-rule); text-underline-offset: 4px; transition: text-decoration-color var(--dur-hover, 140ms) var(--ease-out, ease-out); }
+.rd-away { flex: none; width: 10px; height: 10px; color: var(--pf-muted); transition: translate var(--dur-hover, 140ms) var(--ease-out, ease-out), color var(--dur-hover, 140ms) var(--ease-out, ease-out); }
+.rd-key .rd-away { margin-left: 8px; color: currentColor; }
+.rd-links a:focus-visible { outline: 2px solid var(--pf-soft); outline-offset: 2px; }
+/* on hover the line comes up to full ink and the arrow leans a pixel the way it points */
+@media (hover: hover) and (pointer: fine) { .rd-links a:hover .rd-links-t { text-decoration-color: var(--pf-ink); } .rd-links a:hover .rd-away { translate: 1px -1px; color: var(--pf-ink); } .rd-key:hover .rd-away { translate: 1px -1px; } }
+/* the editor's line takes the full row under its words */
+.rd-extra > .rd-extra-ed { grid-template-columns: minmax(0, 1fr); }
+.rd-extra-line { display: grid; gap: 12px; max-width: 760px; min-width: 0; }
+@media (max-width: 600px) {
+  .rd-more > summary { grid-template-columns: auto 1fr 16px; }
+  .rd-more-t { grid-column: 1; }
+  .rd-extra { padding-left: 0; }
+  .rd-extra > li { grid-template-columns: minmax(0, 1fr); }
+  .rd-extra .rd-sb { justify-self: start; }
+}
+@media (prefers-reduced-motion: reduce) { .rd-more > summary, .rd-more-x::after, .rd-links-t, .rd-away { transition: none; } }
