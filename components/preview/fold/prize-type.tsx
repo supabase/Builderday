@@ -14,11 +14,13 @@ import './prize-type.css';
 const G = PRIZE_SHEET.global, C = PRIZE_SHEET.city;
 const ORD = ['1st', '2nd', '3rd'];
 
-type Line = { rank: string; place: string; green?: boolean; thing: string; spec: string | null; plus: string };
-const GLOBAL: Line[] = G.map((g, i) => ({ rank: 'g' + g.place, place: 'Global ' + ORD[i], green: i === 0, thing: g.thing!, spec: specLine(g), plus: '+ ' + credits(g) }));
+/* plus: the amount (set in ink, so the credits read at a glance) and the words after it */
+type Line = { rank: string; place: string; green?: boolean; thing: string; spec: string | null; plus: [string, string] };
+const cut = (s: string): [string, string] => { const k = s.indexOf(' '); return [s.slice(0, k), s.slice(k)]; };
+const GLOBAL: Line[] = G.map((g, i) => ({ rank: 'g' + g.place, place: 'Global ' + ORD[i], green: i === 0, thing: g.thing!, spec: specLine(g), plus: cut(credits(g)) }));
 const CITY: Line[] = [
-  { rank: 'c1', place: '1st in the city', green: true, thing: C.winner.thing!, spec: specLine(C.winner), plus: '+ ' + credits(C.winner) + ' and a swag box' },
-  { rank: 'c2', place: '2nd and 3rd in the city', thing: '$' + C.finalist.credits + ' in credits', spec: null, plus: 'Supabase credits and a swag box, each' },
+  { rank: 'c1', place: '1st in the city', green: true, thing: C.winner.thing!, spec: specLine(C.winner), plus: cut(credits(C.winner) + ' and a swag box') },
+  { rank: 'c2', place: '2nd and 3rd in the city', thing: '$' + C.finalist.credits + ' in credits', spec: null, plus: ['', 'Supabase credits and a swag box, each'] },
 ];
 
 export function FoldPrizeType({ cities, finalists, auto, ms, step }: { cities: number; finalists: number; auto: boolean; ms: number; step: number }) {
@@ -47,14 +49,14 @@ export function FoldPrizeType({ cities, finalists, auto, ms, step }: { cities: n
         <p className="pt-place" data-green={l.green ? '' : undefined}>{l.place}</p>
         {/* each part of the spec holds together: a narrow column breaks the line only at " · " */}
         {l.spec ? <p className="pt-spec">{l.spec.split(' · ').map((part, k) => <span key={k}>{k ? ' · ' : ''}<span className="pt-spec-p">{part}</span></span>)}</p> : null}
-        <p className="pt-plus">{l.plus}</p>
       </div>
+      <p className="pt-plus">{l.plus[0] ? <><span className="pt-plus-k">+</span> <b>{l.plus[0]}</b></> : null}{l.plus[1]}</p>
     </li>
   );
   return (
     <section ref={root} id="prizes" className="pf-part pt" data-part="prizes" aria-labelledby="prizes-h" style={{ ['--pt-ms' as string]: ms + 'ms', ['--pt-step' as string]: step + 'ms' }}>
       <h2 id="prizes-h" className="pf-h">Prizes</h2>
-      <p className="pt-lede">The top 3 in each of the {cities} cities win there, then go on to the global final: {PRIZE_SHEET.picker} picks 1st, 2nd and 3rd from all {finalists}, {PRIZE_SHEET.announce}.</p>
+      <p className="pt-lede">The top 3 in each of the {cities} cities win prizes there and go on to the global final. From all {finalists}, {PRIZE_SHEET.picker} picks 1st, 2nd and 3rd {PRIZE_SHEET.announce}. Every prize comes with Supabase credits.</p>
       <p className="pt-tier">The global final</p>
       <ol className="pt-list">{GLOBAL.map(line)}</ol>
       <p className="pt-tier">In each of the {cities} cities</p>

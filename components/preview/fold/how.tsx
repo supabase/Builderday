@@ -187,9 +187,9 @@ export function FoldHow({ cfg, cities, mine, finalists, buildMin, date }: { cfg:
 
   const you = cities[mine] ?? cities[0];
   const caps = [
-    `Start from nothing and build with Supabase. Submit before minute ${buildMin}, in your browser or from your editor.`,
-    `Voting is open from the start. The counts stay hidden until minute ${SHOW_MIN}, then the ranking is live until ${END_MIN}. The top 3 in your city go through.`,
-    `Every city sends its top 3, ${finalists} projects in all. The Supabase team picks the global 1st, 2nd and 3rd and announces them ${PRIZE_SHEET.announce}.`,
+    `Start from scratch and build something with Supabase. Submit it before minute ${buildMin}, in your browser or from your editor.`,
+    `People vote for the projects in your city they like best, from the first minute. Nobody sees the counts until minute ${SHOW_MIN}. From then on the ranking is live until ${END_MIN}. The 3 with the most votes go to the final.`,
+    `The top 3 from every city meet in the final, ${finalists} projects in all. The Supabase team picks the global 1st, 2nd and 3rd and announces them ${PRIZE_SHEET.announce}.`,
   ];
   const titles = ['Build', 'Compete for votes', 'Global final'];
   const hover = (i: number | null) => (e: PEvent) => { if (e.pointerType === 'mouse') setHl(i); };
@@ -197,7 +197,7 @@ export function FoldHow({ cfg, cities, mine, finalists, buildMin, date }: { cfg:
   return (
     <section id="how" className="pf-part pf-how" data-part="how" aria-labelledby="how-h" data-hl={hl ?? undefined} style={{ ['--how-step' as string]: cfg.howStep + 'ms' }}>
       <h2 id="how-h" className="pf-h">How Builder Day works</h2>
-      <p className="pf-lede">You get {buildMin} minutes in your city on {date}. Here is what happens in them.</p>
+      <p className="pf-lede">On {date} every city gets {buildMin} minutes. You build a project, people vote on it, and the top 3 in each city go to a global final.</p>
       <div ref={grid} className="how-grid" data-link={linkMode}>
         {[0, 1, 2].map((i) => (
           <figure key={i} ref={(el) => { figs.current[i] = el; }} className="how-fig" data-i={i} aria-label={titles[i]} onPointerEnter={hover(i)} onPointerLeave={hover(null)}>

@@ -237,7 +237,7 @@ button.pf-cell { font: inherit; cursor: pointer; }
 .pf-main { position: relative; z-index: 3; display: grid; gap: var(--pf-gap); padding-bottom: var(--pf-gap); background: var(--bd-ground); border-top: 1px solid var(--pf-hair); }
 .pf-main:not(:has(> .pf-bar)) { padding-top: var(--pf-first); }
 .pf[data-glass='today'] .pf-main { padding-top: var(--pf-gap); }
-@media (max-width: 640px) { .pf-main { --pf-gap: var(--pf-gap-phone); } }
+@media (max-width: 640px) { .pf-main { --pf-gap: var(--pf-gap-phone); } .pf-main:not(:has(> .pf-bar)) { padding-top: min(var(--pf-first), 72px); } }
 .pf-part, .pf-plain-lede { box-sizing: border-box; width: 100%; max-width: calc(var(--pf-width) + 2 * var(--pf-gutter)); margin: 0 auto; padding: 0 var(--pf-gutter); scroll-margin-top: calc(var(--pf-hdr) + 24px); }
 .pf-part > .ex, .pf-part .gr { scroll-margin-top: calc(var(--pf-hdr) + 24px); }
 /* a section heading stays a step under the first screen's headline at every size: that one grows with the room the

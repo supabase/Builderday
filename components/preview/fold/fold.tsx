@@ -356,7 +356,7 @@ export function FoldPage({ cfg, wheel, ours, forced, here = null, noGl, nowMs, e
   const WEEKDAY = new Date(EPOCH).toLocaleDateString('en-GB', { weekday: 'long', timeZone: 'UTC' });
   const rsvp = LUMA_LIVE && ours.regOpen ? 'RSVP now open' : 'RSVP opens soon';
   const dateLine = heroCfg.weekday ? `${WEEKDAY} ${ours.date}` : ours.date;
-  const head = <><h1><span className="sr-only">{EVENT.name}, {ours.date}: </span>{ours.buildMin}min Build Challenge<span className="sr-only">, in {n} cities</span></h1><p className="wh-lead-muted">Officially hosted by <SupabaseLockup className="wh-supabase" /></p></>;
+  const head = <><h1><span className="sr-only">{EVENT.name}, {ours.date}: </span>{ours.buildMin}min Build Challenge<span className="sr-only">, in {n} cities</span></h1><p className="wh-lead-muted">Hosted by <SupabaseLockup className="wh-supabase" /></p></>;
   const lead = column ? (heroCfg.words === 'tight'
     ? <div>{head}<p className="wh-lead-date">{dateLine}</p>{heroCfg.rsvp ? <p>{rsvp}</p> : null}</div>
     : <><div>{head}</div><div><p>{dateLine}</p>{heroCfg.rsvp ? <p>{rsvp}</p> : null}</div></>
