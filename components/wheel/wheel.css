@@ -324,9 +324,10 @@ button.wh-cta { appearance: none; margin: 0; padding: 0; border: 0; background: 
 @media (hover: hover) and (pointer: fine) { .wh-ticket:has(.wh-reg:hover) { background: #d6d6d3; } }
 .wh-ticket:has(.wh-reg:active) { background: #c4c4c1; transition-duration: 0s; }
 /* the stub: the city's code large, its number, then time and state, in the mono face; the perforation on its right */
-.wh-stub { --wh-cell: 1.25em; box-sizing: border-box; width: var(--stub); flex: none; margin: 0; padding: 0.9em 1.4em 0.9em 1.5em; display: flex; flex-direction: column; justify-content: center; gap: 2px;
-  font: 500 max(11px, var(--wh-f, 40px) * 0.31)/1.25 var(--wh-mono); letter-spacing: 0; white-space: nowrap;
-  background: radial-gradient(circle, rgb(12 13 13 / 0.38) 1px, #0000 1.5px) right / 3px var(--hero-perf, 6px) repeat-y; }
+.wh-stub { --wh-cell: 1.25em; position: relative; box-sizing: border-box; width: var(--stub); flex: none; margin: 0; padding: 0.9em 1.4em 0.9em 1.5em; display: flex; flex-direction: column; justify-content: center; gap: 2px;
+  font: 500 max(11px, var(--wh-f, 40px) * 0.31)/1.25 var(--wh-mono); letter-spacing: 0; white-space: nowrap; }
+.wh-stub::after { content: ''; position: absolute; top: calc(var(--notch) + 4px); bottom: calc(var(--notch) + 4px); right: -1.5px; width: 3px;
+  background: radial-gradient(circle, rgb(12 13 13 / 0.38) 1px, #0000 1.5px) center / 3px var(--hero-perf, 6px) no-repeat space; }
 .wh-stub > div { display: flex; align-items: baseline; gap: 0.75em; margin: 0; }
 .wh-stub dd { margin: 0; }
 .wh-stub .wh-face { height: auto; padding: 0; gap: 0.45em; border: 0; background: none !important; font-size: inherit; color: inherit; }
