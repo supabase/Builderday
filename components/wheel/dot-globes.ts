@@ -5,7 +5,8 @@ import { drawTextGlobe, loadLand, type LandMap } from './text-globe';
 
 /* The small globes of the text globe's family: every element on the page with `data-dot` gets a canvas of its own,
    and on it the globe of dots (text-globe.ts, size small) facing `data-lat` / `data-lon`, the city a green dot. They
-   are drawn once, and again only when their size, their city or the config changes: nothing moves at rest. A grown
+   are drawn once, and again only when their size, their city or the config changes: nothing moves at rest. A new city
+   turns the globe to it, the short way round. Under reduced motion it faces the city at once. A grown
    globe on hover is the element's own CSS scale. With no land map yet, nothing is drawn; the element's CSS ground
    stands in. Returns a function that removes them. */
 
@@ -14,7 +15,10 @@ const green = () => getComputedStyle(document.documentElement).getPropertyValue(
 
 export function mountDotGlobes(root: ParentNode, cfg: WheelCfg): () => void {
   let land: LandMap | null = null, live = true;
-  const drawn = new WeakMap<HTMLElement, string>();
+  const drawn = new WeakMap<HTMLElement, { size: number; lat: number; lon: number }>();
+  /* where each globe faces now (degrees of longitude), and its turn under way */
+  const faces = new WeakMap<HTMLElement, number>(), turns = new WeakMap<HTMLElement, number>();
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
   const draw = (el: HTMLElement) => {
     if (!land) return;
     let cv = el.querySelector<HTMLCanvasElement>(':scope > canvas.dot-globe');
@@ -22,17 +26,33 @@ export function mountDotGlobes(root: ParentNode, cfg: WheelCfg): () => void {
     const box = el.getBoundingClientRect(), ratio = Math.min(window.devicePixelRatio || 1, 3);
     const size = Math.round(Math.min(box.width, box.height) * ratio), lat = Number(el.dataset.lat), lon = Number(el.dataset.lon);
     if (!size || !isFinite(lat) || !isFinite(lon)) return;
-    const key = `${size}|${lat}|${lon}`;
-    if (drawn.get(el) === key) return;
-    drawn.set(el, key);
-    cv.width = cv.height = size;
-    const ctx = cv.getContext('2d'); if (!ctx) return;
-    ctx.clearRect(0, 0, size, size);
-    drawTextGlobe(ctx, {
-      x: size / 2, y: size / 2, r: size / 2 - ratio * 0.5, ratio, facing: lon, size: 'small',
-      cities: [{ lat, lon }], active: 0, bracket: false, frames: null, land, look: globeLook(cfg, font(), green()),
-    });
+    const was = drawn.get(el);
+    if (was && was.size === size && was.lat === lat && was.lon === lon) return;
+    drawn.set(el, { size, lat, lon });
+    if (!was || was.size !== size) cv.width = cv.height = size;
+    const ctx = cv.getContext('2d'), map = land; if (!ctx) return;
+    const look = globeLook(cfg, font(), green());
+    const paint = (facing: number) => {
+      faces.set(el, facing);
+      ctx.clearRect(0, 0, size, size);
+      drawTextGlobe(ctx, {
+        x: size / 2, y: size / 2, r: size / 2 - ratio * 0.5, ratio, facing: ((facing + 540) % 360) - 180, size: 'small',
+        cities: [{ lat, lon }], active: 0, bracket: false, frames: null, land: map, look,
+      });
+    };
+    cancelAnimationFrame(turns.get(el) ?? 0);
+    const from = faces.get(el);
     el.setAttribute('data-dot-on', '');
+    if (from == null || reduce.matches) { paint(lon); return; }
+    const turn = ((lon - from + 540) % 360) - 180, t0 = performance.now();
+    const step = (now: number) => {
+      if (!live) return;
+      /* 600 ms: about as long as the big globe's own turn takes to settle (cfg.yawEase) */
+      const k = Math.min(1, (now - t0) / 600);
+      paint(from + turn * (1 - (1 - k) ** 3));
+      if (k < 1) turns.set(el, requestAnimationFrame(step));
+    };
+    step(t0);
   };
   const all = () => Array.from(root.querySelectorAll<HTMLElement>('[data-dot]'));
   const ro = new ResizeObserver((es) => es.forEach((e) => draw(e.target as HTMLElement)));

@@ -137,6 +137,8 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
   let art: { frames: Frames | null; land: LandMap | null } | null = null, asciiKey = '', alive = true;
   const clock = new GlobeClock(globeClockCfg(first.cfg, reduce.matches));
   const tg = { hover: -1, invert: -1, drop: 0, press: 0 };
+  /* the name under the mouse, where the mouse was, and how lit each name is (eases in and out) */
+  const hov = { slot: null as number | null, x: 0, y: 0, on: false, at: NaN, lit: new Map<number, number>() };
   const glassOn = () => cfg.globe === 'glass', asciiOn = () => cfg.globe === 'ascii', ringsOn = () => cfg.globe === 'rings';
   /* the rings: each name's width and the middle of each letter (in font sizes), where the name's middle falls when the
      names run one after another, and lap, the length of all of them */
@@ -147,7 +149,7 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
 
   /* the names on the wheel are set like the words in the Luma box beside them (ending.css): its size, face and
      tracking, read off the page so the two stay one at every width. Without the box, the knobs. */
-  let ctaPx = 0, ctaFace = '', ctaTrack = 0, ctaLands = false, ctaFades = false, ctaLead = 0, ctaGutter = 0, rowDocks = false, rowReach = '';
+  let ctaPx = 0, ctaFace = '', ctaTrack = 0, ctaLands = false, ctaFades = false, ctaLead = 0, ctaGutter = 0, rowDocks = false, rowReach = '', rowHalf = 0;
   const measureName = () => {
     const c = els.cta ? getComputedStyle(els.cta) : null;
     ctaPx = c ? parseFloat(c.fontSize) || 0 : 0;
@@ -168,9 +170,12 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
        stretch: the names stay where the wheel puts them and the row, starting on the margin, stretches to them; free: the
        row moves out to them */
     rowReach = rs ? rs.getPropertyValue('--wh-reach').trim() : '';
+    rowHalf = rowEl instanceof HTMLElement ? rowEl.offsetHeight / 2 : 0;
     /* where the name starts in the row the box ends (the cells, the globe and the words before it) */
-    const nm = els.cta?.querySelector('.wh-reg-city'), row = els.cta?.closest('.wh-reg-at');
-    ctaLead = nm && row ? nm.getBoundingClientRect().left - row.getBoundingClientRect().left : 0;
+    /* the verb is set left. The name line is the end of the unseen longest verb, so a change of state does not move it */
+    const mark = els.cta?.querySelector('.wh-reg-mark'), nm = els.cta?.querySelector('.wh-reg-city'), row = els.cta?.closest('.wh-reg-at');
+    const lineAt = mark ? mark.getBoundingClientRect().right : nm?.getBoundingClientRect().left;
+    ctaLead = lineAt != null && row ? lineAt - row.getBoundingClientRect().left : 0;
     /* the row starts on the left margin, under the page's words (the column's own left, wheel.css) */
     ctaGutter = els.cells ? parseFloat(getComputedStyle(els.cells).left) || 0 : 0;
   };
@@ -395,7 +400,8 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
       const fade = 1 - smoothstep(cfg.fadeFrom, cfg.fadeTo, Math.abs(angle));
       if (fade <= 0) return;
       ctx.save(); ctx.translate(view.x, view.y); ctx.rotate(angle);
-      ctx.fillStyle = ink((cfg.dim + (1 - cfg.dim) * smooth(near)) * fade * alpha);
+      const lit = Math.max(smooth(near), hov.lit.get(slot) ?? 0);
+      ctx.fillStyle = ink((cfg.dim + (1 - cfg.dim) * lit) * fade * alpha);
       ctx.fillText(cityAt(slot).name, lefted ? -outer : -reach - push() * view.radius * smooth(near), 0);
       ctx.restore();
     };
@@ -529,7 +535,19 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
     lens.open += ((isOpen ? 1 : 0) - lens.open) * e(cfg.openEase);
     if (Math.abs((isOpen ? 1 : 0) - lens.open) < 1e-4) lens.open = isOpen ? 1 : 0;
 
-    if (shown !== i) { shown = i; first.onCity(i); }
+    /* the row takes the new city only when the wheel's name goes below the row's edge. Before that, the wheel still
+       draws the name beside the row */
+    const onLine = cfg.layout === 'column' && !rowDocks && !heroDock;
+    const under = !onLine || Math.abs(Math.sin(behind * rad(cfg.step))) * nameOuter() < rowHalf * view.ratio + nameSize() * 0.35;
+    if (shown !== i && under) { shown = i; first.onCity(i); }
+    /* the wheel turns under a still mouse: the name under it changes */
+    if (hov.on && position !== hov.at) { hov.at = position; hov.slot = slotAt(hov.x, hov.y); }
+    for (const [slot, a] of hov.lit) {
+      const to = slot === hov.slot ? 1 : 0, next = Math.abs(to - a) < 0.01 ? to : a + (to - a) * e(18);
+      if (next === 0) hov.lit.delete(slot); else hov.lit.set(slot, next);
+      if (next !== a) dirty = true;
+    }
+    if (hov.slot !== null && !hov.lit.has(hov.slot)) { hov.lit.set(hov.slot, reduced ? 1 : 0.001); dirty = true; }
 
     /* flow, fixed glass: the scroll moves the picture, the cells and the link; the globe docks or leaves */
     const fixed = fixedGlass(), R = view.ratio;
@@ -721,13 +739,13 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
       for (let s0 = first; s0 <= first + 16; s0++) if (Math.abs(spot - middleOf(s0)) < ringAt(s0).em / 2 + 0.3) return s0;
       return null;
     }
+    /* the nearest name takes the point, across the band the longest name fills, so no gap between names is dead */
     const slot = Math.round(position - angle / step), size = nameSize();
     const near = 1 - clamp01(Math.abs(slot - position));
     const from = (cfg.labelFrom + push() * smooth(near)) * view.radius;
-    const onLine = Math.abs(position - angle / step - slot) * step * far < size * 0.7;
-    const w = (ems[idx(slot)] || 0) * size, inner = startAligned() ? nameOuter() - w : from;
+    const w = Math.max(0, ...ems) * size, inner = startAligned() ? nameOuter() - w : from;
     const onName = far > inner - size * 0.3 && far < inner + w + size * 0.3;
-    return onLine && onName && Math.abs(angle) < cfg.fadeTo ? slot : null;
+    return onName && Math.abs(angle) < cfg.fadeTo ? slot : null;
   };
   /* the rings have no ball of glass: the whole ball of rings takes a drag */
   const overRings = (x: number, y: number) => {
@@ -749,7 +767,8 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
       /* in a page the vertical wheel scrolls the page; a sideways move turns the wheel (and, if asked, the vertical
          wheel over the globe) */
       if (Math.abs(ev.deltaX) > Math.abs(ev.deltaY)) wheelSum += ev.deltaX * line;
-      else if (flow.wheelOverGlobe && overGlobe(ev.clientX, ev.clientY)) { ev.preventDefault(); wheelSum += ev.deltaY * line; }
+      /* over a name (or over the globe, if asked) the vertical wheel turns the wheel. Elsewhere it scrolls the page */
+      else if (slotAt(ev.clientX, ev.clientY) !== null || (flow.wheelOverGlobe && overGlobe(ev.clientX, ev.clientY))) { ev.preventDefault(); wheelSum += ev.deltaY * line; }
       else return;
       const steps = Math.trunc(wheelSum / cfg.wheelPx); wheelSum -= steps * cfg.wheelPx; target += steps;
       if (steps) start(true);
@@ -775,7 +794,11 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
     if (!drag) {
       if (ev.pointerType !== 'mouse') return;
       const m = markUnder(ev.clientX, ev.clientY); setHover(m);
-      pin.style.cursor = slotAt(ev.clientX, ev.clientY) !== null || (m >= 0 && cfg.globePick === 'on') ? 'pointer' : '';
+      /* the row and the page's words over the canvas take the mouse: no name is lit through them */
+      const slot = ev.target === canvas ? slotAt(ev.clientX, ev.clientY) : null;
+      Object.assign(hov, { x: ev.clientX, y: ev.clientY, on: true, at: position });
+      if (slot !== hov.slot) { hov.slot = slot; if (flow) start(true); }
+      pin.style.cursor = slot !== null || (m >= 0 && cfg.globePick === 'on') ? 'pointer' : '';
       return;
     }
     const dx = ev.clientX - drag.x, dy = ev.clientY - drag.y;
@@ -794,15 +817,15 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
     else if (m >= 0) { go(m); if (flow) start(true); } else if (flow) start(true);
   };
   const onCancel = () => { drag = null; window.clearTimeout(tg.press); tg.invert = -1; };
-  const onLeave = () => setHover(-1);
+  const onLeave = () => { setHover(-1); hov.on = false; hov.slot = null; };
   const onKey = (ev: KeyboardEvent) => {
     if (ev.defaultPrevented || ev.metaKey || ev.ctrlKey || ev.altKey) return;
     const t = ev.target instanceof HTMLElement ? ev.target : null;
     if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable || t.closest('[data-wheel-skip]'))) return;
     if (flow) {
-      /* in a page: the left and right arrows while the wheel is on screen; up and down only with focus on the wheel.
-         Page Up, Page Down, Space and the up and down arrows otherwise scroll the page */
-      const mine = !!t && pin.contains(t);
+      /* in a page the left and right arrows turn the wheel while it is on screen. Up and down also turn it while no other
+         element has focus. Page Up, Page Down, Space and the up and down arrows otherwise scroll the page */
+      const mine = !!t && pin.contains(t), page = !t || t === document.body;
       if (!mine && (!onScreen || (t && t.closest('[role="slider"], [role="radiogroup"], [role="tablist"], [role="listbox"], [role="menu"]')))) return;
       /* with focus on the wheel it is a slider: Home and End go to the first and the last city (the short way round), and
          Page Up and Page Down turn three, so none of them scrolls the page from under it */
@@ -811,7 +834,7 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
         let d = (((to - idx(from)) % N) + N) % N; if (d > N / 2) d -= N;
         ev.preventDefault(); target = from + d; start(true); return;
       }
-      const k = ({ ArrowRight: 1, ArrowLeft: -1, ...(mine ? { ArrowDown: 1, ArrowUp: -1, PageDown: 3, PageUp: -3 } : {}) } as Record<string, number>)[ev.key];
+      const k = ({ ArrowRight: 1, ArrowLeft: -1, ...(mine || page ? { ArrowDown: 1, ArrowUp: -1 } : {}), ...(mine ? { PageDown: 3, PageUp: -3 } : {}) } as Record<string, number>)[ev.key];
       if (!k) return;
       ev.preventDefault(); target += k; start(true); return;
     }
@@ -825,7 +848,7 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
   /* in a page, audio is set up only while the wheel may be heard (setting it up costs a long frame on the first press) */
   const unlockSound = () => { if (!flow || cfg.sound) unlock(); };
 
-  pin.addEventListener('wheel', onWheel, { passive: !flow?.wheelOverGlobe });
+  pin.addEventListener('wheel', onWheel, { passive: !flow });
   /* fixed glass with a docked globe that turns with the scroll: a scroll wakes the loop while the wheel is off screen
      (it reads nothing here; the loop reads the scroll in its own frame) */
   const onScroll = () => { if (!running) start(true); };
