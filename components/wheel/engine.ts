@@ -822,9 +822,9 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
     const t = ev.target instanceof HTMLElement ? ev.target : null;
     if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable || t.closest('[data-wheel-skip]'))) return;
     if (flow) {
-      /* in a page: the left and right arrows while the wheel is on screen; up and down only with focus on the wheel.
-         Page Up, Page Down, Space and the up and down arrows otherwise scroll the page */
-      const mine = !!t && pin.contains(t);
+      /* in a page the left and right arrows turn the wheel while it is on screen. Up and down also turn it while no other
+         element has focus. Page Up, Page Down, Space and the up and down arrows otherwise scroll the page */
+      const mine = !!t && pin.contains(t), page = !t || t === document.body;
       if (!mine && (!onScreen || (t && t.closest('[role="slider"], [role="radiogroup"], [role="tablist"], [role="listbox"], [role="menu"]')))) return;
       /* with focus on the wheel it is a slider: Home and End go to the first and the last city (the short way round), and
          Page Up and Page Down turn three, so none of them scrolls the page from under it */
@@ -833,7 +833,7 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
         let d = (((to - idx(from)) % N) + N) % N; if (d > N / 2) d -= N;
         ev.preventDefault(); target = from + d; start(true); return;
       }
-      const k = ({ ArrowRight: 1, ArrowLeft: -1, ...(mine ? { ArrowDown: 1, ArrowUp: -1, PageDown: 3, PageUp: -3 } : {}) } as Record<string, number>)[ev.key];
+      const k = ({ ArrowRight: 1, ArrowLeft: -1, ...(mine || page ? { ArrowDown: 1, ArrowUp: -1 } : {}), ...(mine ? { PageDown: 3, PageUp: -3 } : {}) } as Record<string, number>)[ev.key];
       if (!k) return;
       ev.preventDefault(); target += k; start(true); return;
     }
