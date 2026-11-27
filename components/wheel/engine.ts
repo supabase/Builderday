@@ -766,11 +766,10 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
     if (ev.target instanceof Element && ev.target.closest('[data-wheel-skip]')) return;
     const line = ev.deltaMode === 1 ? 16 : 1;
     if (flow) {
-      /* in a page the vertical wheel always scrolls the page, over the names too: a visitor who scrolls must never be
-         held on the first screen. A sideways move (a trackpad, a tilt wheel) turns the wheel, and so does the vertical
-         wheel over the globe if asked */
+      /* in a page a sideways move (a trackpad, a tilt wheel) turns the wheel. Over a name (or over the globe, if asked)
+         the vertical wheel turns it too and the page holds still; elsewhere the vertical wheel scrolls the page */
       if (Math.abs(ev.deltaX) > Math.abs(ev.deltaY)) { ev.preventDefault(); wheelSum += ev.deltaX * line; }
-      else if (flow.wheelOverGlobe && overGlobe(ev.clientX, ev.clientY)) { ev.preventDefault(); wheelSum += ev.deltaY * line; }
+      else if (slotAt(ev.clientX, ev.clientY) !== null || (flow.wheelOverGlobe && overGlobe(ev.clientX, ev.clientY))) { ev.preventDefault(); wheelSum += ev.deltaY * line; }
       else return;
       const steps = Math.trunc(wheelSum / cfg.wheelPx); wheelSum -= steps * cfg.wheelPx; target += steps;
       if (steps) start(true);
@@ -833,9 +832,9 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
     const t = ev.target instanceof HTMLElement ? ev.target : null;
     if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable || t.closest('[data-wheel-skip]'))) return;
     if (flow) {
-      /* in a page the left and right arrows turn the wheel while it is on screen. Up and down turn it only with focus on
-         the wheel; otherwise they, Page Up, Page Down and Space scroll the page */
-      const mine = !!t && pin.contains(t);
+      /* in a page the left and right arrows turn the wheel while it is on screen. Up and down also turn it while no other
+         element has focus. Page Up, Page Down, Space and the up and down arrows otherwise scroll the page */
+      const mine = !!t && pin.contains(t), page = !t || t === document.body;
       if (!mine && (!onScreen || (t && t.closest('[role="slider"], [role="radiogroup"], [role="tablist"], [role="listbox"], [role="menu"]')))) return;
       /* with focus on the wheel it is a slider: Home and End go to the first and the last city (the short way round), and
          Page Up and Page Down turn three, so none of them scrolls the page from under it */
@@ -844,7 +843,7 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
         let d = (((to - idx(from)) % N) + N) % N; if (d > N / 2) d -= N;
         ev.preventDefault(); target = from + d; start(true); return;
       }
-      const k = ({ ArrowRight: 1, ArrowLeft: -1, ...(mine ? { ArrowDown: 1, ArrowUp: -1 } : {}), ...(mine ? { PageDown: 3, PageUp: -3 } : {}) } as Record<string, number>)[ev.key];
+      const k = ({ ArrowRight: 1, ArrowLeft: -1, ...(mine || page ? { ArrowDown: 1, ArrowUp: -1 } : {}), ...(mine ? { PageDown: 3, PageUp: -3 } : {}) } as Record<string, number>)[ev.key];
       if (!k) return;
       ev.preventDefault(); target += k; start(true); return;
     }
