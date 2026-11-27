@@ -136,6 +136,8 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
   let art: { frames: Frames | null; land: LandMap | null } | null = null, asciiKey = '', alive = true;
   const clock = new GlobeClock(globeClockCfg(first.cfg, reduce.matches));
   const tg = { hover: -1, invert: -1, drop: 0, press: 0 };
+  /* the name under the mouse, where the mouse was, and how lit each name is (eases in and out) */
+  const hov = { slot: null as number | null, x: 0, y: 0, on: false, at: NaN, lit: new Map<number, number>() };
   const glassOn = () => cfg.globe === 'glass', asciiOn = () => cfg.globe === 'ascii', ringsOn = () => cfg.globe === 'rings';
   /* the rings: each name's width and the middle of each letter (in font sizes), where the name's middle falls when the
      names run one after another, and lap, the length of all of them */
@@ -394,7 +396,8 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
       const fade = 1 - smoothstep(cfg.fadeFrom, cfg.fadeTo, Math.abs(angle));
       if (fade <= 0) return;
       ctx.save(); ctx.translate(view.x, view.y); ctx.rotate(angle);
-      ctx.fillStyle = ink((cfg.dim + (1 - cfg.dim) * smooth(near)) * fade * alpha);
+      const lit = Math.max(smooth(near), hov.lit.get(slot) ?? 0);
+      ctx.fillStyle = ink((cfg.dim + (1 - cfg.dim) * lit) * fade * alpha);
       ctx.fillText(cityAt(slot).name, lefted ? -outer : -reach - push() * view.radius * smooth(near), 0);
       ctx.restore();
     };
@@ -529,6 +532,14 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
     if (Math.abs((isOpen ? 1 : 0) - lens.open) < 1e-4) lens.open = isOpen ? 1 : 0;
 
     if (shown !== i) { shown = i; first.onCity(i); }
+    /* the wheel turns under a still mouse: the name under it changes */
+    if (hov.on && position !== hov.at) { hov.at = position; hov.slot = slotAt(hov.x, hov.y); }
+    for (const [slot, a] of hov.lit) {
+      const to = slot === hov.slot ? 1 : 0, next = Math.abs(to - a) < 0.01 ? to : a + (to - a) * e(18);
+      if (next === 0) hov.lit.delete(slot); else hov.lit.set(slot, next);
+      if (next !== a) dirty = true;
+    }
+    if (hov.slot !== null && !hov.lit.has(hov.slot)) { hov.lit.set(hov.slot, reduced ? 1 : 0.001); dirty = true; }
 
     /* flow, fixed glass: the scroll moves the picture, the cells and the link; the globe docks or leaves */
     const fixed = fixedGlass(), R = view.ratio;
@@ -774,7 +785,11 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
     if (!drag) {
       if (ev.pointerType !== 'mouse') return;
       const m = markUnder(ev.clientX, ev.clientY); setHover(m);
-      pin.style.cursor = slotAt(ev.clientX, ev.clientY) !== null || (m >= 0 && cfg.globePick === 'on') ? 'pointer' : '';
+      /* the row and the page's words over the canvas take the mouse: no name is lit through them */
+      const slot = ev.target === canvas ? slotAt(ev.clientX, ev.clientY) : null;
+      Object.assign(hov, { x: ev.clientX, y: ev.clientY, on: true, at: position });
+      if (slot !== hov.slot) { hov.slot = slot; if (flow) start(true); }
+      pin.style.cursor = slot !== null || (m >= 0 && cfg.globePick === 'on') ? 'pointer' : '';
       return;
     }
     const dx = ev.clientX - drag.x, dy = ev.clientY - drag.y;
@@ -793,7 +808,7 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
     else if (m >= 0) { go(m); if (flow) start(true); } else if (flow) start(true);
   };
   const onCancel = () => { drag = null; window.clearTimeout(tg.press); tg.invert = -1; };
-  const onLeave = () => setHover(-1);
+  const onLeave = () => { setHover(-1); hov.on = false; hov.slot = null; };
   const onKey = (ev: KeyboardEvent) => {
     if (ev.defaultPrevented || ev.metaKey || ev.ctrlKey || ev.altKey) return;
     const t = ev.target instanceof HTMLElement ? ev.target : null;
