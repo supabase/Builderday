@@ -720,13 +720,13 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
       for (let s0 = first; s0 <= first + 16; s0++) if (Math.abs(spot - middleOf(s0)) < ringAt(s0).em / 2 + 0.3) return s0;
       return null;
     }
+    /* the nearest name takes the point, across the band the longest name fills, so no gap between names is dead */
     const slot = Math.round(position - angle / step), size = nameSize();
     const near = 1 - clamp01(Math.abs(slot - position));
     const from = (cfg.labelFrom + push() * smooth(near)) * view.radius;
-    const onLine = Math.abs(position - angle / step - slot) * step * far < size * 0.7;
-    const w = (ems[idx(slot)] || 0) * size, inner = startAligned() ? nameOuter() - w : from;
+    const w = Math.max(0, ...ems) * size, inner = startAligned() ? nameOuter() - w : from;
     const onName = far > inner - size * 0.3 && far < inner + w + size * 0.3;
-    return onLine && onName && Math.abs(angle) < cfg.fadeTo ? slot : null;
+    return onName && Math.abs(angle) < cfg.fadeTo ? slot : null;
   };
   /* the rings have no ball of glass: the whole ball of rings takes a drag */
   const overRings = (x: number, y: number) => {
