@@ -148,7 +148,7 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
 
   /* the names on the wheel are set like the words in the Luma box beside them (ending.css): its size, face and
      tracking, read off the page so the two stay one at every width. Without the box, the knobs. */
-  let ctaPx = 0, ctaFace = '', ctaTrack = 0, ctaLands = false, ctaFades = false, ctaLead = 0, ctaGutter = 0, rowDocks = false, rowReach = '';
+  let ctaPx = 0, ctaFace = '', ctaTrack = 0, ctaLands = false, ctaFades = false, ctaLead = 0, ctaGutter = 0, rowDocks = false, rowReach = '', rowHalf = 0;
   const measureName = () => {
     const c = els.cta ? getComputedStyle(els.cta) : null;
     ctaPx = c ? parseFloat(c.fontSize) || 0 : 0;
@@ -169,6 +169,7 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
        stretch: the names stay where the wheel puts them and the row, starting on the margin, stretches to them; free: the
        row moves out to them */
     rowReach = rs ? rs.getPropertyValue('--wh-reach').trim() : '';
+    rowHalf = rowEl instanceof HTMLElement ? rowEl.offsetHeight / 2 : 0;
     /* where the name starts in the row the box ends (the cells, the globe and the words before it) */
     const nm = els.cta?.querySelector('.wh-reg-city'), row = els.cta?.closest('.wh-reg-at');
     ctaLead = nm && row ? nm.getBoundingClientRect().left - row.getBoundingClientRect().left : 0;
@@ -531,7 +532,11 @@ export function createWheel(els: Els, first: { cfg: WheelCfg; cities: WheelCity[
     lens.open += ((isOpen ? 1 : 0) - lens.open) * e(cfg.openEase);
     if (Math.abs((isOpen ? 1 : 0) - lens.open) < 1e-4) lens.open = isOpen ? 1 : 0;
 
-    if (shown !== i) { shown = i; first.onCity(i); }
+    /* the row takes the new city only when the wheel's name goes below the row's edge. Before that, the wheel still
+       draws the name beside the row */
+    const onLine = cfg.layout === 'column' && !rowDocks && !heroDock;
+    const under = !onLine || Math.abs(Math.sin(behind * rad(cfg.step))) * nameOuter() < rowHalf * view.ratio + nameSize() * 0.35;
+    if (shown !== i && under) { shown = i; first.onCity(i); }
     /* the wheel turns under a still mouse: the name under it changes */
     if (hov.on && position !== hov.at) { hov.at = position; hov.slot = slotAt(hov.x, hov.y); }
     for (const [slot, a] of hov.lit) {
