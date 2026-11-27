@@ -22,7 +22,11 @@
     radial-gradient(circle var(--globe-radius, 0px) at 100% var(--globe-y, 50%), transparent calc(100% - 1px), #000 100%),
     radial-gradient(circle var(--small-radius, 0px) at var(--small-x, 0px) var(--small-y, 0px), transparent calc(100% - 1px), #000 100%);
   mask-composite: intersect;
+  animation: wh-lines-up 7.2s steps(60) infinite;
 }
+/* 60 px holds a whole number of lines at every pitch the knob allows (2 to 6 px), so the loop has no seam */
+@keyframes wh-lines-up { to { background-position: 0 -60px; } }
+@media (prefers-reduced-motion: reduce) { .wh-pin::after { animation: none; } }
 
 .wh-wordmark { position: absolute; left: var(--wh-gutter); margin: 0; }
 /* the link, and anything a page sets under it, from the bottom left corner up */
