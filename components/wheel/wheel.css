@@ -294,6 +294,17 @@ button.wh-cta { appearance: none; margin: 0; padding: 0; border: 0; background: 
 :is(.wh-stub, .wh-spoke) .wh-drum.is-turning .is-new { transform: none; animation-name: wh-flat-in; }
 :is(.wh-stub, .wh-spoke) .wh-prism[data-dir='up'] { --wh-flat: 100%; }
 :is(.wh-stub, .wh-spoke) .wh-prism[data-dir='down'] { --wh-flat: -100%; }
+/* the turn lasts until its last letter lands: --n letters, each one stagger later */
+.wh-letters { white-space: pre; }
+.wh-ch { display: inline-block; }
+:is(.wh-stub, .wh-spoke) .wh-drum { --wh-stagger: 30ms; }
+:is(.wh-stub, .wh-spoke) .wh-drum.is-quick { --wh-stagger: 15ms; }
+:is(.wh-stub, .wh-spoke) .wh-drum[data-letters].is-turning { animation-duration: calc(var(--wh-turn) + (var(--n, 1) - 1) * var(--wh-stagger)); }
+:is(.wh-stub, .wh-spoke) .wh-drum[data-letters].is-turning .wh-face { animation: none; }
+:is(.wh-stub, .wh-spoke) .wh-drum[data-letters].is-turning .is-new .wh-ch:not([data-still]) { animation: wh-flat-in var(--wh-turn) var(--ease-out, cubic-bezier(.23, 1, .32, 1)) calc(var(--i) * var(--wh-stagger)) both; }
+:is(.wh-stub, .wh-spoke) .wh-drum[data-letters].is-turning .is-old .wh-ch:not([data-still]) { animation: wh-flat-out var(--wh-turn) var(--ease-out, cubic-bezier(.23, 1, .32, 1)) calc(var(--i) * var(--wh-stagger)) both; }
+:is(.wh-stub, .wh-spoke) .wh-drum[data-letters].is-turning .is-old [data-still] { visibility: hidden; }
+@media (prefers-reduced-motion: reduce) { .wh-drum.is-turning .wh-ch { animation-duration: 1ms !important; animation-delay: 0s !important; } }
 @keyframes wh-hold { to { opacity: 1; } }
 @keyframes wh-flat-in { from { transform: translateY(var(--wh-flat, 100%)); opacity: 0; } 50% { opacity: 1; } }
 @keyframes wh-flat-out { 50% { opacity: 0; } to { transform: translateY(calc(var(--wh-flat, 100%) * -1)); opacity: 0; } }

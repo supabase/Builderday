@@ -58,6 +58,19 @@ export function regWords(status: WheelStatus, name: string) {
   return `${status === 'sold' ? VERBS[2] : status === 'full' ? VERBS[1] : status === 'soon' ? VERBS[3] : VERBS[0]} ${name}`;
 }
 
+/* the letters that do not move while the rest roll. A letter stays when both words share it at the start. When the
+   words have one length, every matching letter stays, because the mono face keeps each letter in its place */
+function stillAt(a: string, b: string) {
+  let k = 0; while (k < a.length && a[k] === b[k]) k++;
+  return [...a].map((ch, i) => i < k || (a.length === b.length && ch === b[i]));
+}
+/* a word as letters. The letters that move roll one after another, a short delay apart (wheel.css) */
+function Letters({ text, other }: { text: string; other: string }) {
+  const still = stillAt(text, other);
+  let next = 0;
+  return <span className="wh-letters">{[...text].map((ch, i) => <span key={`${i}-${ch}`} className="wh-ch" data-still={still[i] ? '' : undefined} style={still[i] ? undefined : { '--i': next++ } as CSSProperties}>{ch}</span>)}</span>;
+}
+
 /* The city's name in the box. fixed: every name is in the slot, unseen but the current one, so the box is as wide as
    the longest and never changes width. roll: the new name comes round the turn's way, the old one goes the other way
    (the stub's flat roll, on the same clock). A roll is never cut short: if the wheel moves on mid-roll, it finishes,
@@ -162,7 +175,12 @@ function Prism({ k, dir, status, width, children }: { k: string; dir: number; st
   const [turn, setTurn] = useState<{ old: Face; dir: number; quick: boolean } | null>(null);
   if (shown.k !== k && !turn) { setTurn({ old: shown, dir, quick: false }); setShown({ k, node: children, status }); }
   else if (shown.k === k && (shown.node !== children || shown.status !== status)) setShown({ k, node: children, status });
-  const face = (f: Face, cls: string) => <span className={'wh-face ' + cls} data-status={f.status} style={width ? { width } : undefined}>{f.node}</span>;
+  /* words (the number, the time) roll letter by letter. A face with an icon rolls whole */
+  const words = turn && typeof turn.old.node === 'string' && typeof shown.node === 'string' ? { old: turn.old.node, now: shown.node } : null;
+  /* the turn holds until its last letter lands */
+  const moving = (x: string, y: string) => stillAt(x, y).filter((s) => !s).length;
+  const rollSpan = words ? { '--n': Math.max(moving(words.old, words.now), moving(words.now, words.old)) } as CSSProperties : undefined;
+  const face = (f: Face, cls: string, text?: ReactNode) => <span className={'wh-face ' + cls} data-status={f.status} style={width ? { width } : undefined}>{text ?? f.node}</span>;
   /* the city moved on during the turn: the quick turn starts in the same render, with no still frame between */
   const end = (e: React.AnimationEvent) => {
     if (e.target !== e.currentTarget) return;
@@ -170,9 +188,9 @@ function Prism({ k, dir, status, width, children }: { k: string; dir: number; st
   };
   return (
     <span className="wh-prism" data-dir={(turn?.dir ?? dir) > 0 ? 'up' : 'down'}>
-      <span key={shown.k} className={'wh-drum' + (turn ? ' is-turning' : '') + (turn?.quick ? ' is-quick' : '')} onAnimationEnd={end}>
-        {turn ? face(turn.old, 'is-old') : null}
-        {face(shown, 'is-new')}
+      <span key={shown.k} className={'wh-drum' + (turn ? ' is-turning' : '') + (turn?.quick ? ' is-quick' : '')} data-letters={words ? '' : undefined} style={rollSpan} onAnimationEnd={end}>
+        {turn ? face(turn.old, 'is-old', words ? <Letters text={words.old} other={words.now} /> : undefined) : null}
+        {face(shown, 'is-new', words ? <Letters text={words.now} other={words.old} /> : undefined)}
       </span>
     </span>
   );
